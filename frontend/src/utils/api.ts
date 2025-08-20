@@ -4,10 +4,18 @@ export type ApiResult<T> = {
   error?: string;
 };
 
+// Get base URL from environment or use empty string for relative paths
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<ApiResult<T>> {
   try {
-    const res = await fetch(path.startsWith('/api') ? path : `/api${path}`, {
+    // Remove leading slash from path if present and ensure it starts with /api
+    const cleanPath = path.replace(/^\/+/, '');
+    const apiPath = cleanPath.startsWith('api/') ? `/${cleanPath}` : `/api/${cleanPath}`;
+    
+    const res = await fetch(`${API_BASE_URL}${apiPath}`, {
       headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+      credentials: 'include', // Important for cookies/sessions
       ...init,
     });
     if (!res.ok) {

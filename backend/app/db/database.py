@@ -6,7 +6,6 @@ from app.core.config import settings
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=True,  # Set to False in production
-    future=True,
 )
 
 # Create async session factory

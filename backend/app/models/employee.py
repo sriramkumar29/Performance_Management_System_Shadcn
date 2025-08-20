@@ -16,6 +16,7 @@ class Employee(Base):
     emp_roles_level = Column(Integer, nullable=False)  # e.g., 1..7
     emp_reporting_manager_id = Column(Integer, ForeignKey("employees.emp_id", ondelete="SET NULL"), nullable=True)
     emp_status = Column(Boolean, default=True)
+    emp_password = Column(String, nullable=False)  # Store hashed password
     
     # Relationships
     reporting_manager = relationship("Employee", remote_side=[emp_id], backref="subordinates")

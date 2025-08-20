@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from app.db.database import engine, Base
 from app.routers import employees, appraisals, goals, appraisal_types, appraisal_goals
+from app.core.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -18,16 +19,18 @@ app = FastAPI(
     title="Performance Appraisal Management System",
     description="API for managing employee performance appraisals",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    root_path=settings.BASE_PATH if settings.BASE_PATH != "/" else ""
 )
 
-# Configure CORS
+# Configure CORS using settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # In production, replace with specific origins
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["Content-Length", "X-Total-Count"],
 )
 
 # Include routers
