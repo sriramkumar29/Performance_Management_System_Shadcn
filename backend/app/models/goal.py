@@ -1,0 +1,108 @@
+from sqlalchemy import Column, Integer, String, ForeignKey, Table, CheckConstraint, UniqueConstraint
+from sqlalchemy.orm import relationship
+from app.db.database import Base
+
+
+# Category association table for goal templates
+goal_template_categories = Table(
+    "goal_template_categories",
+    Base.metadata,
+    Column("template_id", Integer, ForeignKey("goals_template.temp_id", ondelete="CASCADE"), primary_key=True),
+    Column("category_id", Integer, ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True)
+)
+
+# Removed goal_categories association table - now using direct foreign key
+
+
+class Category(Base):
+    """Category model for goal templates."""
+    
+    __tablename__ = "categories"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, unique=True)
+    
+    # Relationships
+    goal_templates = relationship(
+        "GoalTemplate",
+        secondary=goal_template_categories,
+        back_populates="categories"
+    )
+    goals = relationship("Goal", back_populates="category")
+
+
+class GoalTemplate(Base):
+    """Goal template model."""
+    
+    __tablename__ = "goals_template"
+    
+    temp_id = Column(Integer, primary_key=True, index=True)
+    temp_title = Column(String, nullable=False)
+    temp_description = Column(String, nullable=False)
+    temp_performance_factor = Column(String, nullable=False)
+    temp_importance = Column(String, nullable=False)  # High/Medium/Low
+    temp_weightage = Column(Integer, nullable=False)  # percentage
+    
+    # Relationships
+    categories = relationship(
+        "Category",
+        secondary=goal_template_categories,
+        back_populates="goal_templates"
+    )
+    goals = relationship("Goal", back_populates="template")
+
+
+class Goal(Base):
+    """Goal model."""
+    
+    __tablename__ = "goals"
+    
+    goal_id = Column(Integer, primary_key=True, index=True)
+    goal_template_id = Column(Integer, ForeignKey("goals_template.temp_id", ondelete="SET NULL"), nullable=True)
+    category_id = Column(Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
+    goal_title = Column(String, nullable=False)
+    goal_description = Column(String, nullable=False)
+    goal_performance_factor = Column(String, nullable=False)
+    goal_importance = Column(String, nullable=False)  # High/Medium/Low
+    goal_weightage = Column(Integer, nullable=False)  # percentage
+    
+    # Relationships - using string-based references to avoid circular imports
+    template = relationship("GoalTemplate", back_populates="goals")
+    category = relationship("Category", back_populates="goals")
+    appraisal_goals = relationship(
+        "AppraisalGoal", 
+        back_populates="goal", 
+        cascade="all, delete-orphan"
+    )
+
+
+class AppraisalGoal(Base):
+    """AppraisalGoal model - linking appraisals and goals with evaluations."""
+    
+    __tablename__ = "appraisal_goals"
+    __table_args__ = (
+        # A goal can belong to at most one appraisal
+        UniqueConstraint("goal_id", name="uq_appraisal_goals_goal_id"),
+        # Prevent duplicate (appraisal_id, goal_id) rows within the same appraisal
+        UniqueConstraint("appraisal_id", "goal_id", name="uq_appraisal_goals_appraisal_goal"),
+    )
+    
+    id = Column(Integer, primary_key=True, index=True)
+    appraisal_id = Column(Integer, ForeignKey("appraisals.appraisal_id", ondelete="CASCADE"), nullable=False)
+    goal_id = Column(Integer, ForeignKey("goals.goal_id", ondelete="CASCADE"), nullable=False)
+    
+    # Evaluation fields - moved from Goals table as per recommendations
+    self_comment = Column(String, nullable=True)
+    self_rating = Column(Integer, CheckConstraint("self_rating BETWEEN 1 AND 5"), nullable=True)
+    appraiser_comment = Column(String, nullable=True)
+    appraiser_rating = Column(Integer, CheckConstraint("appraiser_rating BETWEEN 1 AND 5"), nullable=True)
+    
+    # Relationships - using string-based references to avoid circular imports
+    appraisal = relationship(
+        "Appraisal", 
+        back_populates="appraisal_goals"
+    )
+    goal = relationship(
+        "Goal", 
+        back_populates="appraisal_goals"
+    )
