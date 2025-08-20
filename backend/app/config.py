@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-secret-key-here"
     
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:sri%40123@localhost:5432/performance_db"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:sri%40123@localhost:5432/Performance_Management"
     TEST_DATABASE_URL: Optional[str] = None
     
     # CORS

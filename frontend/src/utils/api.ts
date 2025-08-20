@@ -4,9 +4,33 @@ export type ApiResult<T> = {
   error?: string;
 };
 
+// Get API base URL from environment variables
+const getApiBaseUrl = (): string => {
+  // In development, use proxy or direct API URL
+  if (import.meta.env.DEV) {
+    return import.meta.env.VITE_API_BASE_URL || '';
+  }
+  // In production, use the configured API base URL
+  return import.meta.env.VITE_API_BASE_URL || '';
+};
+
+const buildApiUrl = (path: string): string => {
+  const baseUrl = getApiBaseUrl();
+  
+  // If no base URL is configured, use relative paths (proxy mode)
+  if (!baseUrl) {
+    return path.startsWith('/api') ? path : `/api${path}`;
+  }
+  
+  // If base URL is configured, build absolute URL
+  const cleanPath = path.startsWith('/api') ? path.substring(4) : path;
+  return `${baseUrl}/api${cleanPath}`;
+};
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<ApiResult<T>> {
   try {
-    const res = await fetch(path.startsWith('/api') ? path : `/api${path}`, {
+    const url = buildApiUrl(path);
+    const res = await fetch(url, {
       headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
       ...init,
     });
