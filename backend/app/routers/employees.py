@@ -11,8 +11,40 @@ from app.schemas.employee import (
     EmployeeResponse,
     EmployeeWithSubordinates
 )
+from app.routers.auth import get_current_user
+from passlib.context import CryptContext
+from fastapi import Request
+from pydantic import BaseModel
+from app.core.config import settings
+import jwt
+from datetime import datetime, timedelta
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 router = APIRouter()
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+@router.post("/login", response_model=TokenResponse)
+async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Employee).where(Employee.emp_email == data.email))
+    employee = result.scalars().first()
+    if not employee or not pwd_context.verify(data.password, employee.emp_password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    to_encode = {
+        "sub": employee.emp_email,
+        "emp_id": employee.emp_id,
+        "exp": datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    }
+    token = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return TokenResponse(access_token=token)
 
 
 @router.post("/", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED)
@@ -57,6 +89,11 @@ async def create_employee(
                         detail=f"Reporting manager with ID {manager_id} not found"
                     )
             
+            # Hash the password before storing
+            plain_password = emp_data.pop("password")
+            hashed_password = pwd_context.hash(plain_password)
+            emp_data["emp_password"] = hashed_password
+
             # Create new employee
             print(f"Creating employee with data: {emp_data}")
             db_employee = Employee(**emp_data)
@@ -101,7 +138,8 @@ async def create_employee(
 async def read_employees(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
     """Get all employees."""
     
@@ -114,7 +152,8 @@ async def read_employees(
 @router.get("/by-email", response_model=EmployeeResponse)
 async def read_employee_by_email(
     email: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
     """Get an employee by email."""
     result = await db.execute(select(Employee).where(Employee.emp_email == email))
@@ -130,7 +169,8 @@ async def read_employee_by_email(
 @router.get("/{emp_id}", response_model=EmployeeResponse)
 async def read_employee(
     emp_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
     """Get an employee by ID."""
     
@@ -149,7 +189,8 @@ async def read_employee(
 @router.get("/{emp_id}/subordinates", response_model=EmployeeWithSubordinates)
 async def read_employee_with_subordinates(
     emp_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
     """Get an employee with their subordinates."""
     
@@ -169,7 +210,8 @@ async def read_employee_with_subordinates(
 async def update_employee(
     emp_id: int,
     employee: EmployeeUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
     """Update an employee."""
     
@@ -225,7 +267,8 @@ async def update_employee(
 @router.delete("/{emp_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_employee(
     emp_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
     """Delete an employee."""
     

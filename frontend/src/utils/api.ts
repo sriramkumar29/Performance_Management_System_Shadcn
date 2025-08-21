@@ -13,8 +13,18 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
     const cleanPath = path.replace(/^\/+/, '');
     const apiPath = cleanPath.startsWith('api/') ? `/${cleanPath}` : `/api/${cleanPath}`;
     
+    // Get JWT token from sessionStorage
+    const token = sessionStorage.getItem('auth_token');
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    
     const res = await fetch(`${API_BASE_URL}${apiPath}`, {
-      headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+      headers: { 
+        ...headers,
+        ...(init?.headers || {}) 
+      },
       credentials: 'include', // Important for cookies/sessions
       ...init,
     });

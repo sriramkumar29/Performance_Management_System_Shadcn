@@ -16,7 +16,7 @@ class EmployeeBase(BaseModel):
 
 class EmployeeCreate(EmployeeBase):
     """Schema for creating an Employee."""
-    pass
+    password: str
 
 
 class EmployeeUpdate(BaseModel):

@@ -9,9 +9,10 @@ import { Mail, LogIn, Loader2, AlertCircle, CheckCircle2, Info } from 'lucide-re
 
 const Login = () => {
   const navigate = useNavigate()
-  const { loginByEmail, status, user } = useAuth()
+  const { loginWithCredentials, status, user } = useAuth()
   const [email, setEmail] = useState('')
-  const [errors, setErrors] = useState<{email?: string}>({})
+  const [password, setPassword] = useState('')
+  const [errors, setErrors] = useState<{email?: string, password?: string}>({})
   const [banner, setBanner] = useState<{
     type: 'success' | 'error' | 'info'
     message: string
@@ -28,23 +29,27 @@ const Login = () => {
     return null
   }
 
+  const validatePassword = (password: string) => {
+    if (!password) return 'Please enter your password'
+    if (password.length < 6) return 'Password must be at least 6 characters'
+    return null
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
     const emailError = validateEmail(email)
-    if (emailError) {
-      setErrors({ email: emailError })
+    const passwordError = validatePassword(password)
+    if (emailError || passwordError) {
+      setErrors({ email: emailError ?? undefined, password: passwordError ?? undefined })
       return
     }
-    
     setErrors({})
-    
     try {
-      await loginByEmail(email)
+      await loginWithCredentials(email, password)
       setBanner({ type: 'success', message: 'Welcome back!' })
       navigate('/')
     } catch (err: any) {
-      setBanner({ type: 'error', message: err?.message || 'Please check your email and try again.' })
+      setBanner({ type: 'error', message: err?.message || 'Please check your credentials and try again.' })
     }
   }
 
@@ -112,6 +117,28 @@ const Login = () => {
                 )}
               </div>
 
+              <div className="space-y-3">
+                <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                  Password
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-12 text-base focus:ring-2 focus:ring-primary/20 border-border/50"
+                    required
+                  />
+                </div>
+                {errors.password && (
+                  <div className="flex items-center gap-2 text-sm text-red-600">
+                    <AlertCircle className="h-4 w-4" />
+                    {errors.password}
+                  </div>
+                )}
+              </div>
               <Button
                 type="submit"
                 disabled={status === 'loading'}

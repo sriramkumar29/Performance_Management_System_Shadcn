@@ -6,6 +6,10 @@ from app.models.employee import Employee
 from app.models.appraisal import Appraisal, AppraisalStatus
 from app.models.appraisal_type import AppraisalType, AppraisalRange
 from app.models.goal import Category, GoalTemplate, Goal, AppraisalGoal
+from passlib.context import CryptContext
+
+# Password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Define role levels as constants since they're not in the model
 ROLE_LEVELS = {
@@ -45,6 +49,9 @@ async def seed_initial_data():
             
             # 2. Create Employees (with hierarchical structure)
             print("Creating employees...")
+            # Default password for all seed employees
+            default_password = pwd_context.hash("password123")
+            
             ceo = Employee(
                 emp_name="John CEO",
                 emp_email="john.ceo@example.com",
@@ -52,7 +59,8 @@ async def seed_initial_data():
                 emp_roles=roles[-1]["name"],  # CEO
                 emp_roles_level=roles[-1]["level"],
                 emp_reporting_manager_id=None,
-                emp_status=True
+                emp_status=True,
+                emp_password=default_password
             )
             session.add(ceo)
             await session.flush()
@@ -64,7 +72,8 @@ async def seed_initial_data():
                 emp_roles=roles[-2]["name"],  # VP
                 emp_roles_level=roles[-2]["level"],
                 emp_reporting_manager_id=ceo.emp_id,
-                emp_status=True
+                emp_status=True,
+                emp_password=default_password
             )
             session.add(vp)
             await session.flush()
@@ -76,7 +85,8 @@ async def seed_initial_data():
                 emp_roles=roles[-3]["name"],  # Director
                 emp_roles_level=roles[-3]["level"],
                 emp_reporting_manager_id=vp.emp_id,
-                emp_status=True
+                emp_status=True,
+                emp_password=default_password
             )
             session.add(director)
             await session.flush()
@@ -88,7 +98,8 @@ async def seed_initial_data():
                 emp_roles=roles[-4]["name"],  # Manager
                 emp_roles_level=roles[-4]["level"],
                 emp_reporting_manager_id=director.emp_id,
-                emp_status=True
+                emp_status=True,
+                emp_password=default_password
             )
             session.add(manager)
             await session.flush()
@@ -100,7 +111,8 @@ async def seed_initial_data():
                 emp_roles=roles[-5]["name"],  # Team Lead
                 emp_roles_level=roles[-5]["level"],
                 emp_reporting_manager_id=manager.emp_id,
-                emp_status=True
+                emp_status=True,
+                emp_password=default_password
             )
             session.add(team_lead)
             
@@ -113,7 +125,8 @@ async def seed_initial_data():
                     emp_roles=roles[2]["name"],  # Developer
                     emp_roles_level=roles[2]["level"],
                     emp_reporting_manager_id=team_lead.emp_id,
-                    emp_status=True
+                    emp_status=True,
+                    emp_password=default_password
                 ) for i in range(1, 6)
             ]
             session.add_all(developers)

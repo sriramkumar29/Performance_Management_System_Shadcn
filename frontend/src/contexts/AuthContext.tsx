@@ -15,7 +15,7 @@ export interface Employee {
 interface AuthContextValue {
   user: Employee | null
   status: 'idle' | 'loading' | 'succeeded' | 'failed'
-  loginByEmail: (email: string) => Promise<void>
+  loginWithCredentials: (email: string, password: string) => Promise<void>
   logout: () => void
 }
 
@@ -33,22 +33,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   })
   const [status, setStatus] = useState<AuthContextValue['status']>(() => (sessionStorage.getItem('auth_user') ? 'succeeded' : 'idle'))
 
-  const loginByEmail = async (email: string) => {
+  const loginWithCredentials = async (email: string, password: string) => {
     setStatus('loading')
     try {
-      const res = await apiFetch<Employee>(`/api/employees/by-email?email=${encodeURIComponent(email)}`)
-      if (!res.ok || !res.data) throw new Error(res.error || 'Invalid email')
-      setUser(res.data)
-      setStatus('succeeded')
+      const loginRes = await apiFetch<{ access_token: string }>(
+        '/employees/login',
+        {
+          method: 'POST',
+          body: JSON.stringify({ email, password }),
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+      if (!loginRes.ok || !loginRes.data?.access_token) throw new Error(loginRes.error || 'Invalid credentials');
+      sessionStorage.setItem('auth_token', loginRes.data.access_token);
+      // Fetch user profile with token
+      const userRes = await apiFetch<Employee>(`/employees/by-email?email=${encodeURIComponent(email)}`, {
+        headers: { Authorization: `Bearer ${loginRes.data.access_token}` },
+      });
+      if (!userRes.ok || !userRes.data) throw new Error(userRes.error || 'Could not fetch user');
+      setUser(userRes.data);
+      setStatus('succeeded');
     } catch (e) {
-      setStatus('failed')
-      throw e
+      setStatus('failed');
+      throw e;
     }
   }
 
   const logout = () => {
     setUser(null)
     setStatus('idle')
+    sessionStorage.removeItem('auth_token')
   }
 
   // Persist user to sessionStorage on changes
@@ -64,7 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user])
 
-  const value = useMemo(() => ({ user, status, loginByEmail, logout }), [user, status])
+  const value = useMemo(() => ({ user, status, loginWithCredentials, logout }), [user, status])
 
   return (
     <AuthContext.Provider value={value}>
