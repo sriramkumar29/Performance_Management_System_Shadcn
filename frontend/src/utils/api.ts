@@ -49,54 +49,50 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
 }
 
 async function safeText(res: Response) {
-  try { return await res.text(); } catch { return ''; }
+  try {
+    const ct = res.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      const j: any = await res.json();
+      if (typeof j === 'string') return j;
+      if (j && typeof j === 'object') {
+        if (j.detail !== undefined) {
+          return typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail);
+        }
+        if (j.message !== undefined) {
+          return String(j.message);
+        }
+      }
+      return JSON.stringify(j);
+    }
+    return await res.text();
+  } catch {
+    return '';
+  }
 }
 
 // API client with common methods
 export const api = {
-  get: async (path: string) => {
-    const response = await fetch(path.startsWith('/api') ? path : `/api${path}`)
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-    return response.json()
+  get: async <T>(path: string, init?: RequestInit) => {
+    return apiFetch<T>(path, { method: 'GET', ...init });
   },
   
-  post: async (path: string, data: any) => {
-    const response = await fetch(path.startsWith('/api') ? path : `/api${path}`, {
+  post: async <T>(path: string, data?: unknown, init?: RequestInit) => {
+    return apiFetch<T>(path, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    })
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-    return response.json()
+      body: data !== undefined ? JSON.stringify(data) : undefined,
+      ...init,
+    });
   },
   
-  put: async (path: string, data: any) => {
-    const response = await fetch(path.startsWith('/api') ? path : `/api${path}`, {
+  put: async <T>(path: string, data?: unknown, init?: RequestInit) => {
+    return apiFetch<T>(path, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    })
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-    return response.json()
+      body: data !== undefined ? JSON.stringify(data) : undefined,
+      ...init,
+    });
   },
   
-  delete: async (path: string) => {
-    const response = await fetch(path.startsWith('/api') ? path : `/api${path}`, {
-      method: 'DELETE',
-    })
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-    return response.json()
+  delete: async <T>(path: string, init?: RequestInit) => {
+    return apiFetch<T>(path, { method: 'DELETE', ...init });
   }
 }

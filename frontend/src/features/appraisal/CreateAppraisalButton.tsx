@@ -31,15 +31,6 @@ const CreateAppraisalButton = () => {
         Create Appraisal
       </Button>
 
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => navigate('/goal-templates/new')}
-        title="Create a new goal template"
-      >
-        <FilePlus2 className="mr-2 h-4 w-4" />
-        Create Template
-      </Button>
 
       <Button
         type="button"

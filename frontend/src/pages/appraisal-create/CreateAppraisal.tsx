@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, Pencil, Trash2, Plus } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Pencil,
+  Trash2,
+  Plus,
+  ChevronDown,
+  ChevronUp,
+  Calendar,
+} from "lucide-react";
 import AddGoalModal from "../../features/goals/AddGoalModal";
 import EditGoalModal from "../../features/goals/EditGoalModal";
 import ImportFromTemplateModal from "../../features/goals/ImportFromTemplateModal";
@@ -20,7 +29,14 @@ import {
   SelectItem,
 } from "../../components/ui/select";
 import { useNavigate, useParams } from "react-router-dom";
-import { Card, CardHeader, CardContent, CardTitle, CardDescription, CardFooter } from "../../components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardContent,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 
 // Types (kept same as modal)
@@ -47,6 +63,7 @@ interface AppraisalGoal {
   goal_id: number;
   goal: {
     goal_id: number;
+    goal_template_id?: number;
     goal_title: string;
     goal_description: string;
     goal_performance_factor: string;
@@ -93,6 +110,9 @@ const CreateAppraisal = () => {
     period: undefined,
   });
   const [loading, setLoading] = useState(false);
+  const [isAppraisalDetailsCollapsed, setIsAppraisalDetailsCollapsed] =
+    useState(false);
+  const [isCustomPeriod, setIsCustomPeriod] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [appraisalTypes, setAppraisalTypes] = useState<AppraisalType[]>([]);
   const [ranges, setRanges] = useState<AppraisalRange[]>([]);
@@ -119,7 +139,8 @@ const CreateAppraisal = () => {
     message: string;
   } | null>(null);
   const { user } = useAuth();
-  const isLocked = createdAppraisalId !== null && createdAppraisalStatus !== "Draft";
+  const isLocked =
+    createdAppraisalId !== null && createdAppraisalStatus !== "Draft";
 
   // Auto-calc period based on type and range selections
   const computePeriod = (
@@ -141,48 +162,81 @@ const CreateAppraisal = () => {
 
     if (t.includes("half") || t.includes("semi")) {
       if (r.includes("1st") || r.includes("first")) {
-        return [dayjs(new Date(year, 0, 1)) as Dayjs, dayjs(new Date(year, 5, 30)) as Dayjs];
+        return [
+          dayjs(new Date(year, 0, 1)) as Dayjs,
+          dayjs(new Date(year, 5, 30)) as Dayjs,
+        ];
       }
       if (r.includes("2nd") || r.includes("second")) {
-        return [dayjs(new Date(year, 6, 1)) as Dayjs, dayjs(new Date(year, 11, 31)) as Dayjs];
+        return [
+          dayjs(new Date(year, 6, 1)) as Dayjs,
+          dayjs(new Date(year, 11, 31)) as Dayjs,
+        ];
       }
       return undefined;
     }
 
     if (t.includes("quarter")) {
       if (r.includes("1st") || r.includes("first")) {
-        return [dayjs(new Date(year, 0, 1)) as Dayjs, dayjs(new Date(year, 2, 31)) as Dayjs];
+        return [
+          dayjs(new Date(year, 0, 1)) as Dayjs,
+          dayjs(new Date(year, 2, 31)) as Dayjs,
+        ];
       }
       if (r.includes("2nd") || r.includes("second")) {
-        return [dayjs(new Date(year, 3, 1)) as Dayjs, dayjs(new Date(year, 5, 30)) as Dayjs];
+        return [
+          dayjs(new Date(year, 3, 1)) as Dayjs,
+          dayjs(new Date(year, 5, 30)) as Dayjs,
+        ];
       }
       if (r.includes("3rd") || r.includes("third")) {
-        return [dayjs(new Date(year, 6, 1)) as Dayjs, dayjs(new Date(year, 8, 30)) as Dayjs];
+        return [
+          dayjs(new Date(year, 6, 1)) as Dayjs,
+          dayjs(new Date(year, 8, 30)) as Dayjs,
+        ];
       }
       if (r.includes("4th") || r.includes("fourth")) {
-        return [dayjs(new Date(year, 9, 1)) as Dayjs, dayjs(new Date(year, 11, 31)) as Dayjs];
+        return [
+          dayjs(new Date(year, 9, 1)) as Dayjs,
+          dayjs(new Date(year, 11, 31)) as Dayjs,
+        ];
       }
       return undefined;
     }
 
     if (t.includes("tri")) {
       if (r.includes("1st") || r.includes("first")) {
-        return [dayjs(new Date(year, 0, 1)) as Dayjs, dayjs(new Date(year, 3, 30)) as Dayjs];
+        return [
+          dayjs(new Date(year, 0, 1)) as Dayjs,
+          dayjs(new Date(year, 3, 30)) as Dayjs,
+        ];
       }
       if (r.includes("2nd") || r.includes("second")) {
-        return [dayjs(new Date(year, 4, 1)) as Dayjs, dayjs(new Date(year, 7, 31)) as Dayjs];
+        return [
+          dayjs(new Date(year, 4, 1)) as Dayjs,
+          dayjs(new Date(year, 7, 31)) as Dayjs,
+        ];
       }
       if (r.includes("3rd") || r.includes("third")) {
-        return [dayjs(new Date(year, 8, 1)) as Dayjs, dayjs(new Date(year, 11, 31)) as Dayjs];
+        return [
+          dayjs(new Date(year, 8, 1)) as Dayjs,
+          dayjs(new Date(year, 11, 31)) as Dayjs,
+        ];
       }
       return undefined;
     }
 
-    return [dayjs(new Date(year, 0, 1)) as Dayjs, dayjs(new Date(year, 11, 31)) as Dayjs];
+    return [
+      dayjs(new Date(year, 0, 1)) as Dayjs,
+      dayjs(new Date(year, 11, 31)) as Dayjs,
+    ];
   };
 
   // UI derivations
-  const totalWeightageUi = goals.reduce((sum, g) => sum + g.goal.goal_weightage, 0);
+  const totalWeightageUi = goals.reduce(
+    (sum, g) => sum + g.goal.goal_weightage,
+    0
+  );
   const appraiseeSelected = !!formValues.appraisee_id;
   const reviewerSelected = !!formValues.reviewer_id;
   const typeSelected = !!formValues.appraisal_type_id;
@@ -194,16 +248,27 @@ const CreateAppraisal = () => {
       typeSelected &&
       periodSelected &&
       totalWeightageUi < 100) ||
-    (createdAppraisalId !== null && createdAppraisalStatus === "Draft" && totalWeightageUi < 100);
+    (createdAppraisalId !== null &&
+      createdAppraisalStatus === "Draft" &&
+      totalWeightageUi < 100);
 
-  const canSaveDraft = !isLocked && appraiseeSelected && reviewerSelected && typeSelected && periodSelected;
+  const canSaveDraft =
+    !isLocked &&
+    appraiseeSelected &&
+    reviewerSelected &&
+    typeSelected &&
+    periodSelected;
 
   const canSubmitForAck =
-    createdAppraisalId !== null && createdAppraisalStatus === "Draft" && totalWeightageUi === 100;
+    createdAppraisalId !== null &&
+    createdAppraisalStatus === "Draft" &&
+    totalWeightageUi === 100;
 
   // Role-based filtering
   const appraiserLevel = user?.emp_roles_level ?? 0;
-  const statusLabel = createdAppraisalId ? (createdAppraisalStatus || "Draft") : "New Draft";
+  const statusLabel = createdAppraisalId
+    ? createdAppraisalStatus || "Draft"
+    : "New Draft";
   const addGoalDisabledReason = !canAddGoals
     ? isLocked
       ? "Appraisal not in Draft"
@@ -218,33 +283,62 @@ const CreateAppraisal = () => {
       : ""
     : "";
   const eligibleAppraisees = employees.filter(
-    (emp) => (emp.emp_roles_level ?? -1) <= appraiserLevel && emp.emp_id !== user?.emp_id
+    (emp) =>
+      (emp.emp_roles_level ?? -1) <= appraiserLevel &&
+      emp.emp_id !== user?.emp_id
   );
   const eligibleReviewers = employees.filter(
-    (emp) => (emp.emp_roles_level ?? -1) >= appraiserLevel && emp.emp_id !== user?.emp_id
+    (emp) =>
+      (emp.emp_roles_level ?? -1) >= appraiserLevel &&
+      emp.emp_id !== user?.emp_id
   );
 
   const handleGoalAdded = (appraisalGoal: AppraisalGoal) => {
     setGoals((prev) => [...prev, appraisalGoal]);
     if (!createdAppraisalId) {
-      setGoalChanges((prev) => ({ ...prev, added: [...prev.added, appraisalGoal] }));
+      setGoalChanges((prev) => ({
+        ...prev,
+        added: [...prev.added, appraisalGoal],
+      }));
     }
   };
 
   const handleGoalUpdated = (updatedGoal: AppraisalGoal) => {
-    setGoals((prev) => prev.map((g) => (g.goal.goal_id === updatedGoal.goal.goal_id ? updatedGoal : g)));
-    if (createdAppraisalId) {
-      setGoalChanges((prev) => {
-        const existingUpdateIndex = prev.updated.findIndex((g) => g.goal.goal_id === updatedGoal.goal.goal_id);
-        if (existingUpdateIndex >= 0) {
-          const newUpdated = [...prev.updated];
-          newUpdated[existingUpdateIndex] = updatedGoal;
-          return { ...prev, updated: newUpdated };
-        } else {
-          return { ...prev, updated: [...prev.updated, updatedGoal] };
-        }
-      });
-    }
+    setGoals((prev) =>
+      prev.map((g) =>
+        g.goal.goal_id === updatedGoal.goal.goal_id ? updatedGoal : g
+      )
+    );
+    // Track change correctly depending on creation state.
+    setGoalChanges((prev) => {
+      // If the goal is staged in "added" (pre-creation), update it there so
+      // the latest values are persisted when creating the appraisal.
+      const addedIdx = prev.added.findIndex(
+        (g) => g.goal.goal_id === updatedGoal.goal.goal_id
+      );
+
+      if (!createdAppraisalId || addedIdx >= 0) {
+        const newAdded = [...prev.added];
+        if (addedIdx >= 0) newAdded[addedIdx] = updatedGoal;
+        else newAdded.push(updatedGoal);
+        const newUpdated = prev.updated.filter(
+          (g) => g.goal.goal_id !== updatedGoal.goal.goal_id
+        );
+        return { ...prev, added: newAdded, updated: newUpdated };
+      }
+
+      // When appraisal already exists and goal wasn't staged, track as update
+      const existingUpdateIndex = prev.updated.findIndex(
+        (g) => g.goal.goal_id === updatedGoal.goal.goal_id
+      );
+      if (existingUpdateIndex >= 0) {
+        const newUpdated = [...prev.updated];
+        newUpdated[existingUpdateIndex] = updatedGoal;
+        return { ...prev, updated: newUpdated };
+      } else {
+        return { ...prev, updated: [...prev.updated, updatedGoal] };
+      }
+    });
   };
 
   const handleEditGoal = (goal: AppraisalGoal) => {
@@ -257,41 +351,41 @@ const CreateAppraisal = () => {
       if (createdAppraisalId) {
         const goalToRemove = goals.find((g) => g.goal.goal_id === goalId);
         if (goalToRemove) {
-          const wasOriginal = originalGoals.some((og) => og.goal.goal_id === goalId);
-          if (wasOriginal) {
+          const wasOriginal = originalGoals.some(
+            (og) => og.goal.goal_id === goalId
+          );
+          const linkOnServer =
+            wasOriginal || goalToRemove.appraisal_id === createdAppraisalId;
+
+          if (linkOnServer) {
             setGoalChanges((prev) => ({
               ...prev,
-              removed: [...prev.removed, goalId],
+              removed: prev.removed.includes(goalId)
+                ? prev.removed
+                : [...prev.removed, goalId],
               added: prev.added.filter((g) => g.goal.goal_id !== goalId),
+              updated: prev.updated.filter((g) => g.goal.goal_id !== goalId),
             }));
           } else {
-            setGoalChanges((prev) => ({ ...prev, added: prev.added.filter((g) => g.goal.goal_id !== goalId) }));
+            setGoalChanges((prev) => ({
+              ...prev,
+              added: prev.added.filter((g) => g.goal.goal_id !== goalId),
+              updated: prev.updated.filter((g) => g.goal.goal_id !== goalId),
+            }));
           }
-          setGoals((prev) => prev.filter((g) => g.goal.goal_id !== goalId));
-          setBanner({ type: "success", message: "Goal removed (will be saved on submit)" });
         }
       } else {
-        setGoals((prev) => prev.filter((g) => g.goal.goal_id !== goalId));
-        setBanner({ type: "success", message: "Goal removed from form" });
+        setGoalChanges((prev) => ({
+          ...prev,
+          added: prev.added.filter((g) => g.goal.goal_id !== goalId),
+          updated: prev.updated.filter((g) => g.goal.goal_id !== goalId),
+        }));
       }
-    } catch (error: any) {
-      setBanner({ type: "error", message: error.message || "Failed to remove goal" });
+      setGoals((prev) => prev.filter((g) => g.goal.goal_id !== goalId));
+    } catch {
+      // no-op
     }
   };
-
-  useEffect(() => {
-    (async () => {
-      await fetchEmployees();
-      await fetchAppraisalTypes();
-      setRanges([]);
-      setSelectedTypeId(null);
-
-      if (routeAppraisalId) {
-        await loadAppraisal(routeAppraisalId);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeAppraisalId]);
 
   const fetchEmployees = async () => {
     try {
@@ -299,10 +393,16 @@ const CreateAppraisal = () => {
       if (res.ok && res.data) {
         setEmployees(res.data);
       } else {
-        setBanner({ type: "error", message: res.error || "Failed to fetch employees" });
+        setBanner({
+          type: "error",
+          message: res.error || "Failed to fetch employees",
+        });
       }
     } catch {
-      setBanner({ type: "error", message: "Failed to fetch employees. Please try again." });
+      setBanner({
+        type: "error",
+        message: "Failed to fetch employees. Please try again.",
+      });
     }
   };
 
@@ -312,10 +412,16 @@ const CreateAppraisal = () => {
       if (res.ok && res.data) {
         setAppraisalTypes(res.data);
       } else {
-        setBanner({ type: "error", message: res.error || "Failed to fetch appraisal types" });
+        setBanner({
+          type: "error",
+          message: res.error || "Failed to fetch appraisal types",
+        });
       }
     } catch {
-      setBanner({ type: "error", message: "Failed to fetch appraisal types. Please try again." });
+      setBanner({
+        type: "error",
+        message: "Failed to fetch appraisal types. Please try again.",
+      });
     }
   };
 
@@ -327,10 +433,16 @@ const CreateAppraisal = () => {
       if (res.ok && res.data) {
         setRanges(res.data);
       } else {
-        setBanner({ type: "error", message: res.error || "Failed to fetch ranges" });
+        setBanner({
+          type: "error",
+          message: res.error || "Failed to fetch ranges",
+        });
       }
     } catch {
-      setBanner({ type: "error", message: "Failed to fetch ranges. Please try again." });
+      setBanner({
+        type: "error",
+        message: "Failed to fetch ranges. Please try again.",
+      });
     }
   };
 
@@ -338,7 +450,8 @@ const CreateAppraisal = () => {
     try {
       setLoading(true);
       const res = await apiFetch(`/api/appraisals/${id}`);
-      if (!res.ok || !res.data) throw new Error(res.error || "Failed to load appraisal");
+      if (!res.ok || !res.data)
+        throw new Error(res.error || "Failed to load appraisal");
       const data = res.data as any;
       setCreatedAppraisalId(data.appraisal_id ?? id);
       setCreatedAppraisalStatus(data.status as AppraisalStatus);
@@ -357,34 +470,71 @@ const CreateAppraisal = () => {
         reviewer_id: data.reviewer_id,
         appraisal_type_id: data.appraisal_type_id,
         appraisal_type_range_id: data.appraisal_type_range_id ?? undefined,
-        period: [dayjs(data.start_date), dayjs(data.end_date)] as [Dayjs, Dayjs],
+        period: [dayjs(data.start_date), dayjs(data.end_date)] as [
+          Dayjs,
+          Dayjs
+        ],
       });
     } catch (error: any) {
-      setBanner({ type: "error", message: error.message || "Failed to load appraisal" });
+      setBanner({
+        type: "error",
+        message: error.message || "Failed to load appraisal",
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    (async () => {
+      try {
+        await Promise.all([fetchEmployees(), fetchAppraisalTypes()]);
+        if (routeAppraisalId) {
+          await loadAppraisal(routeAppraisalId);
+        } else {
+          setRanges([]);
+          setSelectedTypeId(null);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeAppraisalId]);
+
   const syncGoalChanges = async (appraisalId: number) => {
     const { added, removed, updated } = goalChanges;
-    const currentTotalWeightage = goals.reduce((sum, g) => sum + g.goal.goal_weightage, 0);
+    const currentTotalWeightage = goals.reduce(
+      (sum, g) => sum + g.goal.goal_weightage,
+      0
+    );
     if (currentTotalWeightage > 100) {
-      throw new Error(`Total weightage cannot exceed 100%. Current: ${currentTotalWeightage}%`);
+      throw new Error(
+        `Total weightage cannot exceed 100%. Current: ${currentTotalWeightage}%`
+      );
     }
 
     try {
       for (const goalId of removed) {
-        const removeRes = await apiFetch(`/api/appraisals/${appraisalId}/goals/${goalId}`, { method: "DELETE" });
-        if (!removeRes.ok) throw new Error(removeRes.error || `Failed to remove goal ${goalId}`);
+        const removeRes = await apiFetch(
+          `/api/appraisals/${appraisalId}/goals/${goalId}`,
+          { method: "DELETE" }
+        );
+        if (!removeRes.ok)
+          throw new Error(removeRes.error || `Failed to remove goal ${goalId}`);
       }
 
       for (const goalData of added) {
-        if ((goalData as any)?.id && goalData.goal?.goal_id) continue;
-        if (goalData.goal?.goal_id && goals.some((g) => g.goal.goal_id === goalData.goal.goal_id)) continue;
+        // Only skip if this goal was already on the server for this appraisal
+        const alreadyOnServer = originalGoals.some(
+          (g) => g.goal.goal_id === goalData.goal.goal_id
+        );
+        if (alreadyOnServer) continue;
+
         const createGoalRes = await apiFetch("/api/goals", {
           method: "POST",
           body: JSON.stringify({
+            goal_template_id: goalData.goal.goal_template_id,
             goal_title: goalData.goal.goal_title,
             goal_description: goalData.goal.goal_description,
             goal_performance_factor: goalData.goal.goal_performance_factor,
@@ -393,28 +543,42 @@ const CreateAppraisal = () => {
             category_id: goalData.goal.category_id,
           }),
         });
-        if (!createGoalRes.ok || !createGoalRes.data) throw new Error(createGoalRes.error || "Failed to create goal");
+        if (!createGoalRes.ok || !createGoalRes.data)
+          throw new Error(createGoalRes.error || "Failed to create goal");
         const createdGoalId = (createGoalRes.data as any).goal_id;
-        const attachRes = await apiFetch(`/api/appraisals/${appraisalId}/goals/${createdGoalId}`, { method: "POST" });
+        const attachRes = await apiFetch(
+          `/api/appraisals/${appraisalId}/goals/${createdGoalId}`,
+          { method: "POST" }
+        );
         if (!attachRes.ok) {
-          await apiFetch(`/api/goals/${createdGoalId}`, { method: "DELETE" }).catch(() => {});
-          throw new Error(attachRes.error || "Failed to attach goal to appraisal");
+          await apiFetch(`/api/goals/${createdGoalId}`, {
+            method: "DELETE",
+          }).catch(() => {});
+          throw new Error(
+            attachRes.error || "Failed to attach goal to appraisal"
+          );
         }
       }
 
       for (const goalData of updated) {
-        const updateRes = await apiFetch(`/api/goals/${goalData.goal.goal_id}`, {
-          method: "PUT",
-          body: JSON.stringify({
-            goal_title: goalData.goal.goal_title,
-            goal_description: goalData.goal.goal_description,
-            goal_performance_factor: goalData.goal.goal_performance_factor,
-            goal_importance: goalData.goal.goal_importance,
-            goal_weightage: goalData.goal.goal_weightage,
-            category_id: goalData.goal.category_id,
-          }),
-        });
-        if (!updateRes.ok) throw new Error(updateRes.error || `Failed to update goal ${goalData.goal.goal_id}`);
+        const updateRes = await apiFetch(
+          `/api/goals/${goalData.goal.goal_id}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              goal_title: goalData.goal.goal_title,
+              goal_description: goalData.goal.goal_description,
+              goal_performance_factor: goalData.goal.goal_performance_factor,
+              goal_importance: goalData.goal.goal_importance,
+              goal_weightage: goalData.goal.goal_weightage,
+              category_id: goalData.goal.category_id,
+            }),
+          }
+        );
+        if (!updateRes.ok)
+          throw new Error(
+            updateRes.error || `Failed to update goal ${goalData.goal.goal_id}`
+          );
       }
     } catch (error: any) {
       throw new Error(`Failed to sync goal changes: ${error.message}`);
@@ -424,19 +588,34 @@ const CreateAppraisal = () => {
   const handleSubmit = async () => {
     if (!user?.emp_id) {
       setBanner({ type: "error", message: "Not authenticated" });
-      toast.error("Not authenticated", { description: "Please sign in and try again." });
+      toast.error("Not authenticated", {
+        description: "Please sign in and try again.",
+      });
       return;
     }
     if (!canSaveDraft) {
-      setBanner({ type: "error", message: "Please complete required fields before saving." });
-      toast.error("Cannot save", { description: "Select employee, reviewer and type/period." });
+      setBanner({
+        type: "error",
+        message: "Please complete required fields before saving.",
+      });
+      toast.error("Cannot save", {
+        description: "Select employee, reviewer and type/period.",
+      });
       return;
     }
 
-    const currentTotalWeightage = goals.reduce((sum, g) => sum + g.goal.goal_weightage, 0);
+    const currentTotalWeightage = goals.reduce(
+      (sum, g) => sum + g.goal.goal_weightage,
+      0
+    );
     if (currentTotalWeightage > 100) {
-      setBanner({ type: "error", message: `Total weightage cannot exceed 100%. Current: ${currentTotalWeightage}%` });
-      toast.error("Invalid weightage", { description: `Total is ${currentTotalWeightage}% (> 100%).` });
+      setBanner({
+        type: "error",
+        message: `Total weightage cannot exceed 100%. Current: ${currentTotalWeightage}%`,
+      });
+      toast.error("Invalid weightage", {
+        description: `Total is ${currentTotalWeightage}% (> 100%).`,
+      });
       return;
     }
 
@@ -444,6 +623,7 @@ const CreateAppraisal = () => {
       setLoading(true);
       const body = {
         appraisee_id: formValues.appraisee_id,
+        appraiser_id: user.emp_id,
         reviewer_id: formValues.reviewer_id,
         appraisal_type_id: formValues.appraisal_type_id,
         appraisal_type_range_id: formValues.appraisal_type_range_id ?? null,
@@ -453,26 +633,55 @@ const CreateAppraisal = () => {
       };
 
       if (!createdAppraisalId) {
-        const res = await apiFetch("/api/appraisals", { method: "POST", body: JSON.stringify(body) });
-        if (!res.ok || !res.data) throw new Error(res.error || "Could not save draft");
+        const res = await apiFetch("/api/appraisals", {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+        if (!res.ok || !res.data)
+          throw new Error(res.error || "Could not save draft");
         const newId = (res.data as any).appraisal_id ?? (res.data as any).id;
         setCreatedAppraisalId(newId);
         setCreatedAppraisalStatus("Draft");
-        await syncGoalChanges(newId);
-        setGoalChanges({ added: [], removed: [], updated: [] });
+        // Persist current goal changes immediately after creating the appraisal
+        // so that backend has attached goals before any status transition
+        try {
+          await syncGoalChanges(newId);
+          setGoalChanges({ added: [], removed: [], updated: [] });
+          // Refresh to ensure goals in state reflect server IDs (replacing any pseudo goals)
+          await loadAppraisal(newId);
+        } catch (e: any) {
+          // If syncing goals fails, surface a descriptive error and stop here
+          throw new Error(
+            e?.message || "Failed to sync goals after creating appraisal"
+          );
+        }
         setBanner({ type: "success", message: "Draft saved" });
-        toast.success("Draft saved", { description: "Your draft appraisal has been created." });
+        toast.success("Draft saved", {
+          description: "Your draft appraisal has been created.",
+        });
       } else {
-        const res = await apiFetch(`/api/appraisals/${createdAppraisalId}` , { method: "PUT", body: JSON.stringify(body) });
+        const res = await apiFetch(`/api/appraisals/${createdAppraisalId}`, {
+          method: "PUT",
+          body: JSON.stringify(body),
+        });
         if (!res.ok) throw new Error(res.error || "Could not save changes");
         await syncGoalChanges(createdAppraisalId);
+        // Refresh to ensure goals in state reflect server IDs (replacing any pseudo goals)
+        await loadAppraisal(createdAppraisalId);
         setGoalChanges({ added: [], removed: [], updated: [] });
         setBanner({ type: "success", message: "Changes saved" });
-        toast.success("Saved", { description: "Your changes have been saved." });
+        toast.success("Saved", {
+          description: "Your changes have been saved.",
+        });
       }
     } catch (error: any) {
-      setBanner({ type: "error", message: error.message || "Failed to save appraisal" });
-      toast.error("Save failed", { description: error.message || "Please try again." });
+      setBanner({
+        type: "error",
+        message: error.message || "Failed to save appraisal",
+      });
+      toast.error("Save failed", {
+        description: error.message || "Please try again.",
+      });
     } finally {
       setLoading(false);
     }
@@ -481,7 +690,9 @@ const CreateAppraisal = () => {
   const handleFinish = async () => {
     if (!user?.emp_id) {
       setBanner({ type: "error", message: "Not authenticated" });
-      toast.error("Not authenticated", { description: "Please sign in and try again." });
+      toast.error("Not authenticated", {
+        description: "Please sign in and try again.",
+      });
       return;
     }
     if (!createdAppraisalId) {
@@ -491,8 +702,13 @@ const CreateAppraisal = () => {
     if (createdAppraisalId === null) return; // still null => failed create
 
     if (!canSubmitForAck) {
-      setBanner({ type: "error", message: "Cannot submit. Ensure total weightage is exactly 100%." });
-      toast.error("Cannot submit", { description: "Total weightage must be 100%." });
+      setBanner({
+        type: "error",
+        message: "Cannot submit. Ensure total weightage is exactly 100%.",
+      });
+      toast.error("Cannot submit", {
+        description: "Total weightage must be 100%.",
+      });
       return;
     }
 
@@ -501,6 +717,7 @@ const CreateAppraisal = () => {
       // Save latest changes before submitting
       const saveBody = {
         appraisee_id: formValues.appraisee_id,
+        appraiser_id: user.emp_id,
         reviewer_id: formValues.reviewer_id,
         appraisal_type_id: formValues.appraisal_type_id,
         appraisal_type_range_id: formValues.appraisal_type_range_id ?? null,
@@ -512,22 +729,37 @@ const CreateAppraisal = () => {
         method: "PUT",
         body: JSON.stringify(saveBody),
       });
-      if (!saveRes.ok) throw new Error(saveRes.error || "Could not save latest changes");
+      if (!saveRes.ok)
+        throw new Error(saveRes.error || "Could not save latest changes");
       await syncGoalChanges(createdAppraisalId);
       setGoalChanges({ added: [], removed: [], updated: [] });
 
       // Update status to Submitted
-      const res = await apiFetch(`/api/appraisals/${createdAppraisalId}/status`, {
-        method: "PUT",
-        body: JSON.stringify({ status: "Submitted" }),
-      });
-      if (!res.ok) throw new Error(res.error || "Could not submit for acknowledgement");
+      const res = await apiFetch(
+        `/api/appraisals/${createdAppraisalId}/status`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ status: "Submitted" }),
+        }
+      );
+      if (!res.ok)
+        throw new Error(res.error || "Could not submit for acknowledgement");
       setCreatedAppraisalStatus("Submitted");
-      setBanner({ type: "success", message: "Appraisal submitted for acknowledgement" });
-      toast.success("Submitted", { description: "Sent to appraisee for acknowledgement." });
+      setBanner({
+        type: "success",
+        message: "Appraisal submitted for acknowledgement",
+      });
+      toast.success("Submitted", {
+        description: "Sent to appraisee for acknowledgement.",
+      });
     } catch (error: any) {
-      setBanner({ type: "error", message: error.message || "Failed to submit appraisal" });
-      toast.error("Submission failed", { description: error.message || "Please try again." });
+      setBanner({
+        type: "error",
+        message: error.message || "Failed to submit appraisal",
+      });
+      toast.error("Submission failed", {
+        description: error.message || "Please try again.",
+      });
     } finally {
       setLoading(false);
     }
@@ -572,166 +804,247 @@ const CreateAppraisal = () => {
         </div>
       )}
       {/* Appraisal Details */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Appraisal Details</CardTitle>
-          <CardDescription>Select participants and auto-derived period based on type/range.</CardDescription>
+      <Card>
+        <CardHeader
+          className="cursor-pointer"
+          onClick={() =>
+            setIsAppraisalDetailsCollapsed(!isAppraisalDetailsCollapsed)
+          }
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Appraisal Details</CardTitle>
+              <CardDescription>
+                Configure the basic information for this appraisal.
+              </CardDescription>
+            </div>
+            {isAppraisalDetailsCollapsed ? (
+              <ChevronDown className="h-5 w-5 text-muted-foreground" />
+            ) : (
+              <ChevronUp className="h-5 w-5 text-muted-foreground" />
+            )}
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Employee */}
-            <div className="grid gap-2">
-              <Label>Employee</Label>
-              <UiSelect
-                value={formValues.appraisee_id ? String(formValues.appraisee_id) : undefined}
-                onValueChange={(val) =>
-                  setFormValues((v) => ({ ...v, appraisee_id: Number(val), reviewer_id: 0 }))
-                }
-                disabled={isLocked}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select employee to appraise" />
-                </SelectTrigger>
-                <SelectContent>
-                  {eligibleAppraisees.map((emp) => (
-                    <SelectItem key={emp.emp_id} value={String(emp.emp_id)}>
-                      {emp.emp_name} ({emp.emp_email}) {emp.emp_roles ? `- ${emp.emp_roles}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </UiSelect>
-              <p className="text-xs text-muted-foreground">Must be same level or lower than you.</p>
-            </div>
-
-            {/* Reviewer */}
-            <div className="grid gap-2">
-              <Label>Reviewer</Label>
-              <UiSelect
-                value={formValues.reviewer_id ? String(formValues.reviewer_id) : undefined}
-                onValueChange={(val) => setFormValues((v) => ({ ...v, reviewer_id: Number(val) }))}
-                disabled={!appraiseeSelected || isLocked}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select reviewer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {eligibleReviewers.map((emp) => (
-                    <SelectItem key={emp.emp_id} value={String(emp.emp_id)}>
-                      {emp.emp_name} ({emp.emp_email}) {emp.emp_roles ? `- ${emp.emp_roles}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </UiSelect>
-              <p className="text-xs text-muted-foreground">Must be same level or higher than you.</p>
-            </div>
-
-            {/* Appraisal Type */}
-            <div className="grid gap-2">
-              <Label>Appraisal Type</Label>
-              <UiSelect
-                value={formValues.appraisal_type_id ? String(formValues.appraisal_type_id) : undefined}
-                onValueChange={(val) => {
-                  const id = Number(val);
-                  setSelectedTypeId(id);
-                  const meta = appraisalTypes.find((t) => t.id === id);
-                  if (meta?.has_range) {
-                    setFormValues((v) => ({
-                      ...v,
-                      appraisal_type_id: id,
-                      appraisal_type_range_id: undefined,
-                      period: undefined,
-                    }));
-                    fetchRanges(id);
-                  } else {
-                    setRanges([]);
-                    const p = computePeriod(meta);
-                    setFormValues((v) => ({
-                      ...v,
-                      appraisal_type_id: id,
-                      appraisal_type_range_id: undefined,
-                      period: p,
-                    }));
+        {!isAppraisalDetailsCollapsed && (
+          <CardContent>
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Employee */}
+              <div className="grid gap-2">
+                <Label>Employee</Label>
+                <UiSelect
+                  value={
+                    formValues.appraisee_id
+                      ? String(formValues.appraisee_id)
+                      : undefined
                   }
-                }}
-                disabled={!reviewerSelected || isLocked}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select appraisal type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {appraisalTypes.map((type) => (
-                    <SelectItem key={type.id} value={String(type.id)}>
-                      {type.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </UiSelect>
-              <p className="text-xs text-muted-foreground">Type determines the period automatically. If the type has ranges, choose one next.</p>
-            </div>
+                  onValueChange={(val) =>
+                    setFormValues((v) => ({
+                      ...v,
+                      appraisee_id: Number(val),
+                      reviewer_id: 0,
+                    }))
+                  }
+                  disabled={isLocked}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select employee to appraise" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {eligibleAppraisees.map((emp) => (
+                      <SelectItem key={emp.emp_id} value={String(emp.emp_id)}>
+                        {emp.emp_name} ({emp.emp_email}){" "}
+                        {emp.emp_roles ? `- ${emp.emp_roles}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </UiSelect>
+                <p className="text-xs text-muted-foreground">
+                  Must be same level or lower than you.
+                </p>
+              </div>
 
-            {/* Range (only if type has range) */}
-            {(() => {
-              const meta = appraisalTypes.find((t) => t.id === selectedTypeId);
-              if (!meta?.has_range) return null;
-              return (
-                <div className="grid gap-2">
-                  <Label>Range</Label>
-                  <UiSelect
-                    value={
-                      formValues.appraisal_type_range_id
-                        ? String(formValues.appraisal_type_range_id)
-                        : undefined
-                    }
-                    onValueChange={(val) => {
-                      const rangeId = Number(val);
-                      const tMeta = appraisalTypes.find((t) => t.id === selectedTypeId!);
-                      const r = ranges.find((rg) => rg.id === rangeId);
-                      const p = computePeriod(tMeta, r);
+              {/* Reviewer */}
+              <div className="grid gap-2">
+                <Label>Reviewer</Label>
+                <UiSelect
+                  value={
+                    formValues.reviewer_id
+                      ? String(formValues.reviewer_id)
+                      : undefined
+                  }
+                  onValueChange={(val) =>
+                    setFormValues((v) => ({ ...v, reviewer_id: Number(val) }))
+                  }
+                  disabled={!appraiseeSelected || isLocked}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select reviewer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {eligibleReviewers.map((emp) => (
+                      <SelectItem key={emp.emp_id} value={String(emp.emp_id)}>
+                        {emp.emp_name} ({emp.emp_email}){" "}
+                        {emp.emp_roles ? `- ${emp.emp_roles}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </UiSelect>
+                <p className="text-xs text-muted-foreground">
+                  Must be same level or higher than you.
+                </p>
+              </div>
+
+              {/* Appraisal Type */}
+              <div className="grid gap-2">
+                <Label>Appraisal Type</Label>
+                <UiSelect
+                  value={
+                    formValues.appraisal_type_id
+                      ? String(formValues.appraisal_type_id)
+                      : undefined
+                  }
+                  onValueChange={(val) => {
+                    const id = Number(val);
+                    setSelectedTypeId(id);
+                    const meta = appraisalTypes.find((t) => t.id === id);
+                    if (meta?.has_range) {
                       setFormValues((v) => ({
                         ...v,
-                        appraisal_type_range_id: rangeId,
+                        appraisal_type_id: id,
+                        appraisal_type_range_id: undefined,
+                        period: undefined,
+                      }));
+                      fetchRanges(id);
+                    } else {
+                      setRanges([]);
+                      const p = computePeriod(meta);
+                      setFormValues((v) => ({
+                        ...v,
+                        appraisal_type_id: id,
+                        appraisal_type_range_id: undefined,
                         period: p,
                       }));
-                    }}
-                    disabled={isLocked}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select range" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ranges.map((range) => (
-                        <SelectItem key={range.id} value={String(range.id)}>
-                          {range.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </UiSelect>
-                  <p className="text-xs text-muted-foreground">Range sets the exact start and end dates.</p>
-                </div>
-              );
-            })()}
+                    }
+                  }}
+                  disabled={!reviewerSelected || isLocked}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select appraisal type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {appraisalTypes.map((type) => (
+                      <SelectItem key={type.id} value={String(type.id)}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </UiSelect>
+                <p className="text-xs text-muted-foreground">
+                  Type determines the period automatically. If the type has
+                  ranges, choose one next.
+                </p>
+              </div>
 
-            {/* Appraisal Period (read-only) */}
-            <div className="md:col-span-2">
-              <div className="grid gap-2">
-                <Label>Appraisal Period</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Input
-                    disabled
-                    value={formValues.period ? formValues.period[0].format("YYYY-MM-DD") : ""}
-                    placeholder="Start Date"
-                  />
-                  <Input
-                    disabled
-                    value={formValues.period ? formValues.period[1].format("YYYY-MM-DD") : ""}
-                    placeholder="End Date"
-                  />
+              {/* Range (only if type has range) */}
+              {(() => {
+                const meta = appraisalTypes.find(
+                  (t) => t.id === selectedTypeId
+                );
+                if (!meta?.has_range) return null;
+                return (
+                  <div className="grid gap-2">
+                    <Label>Range</Label>
+                    <UiSelect
+                      value={
+                        formValues.appraisal_type_range_id
+                          ? String(formValues.appraisal_type_range_id)
+                          : undefined
+                      }
+                      onValueChange={(val) => {
+                        const rangeId = Number(val);
+                        const tMeta = appraisalTypes.find(
+                          (t) => t.id === selectedTypeId!
+                        );
+                        const r = ranges.find((rg) => rg.id === rangeId);
+                        const p = computePeriod(tMeta, r);
+                        setFormValues((v) => ({
+                          ...v,
+                          appraisal_type_range_id: rangeId,
+                          period: p,
+                        }));
+                      }}
+                      disabled={isLocked}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select range" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ranges.map((range) => (
+                          <SelectItem key={range.id} value={String(range.id)}>
+                            {range.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </UiSelect>
+                    <p className="text-xs text-muted-foreground">
+                      Range sets the exact start and end dates.
+                    </p>
+                  </div>
+                );
+              })()}
+
+              {/* Appraisal Period */}
+              <div className="md:col-span-2">
+                <div className="grid gap-2">
+                  <Label>Appraisal Period</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Input
+                      type="date"
+                      disabled={isLocked}
+                      value={
+                        formValues.period
+                          ? formValues.period[0].format("YYYY-MM-DD")
+                          : ""
+                      }
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          const newStartDate = dayjs(e.target.value);
+                          setFormValues((v) => ({
+                            ...v,
+                            period: [newStartDate, v.period?.[1] || dayjs()],
+                          }));
+                        }
+                      }}
+                      placeholder="Start Date"
+                    />
+                    <Input
+                      type="date"
+                      disabled={isLocked}
+                      value={
+                        formValues.period
+                          ? formValues.period[1].format("YYYY-MM-DD")
+                          : ""
+                      }
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          const newEndDate = dayjs(e.target.value);
+                          setFormValues((v) => ({
+                            ...v,
+                            period: [v.period?.[0] || dayjs(), newEndDate],
+                          }));
+                        }
+                      }}
+                      placeholder="End Date"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically calculated from appraisal type and range. Click on dates to manually adjust if needed.
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">Derived from the selected type and (optional) range.</p>
               </div>
             </div>
-          </div>
-        </CardContent>
+          </CardContent>
+        )}
       </Card>
 
       {/* Goals Section */}
@@ -743,9 +1056,13 @@ const CreateAppraisal = () => {
               <CardDescription>
                 Total weightage: {totalWeightageUi}%
                 {totalWeightageUi === 100 ? (
-                  <span className="ml-2 rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-700">Balanced</span>
+                  <span className="ml-2 rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-700">
+                    Balanced
+                  </span>
                 ) : (
-                  <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-700">Should total 100%</span>
+                  <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-700">
+                    Should total 100%
+                  </span>
                 )}
               </CardDescription>
               {isLocked && (
@@ -799,13 +1116,20 @@ const CreateAppraisal = () => {
           {goals.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {goals.map((record) => (
-                <Card key={record.id} className="hover:shadow-md h-full flex flex-col">
+                <Card
+                  key={record.id}
+                  className="hover:shadow-md h-full flex flex-col"
+                >
                   <CardHeader className="p-4 pb-2">
                     <div className="flex items-start justify-between gap-2">
                       <h4 className="font-semibold leading-snug line-clamp-2">
                         {record.goal.goal_title}
                       </h4>
-                      <Badge variant="outline" className="shrink-0" title="Weightage">
+                      <Badge
+                        variant="outline"
+                        className="shrink-0"
+                        title="Weightage"
+                      >
                         {record.goal.goal_weightage}%
                       </Badge>
                     </div>
@@ -960,7 +1284,10 @@ const CreateAppraisal = () => {
         goalData={editingGoal}
         remainingWeightage={
           editingGoal
-            ? Math.max(0, 100 - (totalWeightageUi - editingGoal.goal.goal_weightage))
+            ? Math.max(
+                0,
+                100 - (totalWeightageUi - editingGoal.goal.goal_weightage)
+              )
             : Math.max(0, 100 - totalWeightageUi)
         }
       />

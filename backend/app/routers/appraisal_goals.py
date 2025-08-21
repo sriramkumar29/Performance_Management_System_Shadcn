@@ -10,7 +10,9 @@ from app.models.appraisal import Appraisal, AppraisalStatus
 from app.models.goal import Goal, AppraisalGoal, Category
 from app.schemas.appraisal import AppraisalWithGoals
 
-router = APIRouter()
+from app.routers.auth import get_current_user
+
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.post("/{appraisal_id}/goals/{goal_id}", response_model=AppraisalWithGoals)

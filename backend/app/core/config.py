@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://postgres:sri%40123@localhost:5432/Performance_Management"
 
     # Security settings
-    SECRET_KEY: str = "your-secret-key-here"  # Change in production
+    SECRET_KEY: str = "60b2c32eac0fe0b3b026b112ab8f7d6c996b88a9d20467bd1c7a5681d46e0e09"  # Change in production
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 

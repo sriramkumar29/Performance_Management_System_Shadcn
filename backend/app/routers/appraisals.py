@@ -22,7 +22,9 @@ from app.schemas.appraisal import (
     ReviewerEvaluationUpdate
 )
 
-router = APIRouter()
+from app.routers.auth import get_current_user
+
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.post("/", response_model=AppraisalWithGoals, status_code=status.HTTP_201_CREATED)
@@ -294,83 +296,6 @@ async def delete_appraisal(
     return None
 
 
-# Attach and remove goals for an appraisal
-@router.post("/{appraisal_id}/goals/{goal_id}", status_code=status.HTTP_201_CREATED)
-async def attach_goal_to_appraisal(
-    appraisal_id: int,
-    goal_id: int,
-    db: AsyncSession = Depends(get_db)
-):
-    """Attach an existing goal to an appraisal by creating an AppraisalGoal link."""
-
-    # Ensure appraisal exists
-    result = await db.execute(select(Appraisal).where(Appraisal.appraisal_id == appraisal_id))
-    db_appraisal = result.scalars().first()
-    if not db_appraisal:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal not found"
-        )
-
-    # Ensure goal exists
-    result = await db.execute(select(Goal).where(Goal.goal_id == goal_id))
-    db_goal = result.scalars().first()
-    if not db_goal:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Goal not found"
-        )
-
-    # Check if link already exists
-    result = await db.execute(
-        select(AppraisalGoal).where(
-            and_(
-                AppraisalGoal.appraisal_id == appraisal_id,
-                AppraisalGoal.goal_id == goal_id,
-            )
-        )
-    )
-    existing = result.scalars().first()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This goal is already attached to the appraisal",
-        )
-
-    link = AppraisalGoal(appraisal_id=appraisal_id, goal_id=goal_id)
-    db.add(link)
-    await db.commit()
-    # No content required by the frontend; returning 201 status is sufficient
-    return None
-
-
-@router.delete("/{appraisal_id}/goals/{goal_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def detach_goal_from_appraisal(
-    appraisal_id: int,
-    goal_id: int,
-    db: AsyncSession = Depends(get_db)
-):
-    """Remove a goal from an appraisal by deleting the AppraisalGoal link."""
-
-    # Ensure link exists
-    result = await db.execute(
-        select(AppraisalGoal).where(
-            and_(
-                AppraisalGoal.appraisal_id == appraisal_id,
-                AppraisalGoal.goal_id == goal_id,
-            )
-        )
-    )
-    link = result.scalars().first()
-    if not link:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Goal is not attached to this appraisal",
-        )
-
-    await db.delete(link)
-    await db.commit()
-    return None
 
 
 @router.put("/{appraisal_id}/status", response_model=AppraisalResponse)

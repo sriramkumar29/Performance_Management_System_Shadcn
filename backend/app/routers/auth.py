@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.db.database import get_db
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/employees/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/employees/login")
 
 async def get_current_user(token: str = Security(oauth2_scheme), db: AsyncSession = Depends(get_db)):
     credentials_exception = HTTPException(

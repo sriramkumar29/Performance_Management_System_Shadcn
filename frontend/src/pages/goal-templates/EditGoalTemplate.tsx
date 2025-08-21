@@ -5,9 +5,18 @@ import { Label } from '../../components/ui/label'
 import { Textarea } from '../../components/ui/textarea'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select'
 import { apiFetch } from '../../utils/api'
 import { toast } from 'sonner'
 import { useAuth } from '../../contexts/AuthContext'
+import { ArrowLeft, Home } from 'lucide-react'
 
 interface CategoryDto { id: number; name: string }
 
@@ -144,76 +153,116 @@ const EditGoalTemplate = () => {
   }
 
   return (
-    <div className="mx-auto max-w-3xl p-4 sm:p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{isEdit ? 'Edit Goal Template' : 'New Goal Template'}</h1>
+    <div className="mx-auto max-w-4xl p-4 sm:p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/goal-templates')}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2"
+          >
+            <Home className="h-4 w-4" />
+            Home
+          </Button>
+        </div>
+        <h1 className="text-2xl font-bold">{isEdit ? 'Edit Goal Template' : 'Create Template'}</h1>
       </div>
 
-      <div className="mt-6 grid gap-4">
-        <div>
-          <Label htmlFor="title">Title</Label>
-          <Input id="title" value={tempTitle} onChange={(e) => setTempTitle(e.target.value)} disabled={loading || saving} />
-        </div>
-        <div>
-          <Label htmlFor="description">Description</Label>
-          <Textarea id="description" value={tempDescription} onChange={(e) => setTempDescription(e.target.value)} disabled={loading || saving} />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-lg">
+            {isEdit ? 'Update Template Details' : 'Template Information'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
           <div>
-            <Label htmlFor="perf">Performance Factor</Label>
-            <Input id="perf" value={tempPerformanceFactor} onChange={(e) => setTempPerformanceFactor(e.target.value)} disabled={loading || saving} />
+            <Label htmlFor="title">Title</Label>
+            <Input id="title" value={tempTitle} onChange={(e) => setTempTitle(e.target.value)} disabled={loading || saving} />
           </div>
           <div>
-            <Label htmlFor="importance">Importance</Label>
-            <Input id="importance" value={tempImportance} onChange={(e) => setTempImportance(e.target.value)} disabled={loading || saving} />
+            <Label htmlFor="description">Description</Label>
+            <Textarea id="description" value={tempDescription} onChange={(e) => setTempDescription(e.target.value)} disabled={loading || saving} />
           </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="weight">Weightage (%)</Label>
-            <Input id="weight" type="number" min={1} max={100} value={tempWeightage} onChange={(e) => setTempWeightage(e.target.value === '' ? '' : parseInt(e.target.value))} disabled={loading || saving} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="perf">Performance Factor</Label>
+              <Input id="perf" value={tempPerformanceFactor} onChange={(e) => setTempPerformanceFactor(e.target.value)} disabled={loading || saving} />
+            </div>
+            <div>
+              <Label htmlFor="importance">Importance</Label>
+              <Select value={tempImportance} onValueChange={setTempImportance} disabled={loading || saving}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select importance level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="Low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="weight">Weightage (%)</Label>
+              <Input id="weight" type="number" min={1} max={100} value={tempWeightage} onChange={(e) => setTempWeightage(e.target.value === '' ? '' : parseInt(e.target.value))} disabled={loading || saving} />
+            </div>
+          </div>
 
-        <div className="grid gap-2">
-          <Label>Categories</Label>
-          <div className="flex gap-2">
-            <Input placeholder="Add category name" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCategory() } }} disabled={loading || saving} />
-            <Button type="button" onClick={addCategory} disabled={loading || saving}>Add</Button>
-          </div>
-          {allCategories.length > 0 && (
-            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <span>Suggestions:</span>
-              {allCategories.map(c => (
-                <button
-                  key={c.id}
-                  type="button"
-                  className="px-2 py-1 rounded border hover:bg-muted"
-                  onClick={() => setNewCategory(c.name)}
-                  disabled={loading || saving}
-                >
-                  {c.name}
-                </button>
+          <div className="grid gap-2">
+            <Label>Categories</Label>
+            <div className="flex gap-2">
+              <Input placeholder="Add category name" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCategory() } }} disabled={loading || saving} />
+              <Button type="button" onClick={addCategory} disabled={loading || saving}>Add</Button>
+            </div>
+            {allCategories.length > 0 && (
+              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <span>Suggestions:</span>
+                {allCategories.map(c => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className="px-2 py-1 rounded border hover:bg-muted"
+                    onClick={() => setNewCategory(c.name)}
+                    disabled={loading || saving}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2 mt-2">
+              {categories.map((c) => (
+                <Badge key={c} variant="outline" className="flex items-center gap-2">
+                  {c}
+                  <button type="button" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => removeCategory(c)} disabled={loading || saving}>
+                    ×
+                  </button>
+                </Badge>
               ))}
             </div>
-          )}
-          <div className="flex flex-wrap gap-2 mt-2">
-            {categories.map((c) => (
-              <Badge key={c} variant="outline" className="flex items-center gap-2">
-                {c}
-                <button type="button" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => removeCategory(c)} disabled={loading || saving}>
-                  ×
-                </button>
-              </Badge>
-            ))}
           </div>
-        </div>
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" type="button" onClick={() => navigate('/goal-templates')} disabled={saving}>Cancel</Button>
-          <Button type="button" onClick={save} disabled={saving || loading}>{isEdit ? 'Save Changes' : 'Create Template'}</Button>
-        </div>
-      </div>
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" type="button" onClick={() => navigate('/goal-templates')} disabled={saving}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={save} disabled={saving || loading} className="px-6">
+              {saving ? 'Saving...' : (isEdit ? 'Save Changes' : 'Create Template')}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

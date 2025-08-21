@@ -21,7 +21,9 @@ from app.schemas.goal import (
     AppraisalGoalResponse
 )
 
-router = APIRouter()
+from app.routers.auth import get_current_user
+
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 # Categories endpoints
@@ -329,7 +331,12 @@ async def delete_goal(
 ):
     """Delete a goal."""
     
-    result = await db.execute(select(Goal).where(Goal.goal_id == goal_id))
+    # Eager load the goal with its relationships to avoid lazy loading issues
+    result = await db.execute(
+        select(Goal)
+        .options(selectinload(Goal.category))
+        .where(Goal.goal_id == goal_id)
+    )
     db_goal = result.scalars().first()
     
     if not db_goal:
@@ -393,9 +400,19 @@ async def create_appraisal_goal(
     db_appraisal_goal = AppraisalGoal(**appraisal_goal.model_dump())
     db.add(db_appraisal_goal)
     await db.commit()
-    await db.refresh(db_appraisal_goal)
     
-    return db_appraisal_goal
+    # Re-select with eager-loaded relationships to avoid lazy loading issues
+    result = await db.execute(
+        select(AppraisalGoal)
+        .options(
+            selectinload(AppraisalGoal.goal)
+            .selectinload(Goal.category)
+        )
+        .where(AppraisalGoal.id == db_appraisal_goal.id)
+    )
+    loaded_appraisal_goal = result.scalars().first()
+    
+    return loaded_appraisal_goal
 
 
 @router.get("/appraisal-goals", response_model=List[AppraisalGoalResponse])

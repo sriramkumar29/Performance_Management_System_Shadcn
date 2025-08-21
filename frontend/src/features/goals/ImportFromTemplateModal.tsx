@@ -44,6 +44,7 @@ interface AppraisalGoal {
   goal_id: number
   goal: {
     goal_id: number
+    goal_template_id?: number
     goal_title: string
     goal_description: string
     goal_performance_factor: string
@@ -150,6 +151,7 @@ const ImportFromTemplateModal = ({ open, onClose, onGoalAdded, appraisalId, rema
             goal_id: tempId,
             goal: {
               goal_id: tempId,
+              goal_template_id: t.temp_id,
               goal_title: t.temp_title,
               goal_description: t.temp_description,
               goal_performance_factor: t.temp_performance_factor,
