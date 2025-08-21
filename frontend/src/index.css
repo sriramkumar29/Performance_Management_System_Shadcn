@@ -1,5 +1,20 @@
 @import "tailwindcss";
 
+/* Respect reduced-motion globally */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 @layer base, components, utilities;
 
@@ -39,6 +54,11 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
+}
+
+/* Global smooth scroll; turned off for reduced motion */
+html {
+  scroll-behavior: smooth;
 }
 
 /* Prevent style flashing during navigation */
@@ -104,7 +124,6 @@ body,
     --info-foreground: 0 0% 98%;
   }
 }
-
 
 @layer base {
   * {
