@@ -187,16 +187,40 @@ const EditGoalTemplate = () => {
         <CardContent className="space-y-6">
           <div>
             <Label htmlFor="title">Title</Label>
-            <Input id="title" value={tempTitle} onChange={(e) => setTempTitle(e.target.value)} disabled={loading || saving} />
+            <Input
+              id="title"
+              value={tempTitle}
+              onChange={(e) => setTempTitle(e.target.value)}
+              disabled={loading || saving}
+              className="transition-shadow focus:shadow-sm motion-reduce:transition-none"
+              aria-describedby="title-help"
+            />
+            <p id="title-help" className="mt-1 text-xs text-muted-foreground">Give your template a concise, descriptive title.</p>
           </div>
           <div>
             <Label htmlFor="description">Description</Label>
-            <Textarea id="description" value={tempDescription} onChange={(e) => setTempDescription(e.target.value)} disabled={loading || saving} />
+            <Textarea
+              id="description"
+              value={tempDescription}
+              onChange={(e) => setTempDescription(e.target.value)}
+              disabled={loading || saving}
+              className="transition-shadow focus:shadow-sm motion-reduce:transition-none"
+              aria-describedby="description-help"
+            />
+            <p id="description-help" className="mt-1 text-xs text-muted-foreground">Optional: add context so appraisers understand the goal’s intent.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="perf">Performance Factor</Label>
-              <Input id="perf" value={tempPerformanceFactor} onChange={(e) => setTempPerformanceFactor(e.target.value)} disabled={loading || saving} />
+              <Input
+                id="perf"
+                value={tempPerformanceFactor}
+                onChange={(e) => setTempPerformanceFactor(e.target.value)}
+                disabled={loading || saving}
+                className="transition-shadow focus:shadow-sm motion-reduce:transition-none"
+                aria-describedby="perf-help"
+              />
+              <p id="perf-help" className="mt-1 text-xs text-muted-foreground">E.g., Quality, Delivery, Ownership, Collaboration.</p>
             </div>
             <div>
               <Label htmlFor="importance">Importance</Label>
@@ -215,16 +239,37 @@ const EditGoalTemplate = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="weight">Weightage (%)</Label>
-              <Input id="weight" type="number" min={1} max={100} value={tempWeightage} onChange={(e) => setTempWeightage(e.target.value === '' ? '' : parseInt(e.target.value))} disabled={loading || saving} />
+              <Input
+                id="weight"
+                type="number"
+                min={1}
+                max={100}
+                value={tempWeightage}
+                onChange={(e) => setTempWeightage(e.target.value === '' ? '' : parseInt(e.target.value))}
+                disabled={loading || saving}
+                className="transition-shadow focus:shadow-sm motion-reduce:transition-none"
+                aria-describedby="weight-help"
+              />
+              <p id="weight-help" className="mt-1 text-xs text-muted-foreground">Must be between 1–100. Appraisal total must sum to 100%.</p>
             </div>
           </div>
 
           <div className="grid gap-2">
             <Label>Categories</Label>
             <div className="flex gap-2">
-              <Input placeholder="Add category name" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCategory() } }} disabled={loading || saving} />
+              <Input
+                placeholder="Add category name"
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCategory() } }}
+                autoComplete="off"
+                disabled={loading || saving}
+                className="transition-shadow focus:shadow-sm motion-reduce:transition-none"
+                aria-describedby="category-help"
+              />
               <Button type="button" onClick={addCategory} disabled={loading || saving}>Add</Button>
             </div>
+            <p id="category-help" className="text-xs text-muted-foreground">Press Enter to add. Avoid duplicates.</p>
             {allCategories.length > 0 && (
               <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                 <span>Suggestions:</span>
@@ -245,7 +290,13 @@ const EditGoalTemplate = () => {
               {categories.map((c) => (
                 <Badge key={c} variant="outline" className="flex items-center gap-2">
                   {c}
-                  <button type="button" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => removeCategory(c)} disabled={loading || saving}>
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => removeCategory(c)}
+                    disabled={loading || saving}
+                    aria-label={`Remove category ${c}`}
+                  >
                     ×
                   </button>
                 </Badge>
