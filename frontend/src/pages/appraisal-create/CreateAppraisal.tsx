@@ -6,7 +6,6 @@ import {
   Trash2,
   Plus,
   ChevronDown,
-  Calendar,
   ChevronUp,
 } from "lucide-react";
 import AddGoalModal from "../../features/goals/AddGoalModal";
@@ -112,7 +111,7 @@ const CreateAppraisal = () => {
   const [loading, setLoading] = useState(false);
   const [isAppraisalDetailsCollapsed, setIsAppraisalDetailsCollapsed] =
     useState(false);
-  const [isCustomPeriod, setIsCustomPeriod] = useState(false);
+  // const [isCustomPeriod, setIsCustomPeriod] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [appraisalTypes, setAppraisalTypes] = useState<AppraisalType[]>([]);
   const [ranges, setRanges] = useState<AppraisalRange[]>([]);
@@ -1001,7 +1000,8 @@ const CreateAppraisal = () => {
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Automatically calculated from appraisal type and range. Click on dates to manually adjust if needed.
+                    Automatically calculated from appraisal type and range.
+                    Click on dates to manually adjust if needed.
                   </p>
                 </div>
               </div>

@@ -21,9 +21,6 @@ import {
   Plus,
   Target,
   Weight,
-  AlertCircle,
-  CheckCircle2,
-  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -83,10 +80,7 @@ const AddGoalModal = ({
     goal_weightage: 0,
     category_id: 0,
   });
-  const [banner, setBanner] = useState<{
-    type: "success" | "error" | "info";
-    message: string;
-  } | null>(null);
+  
 
   // Load categories when modal opens
   useEffect(() => {
@@ -158,10 +152,7 @@ const AddGoalModal = ({
       onGoalAdded(pseudo);
       handleCancel();
     } catch (error: any) {
-      setBanner({
-        type: "error",
-        message: error.message || "Failed to add goal",
-      });
+      toast.error(error.message || "Failed to add goal");
     } finally {
       setLoading(false);
     }
@@ -206,27 +197,7 @@ const AddGoalModal = ({
           </div>
         </DialogHeader>
 
-        {banner && (
-          <div
-            role="status"
-            className={`rounded-xl border p-4 text-sm shadow-soft animate-slide-up ${
-              banner.type === "error"
-                ? "border-red-200 text-red-700 bg-red-50"
-                : banner.type === "success"
-                ? "border-green-200 text-green-700 bg-green-50"
-                : "border-blue-200 text-blue-700 bg-blue-50"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {banner.type === "error" && <AlertCircle className="h-4 w-4" />}
-              {banner.type === "success" && (
-                <CheckCircle2 className="h-4 w-4" />
-              )}
-              {banner.type === "info" && <Info className="h-4 w-4" />}
-              {banner.message}
-            </div>
-          </div>
-        )}
+        
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="rounded-md border p-4 space-y-4">

@@ -15,11 +15,9 @@ import {
   Star, 
   ChevronLeft, 
   ChevronRight, 
-  Send,
-  CheckCircle2,
-  AlertCircle,
-  Info
+  Send
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface GoalCategory { id: number; name: string }
 interface Goal {
@@ -59,10 +57,7 @@ const SelfAssessment = () => {
   const [appraisal, setAppraisal] = useState<AppraisalWithGoals | null>(null)
   const [idx, setIdx] = useState(0)
   const [form, setForm] = useState<FormState>({})
-  const [banner, setBanner] = useState<{
-    type: 'success' | 'error' | 'info'
-    message: string
-  } | null>(null)
+  
 
   const load = async () => {
     if (!id) return
@@ -72,7 +67,7 @@ const SelfAssessment = () => {
       setAppraisal(res.data)
       // Guard: only allow in Appraisee Self Assessment stage
       if (res.data.status !== 'Appraisee Self Assessment') {
-        setBanner({ type: 'info', message: `This appraisal is in '${res.data.status}' stage` })
+        toast.info(`This appraisal is in '${res.data.status}' stage`)
         navigate('/')
         setLoading(false)
         return
@@ -87,7 +82,7 @@ const SelfAssessment = () => {
       }
       setForm(initial)
     } else {
-      setBanner({ type: 'error', message: res.error || 'Failed to load appraisal' })
+      toast.error(res.error || 'Failed to load appraisal')
     }
     setLoading(false)
   }
@@ -113,7 +108,7 @@ const SelfAssessment = () => {
 
   const handleNext = () => {
     if (!validateCurrent()) {
-      setBanner({ type: 'error', message: 'Rating (1-5) and comment are required' })
+      toast.error('Rating (1-5) and comment are required')
       return
     }
     if (canNext) setIdx(i => i + 1)
@@ -129,7 +124,7 @@ const SelfAssessment = () => {
       if (!v || !v.rating || !v.comment || !v.comment.trim()) {
         const missingIdx = goals.findIndex(g => g.goal.goal_id === ag.goal.goal_id)
         setIdx(missingIdx >= 0 ? missingIdx : 0)
-        setBanner({ type: 'error', message: 'Please provide rating and comment for all goals' })
+        toast.error('Please provide rating and comment for all goals')
         return
       }
     }
@@ -150,10 +145,10 @@ const SelfAssessment = () => {
       // move status to Appraiser Evaluation
       const st = await apiFetch(`/api/appraisals/${appraisal.appraisal_id}/status`, { method: 'PUT', body: JSON.stringify({ status: 'Appraiser Evaluation' }) })
       if (!st.ok) throw new Error(st.error || 'Failed to advance status')
-      setBanner({ type: 'success', message: 'Self assessment submitted. Your appraiser will evaluate and you will be notified.' })
+      toast.success('Self assessment submitted', { description: 'Your appraiser will evaluate and you will be notified.' })
       navigate('/')
     } catch (e: any) {
-      setBanner({ type: 'error', message: e.message || 'Submission failed' })
+      toast.error(e.message || 'Submission failed')
     } finally {
       setLoading(false)
     }
@@ -176,26 +171,7 @@ const SelfAssessment = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-6 lg:p-8 animate-fade-in" aria-busy={loading}>
       <div className="mx-auto max-w-4xl space-y-6">
-        {/* Banner */}
-        {banner && (
-          <div
-            role="status"
-            className={`rounded-xl border p-4 text-sm shadow-soft animate-slide-up ${
-              banner.type === 'error'
-                ? 'border-red-200 text-red-700 bg-red-50'
-                : banner.type === 'success'
-                ? 'border-green-200 text-green-700 bg-green-50'
-                : 'border-blue-200 text-blue-700 bg-blue-50'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {banner.type === 'error' && <AlertCircle className="h-4 w-4" />}
-              {banner.type === 'success' && <CheckCircle2 className="h-4 w-4" />}
-              {banner.type === 'info' && <Info className="h-4 w-4" />}
-              {banner.message}
-            </div>
-          </div>
-        )}
+        
 
         {/* Header Card */}
         <Card className="shadow-medium border-0 glass-effect">

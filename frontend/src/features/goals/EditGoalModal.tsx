@@ -12,7 +12,8 @@ import {
   SelectContent,
   SelectItem,
 } from '../../components/ui/select'
-import { Edit3, Target, Weight, AlertCircle, CheckCircle2, Info, Save } from 'lucide-react'
+import { Edit3, Target, Weight, Save } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface EditGoalModalProps {
   open: boolean
@@ -64,7 +65,6 @@ const EditGoalModal = ({ open, onClose, onGoalUpdated, goalData, remainingWeight
     goal_weightage: 0,
     category_id: 0,
   })
-  const [banner, setBanner] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
 
   // Load categories when modal opens
   useEffect(() => {
@@ -104,7 +104,7 @@ const EditGoalModal = ({ open, onClose, onGoalUpdated, goalData, remainingWeight
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (!goalData) {
-      setBanner({ type: 'error', message: 'No goal data available' })
+      toast.error('No goal data available')
       return
     }
 
@@ -112,18 +112,18 @@ const EditGoalModal = ({ open, onClose, onGoalUpdated, goalData, remainingWeight
 
     // Basic validation
     if (!values.goal_title || !values.goal_description || !values.goal_performance_factor || !values.goal_importance || !values.category_id || !values.goal_weightage) {
-      setBanner({ type: 'error', message: 'Please complete all fields before submitting' })
+      toast.error('Please complete all fields before submitting')
       return
     }
     if (values.goal_weightage < 1 || values.goal_weightage > 100) {
-      setBanner({ type: 'error', message: 'Weightage must be between 1 and 100' })
+      toast.error('Weightage must be between 1 and 100')
       return
     }
 
     // remainingWeightage already includes the current goal's weight allowance
     const availableWeightage = remainingWeightage
     if (values.goal_weightage > availableWeightage) {
-      setBanner({ type: 'error', message: `Must be <= available ${availableWeightage}%` })
+      toast.error(`Must be <= available ${availableWeightage}%`)
       return
     }
 
@@ -143,11 +143,11 @@ const EditGoalModal = ({ open, onClose, onGoalUpdated, goalData, remainingWeight
         },
       }
 
-      setBanner({ type: 'success', message: 'Goal updated (will be saved on submit)' })
+      toast.success('Goal updated', { description: 'Will be saved on submit.' })
       onGoalUpdated(updatedGoal)
       handleCancel()
     } catch (error: any) {
-      setBanner({ type: 'error', message: error.message || 'Failed to update goal' })
+      toast.error(error.message || 'Failed to update goal')
     } finally {
       setLoading(false)
     }
@@ -182,25 +182,7 @@ const EditGoalModal = ({ open, onClose, onGoalUpdated, goalData, remainingWeight
           </div>
         </DialogHeader>
 
-        {banner && (
-          <div
-            role="status"
-            className={`rounded-xl border p-4 text-sm shadow-soft animate-slide-up ${
-              banner.type === 'error'
-                ? 'border-red-200 text-red-700 bg-red-50'
-                : banner.type === 'success'
-                ? 'border-green-200 text-green-700 bg-green-50'
-                : 'border-blue-200 text-blue-700 bg-blue-50'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {banner.type === 'error' && <AlertCircle className="h-4 w-4" />}
-              {banner.type === 'success' && <CheckCircle2 className="h-4 w-4" />}
-              {banner.type === 'info' && <Info className="h-4 w-4" />}
-              {banner.message}
-            </div>
-          </div>
-        )}
+        
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid gap-4">

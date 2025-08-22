@@ -15,12 +15,11 @@ import {
   ChevronLeft, 
   ChevronRight, 
   CheckCircle2, 
-  AlertCircle, 
-  Info,
   Target,
   User,
   UserCheck
 } from "lucide-react";
+import { toast } from 'sonner'
 
 interface GoalCategory {
   id: number;
@@ -72,10 +71,7 @@ const ReviewerEvaluation = () => {
     rating: number | null;
     comment: string;
   }>({ rating: null, comment: "" });
-  const [banner, setBanner] = useState<{
-    type: "success" | "error" | "info";
-    message: string;
-  } | null>(null);
+  
 
   const load = async () => {
     if (!id) return;
@@ -86,7 +82,7 @@ const ReviewerEvaluation = () => {
     if (res.ok && res.data) {
       setAppraisal(res.data);
       if (res.data.status !== "Reviewer Evaluation") {
-        setBanner({ type: "info", message: `This appraisal is in '${res.data.status}' stage` });
+        toast.info(`This appraisal is in '${res.data.status}' stage`);
         navigate("/");
         setLoading(false);
         return;
@@ -96,7 +92,7 @@ const ReviewerEvaluation = () => {
         comment: res.data.reviewer_overall_comments ?? "",
       });
     } else {
-      setBanner({ type: "error", message: res.error || "Failed to load appraisal" });
+      toast.error(res.error || "Failed to load appraisal");
     }
     setLoading(false);
   };
@@ -127,7 +123,7 @@ const ReviewerEvaluation = () => {
     if (!appraisal) return;
     if (!overall.rating || !overall.comment.trim()) {
       setIdx(goals.length);
-      setBanner({ type: "error", message: "Please provide overall rating and comment" });
+      toast.error("Please provide overall rating and comment");
       return;
     }
 
@@ -151,10 +147,10 @@ const ReviewerEvaluation = () => {
         { method: "PUT", body: JSON.stringify({ status: "Complete" }) }
       );
       if (!st.ok) throw new Error(st.error || "Failed to complete appraisal");
-      setBanner({ type: "success", message: "Appraisal marked as Complete" });
+      toast.success("Appraisal marked as Complete");
       navigate("/");
     } catch (e: any) {
-      setBanner({ type: "error", message: e.message || "Submission failed" });
+      toast.error(e.message || "Submission failed");
     } finally {
       setLoading(false);
     }
@@ -176,25 +172,6 @@ const ReviewerEvaluation = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6" aria-busy={loading}>
       <div className="max-w-4xl mx-auto space-y-6">
-        {banner && (
-          <div
-            role="status"
-            className={`rounded-xl border p-4 text-sm shadow-soft animate-slide-up ${
-              banner.type === "error"
-                ? "border-red-200 text-red-700 bg-red-50"
-                : banner.type === "success"
-                ? "border-green-200 text-green-700 bg-green-50"
-                : "border-blue-200 text-blue-700 bg-blue-50"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {banner.type === "error" && <AlertCircle className="h-4 w-4" />}
-              {banner.type === "success" && <CheckCircle2 className="h-4 w-4" />}
-              {banner.type === "info" && <Info className="h-4 w-4" />}
-              {banner.message}
-            </div>
-          </div>
-        )}
         
         {/* Header Card */}
         <Card className="glass-effect shadow-medium border-0 p-6 animate-fade-in">
@@ -455,7 +432,7 @@ const ReviewerEvaluation = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-purple-800 mb-3 block flex items-center gap-2">
+                    <label className="text-sm font-medium text-purple-800 mb-3 flex items-center gap-2">
                       <MessageSquare className="h-4 w-4" />
                       Overall Comments
                     </label>

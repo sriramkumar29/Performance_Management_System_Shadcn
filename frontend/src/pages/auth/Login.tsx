@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import { Mail, LogIn, Loader2, AlertCircle, CheckCircle2, Info } from 'lucide-react'
+import { Mail, LogIn, Loader2, AlertCircle } from 'lucide-react'
+import { toast } from 'sonner'
 
 const Login = () => {
   const navigate = useNavigate()
@@ -13,10 +14,7 @@ const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{email?: string, password?: string}>({})
-  const [banner, setBanner] = useState<{
-    type: 'success' | 'error' | 'info'
-    message: string
-  } | null>(null)
+  
 
   // If already authenticated (session persisted), redirect away from login
   useEffect(() => {
@@ -46,36 +44,17 @@ const Login = () => {
     setErrors({})
     try {
       await loginWithCredentials(email, password)
-      setBanner({ type: 'success', message: 'Welcome back!' })
+      toast.success('Welcome back!')
       navigate('/')
     } catch (err: any) {
-      setBanner({ type: 'error', message: err?.message || 'Please check your credentials and try again.' })
+      toast.error(err?.message || 'Please check your credentials and try again.')
     }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 animate-fade-in">
       <div className="w-full max-w-md">
-        {/* Banner */}
-        {banner && (
-          <div
-            role="status"
-            className={`rounded-xl border p-4 text-sm shadow-soft animate-slide-up mb-6 ${
-              banner.type === 'error'
-                ? 'border-red-200 text-red-700 bg-red-50'
-                : banner.type === 'success'
-                ? 'border-green-200 text-green-700 bg-green-50'
-                : 'border-blue-200 text-blue-700 bg-blue-50'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {banner.type === 'error' && <AlertCircle className="h-4 w-4" />}
-              {banner.type === 'success' && <CheckCircle2 className="h-4 w-4" />}
-              {banner.type === 'info' && <Info className="h-4 w-4" />}
-              {banner.message}
-            </div>
-          </div>
-        )}
+        
 
         {/* Login Card */}
         <Card className="shadow-medium border-0 glass-effect animate-slide-up">
