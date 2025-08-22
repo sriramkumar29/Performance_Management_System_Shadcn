@@ -26,9 +26,11 @@ const CreateAppraisalButton = () => {
         onClick={() => navigate('/appraisal/create')}
         size="lg"
         className="bg-primary hover:bg-primary/90 text-primary-foreground border-primary hover:border-primary"
+        aria-label="Create appraisal"
+        title="Create appraisal"
       >
-        <Plus className="mr-2 h-4 w-4" />
-        Create Appraisal
+        <Plus className="h-4 w-4" />
+        <span className="hidden sm:inline sm:ml-2">Create Appraisal</span>
       </Button>
 
 
@@ -36,10 +38,11 @@ const CreateAppraisalButton = () => {
         type="button"
         variant="outline"
         onClick={() => navigate('/goal-templates')}
-        title="View and edit existing goal templates"
+        title="Manage goal templates"
+        aria-label="Manage goal templates"
       >
-        <LayoutGrid className="mr-2 h-4 w-4" />
-        Manage Templates
+        <LayoutGrid className="h-4 w-4" />
+        <span className="hidden sm:inline sm:ml-2">Manage Templates</span>
       </Button>
     </div>
   )

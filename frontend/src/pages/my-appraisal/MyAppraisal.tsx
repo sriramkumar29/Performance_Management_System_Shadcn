@@ -206,7 +206,7 @@ const MyAppraisal = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="transition-all duration-200 hover:shadow-md">
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2">
               <Calendar className="h-4 w-4 text-primary" />
               Appraisal Type
             </CardTitle>
@@ -221,7 +221,7 @@ const MyAppraisal = () => {
 
         <Card className="transition-all duration-200 hover:shadow-md">
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2">
               <Clock className="h-4 w-4 text-orange-600" />
               Due Date
             </CardTitle>
@@ -233,7 +233,7 @@ const MyAppraisal = () => {
 
         <Card className="transition-all duration-200 hover:shadow-md">
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-green-600" />
               Overall Progress
             </CardTitle>
@@ -256,7 +256,7 @@ const MyAppraisal = () => {
       {/* My Appraisals (Active + Completed with filter) */}
       <Card className="transition-all duration-200 hover:shadow-md">
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+          <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-primary" />
             My Appraisals
           </CardTitle>
@@ -265,7 +265,7 @@ const MyAppraisal = () => {
               defaultPreset="This Year"
               value={period}
               onChange={setPeriod}
-              className="w-full sm:w-[540px]"
+              className="w-full sm:max-w-xl"
             />
           </div>
         </CardHeader>
@@ -316,11 +316,25 @@ const MyAppraisal = () => {
                 </div>
                 {filteredMine.length > 0 && (
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={() => setMyPage(p => Math.max(1, p - 1))} disabled={myPage <= 1}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setMyPage(p => Math.max(1, p - 1))}
+                      disabled={myPage <= 1}
+                      title="Previous page"
+                      aria-label="Previous page"
+                    >
                       <ArrowLeft className="h-4 w-4" />
                     </Button>
                     <span className="text-sm text-neutral-600">Page {myPage} of {listTotalPages}</span>
-                    <Button variant="outline" size="icon" onClick={() => setMyPage(p => Math.min(listTotalPages, p + 1))} disabled={myPage >= listTotalPages}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setMyPage(p => Math.min(listTotalPages, p + 1))}
+                      disabled={myPage >= listTotalPages}
+                      title="Next page"
+                      aria-label="Next page"
+                    >
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   </div>
@@ -355,9 +369,11 @@ const MyAppraisal = () => {
                           <Button
                             onClick={() => startOrContinueSelfAssessment(a)}
                             className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                            aria-label={a.status === 'Submitted' ? 'Take Self Assessment' : 'Continue Self Assessment'}
+                            title={a.status === 'Submitted' ? 'Take Self Assessment' : 'Continue Self Assessment'}
                           >
-                            {a.status === 'Submitted' ? 'Take Self Assessment' : 'Continue Self Assessment'}
-                            <ArrowRight className="h-4 w-4 ml-2" />
+                            <span className="hidden sm:inline">{a.status === 'Submitted' ? 'Take Self Assessment' : 'Continue Self Assessment'}</span>
+                            <ArrowRight className="h-4 w-4 sm:ml-2" />
                           </Button>
                         ) : null}
                         {a.status === 'Complete' ? (
@@ -365,9 +381,11 @@ const MyAppraisal = () => {
                             variant="outline"
                             onClick={() => navigate(`/appraisal/${a.appraisal_id}`)}
                             className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
+                            aria-label="View appraisal"
+                            title="View appraisal"
                           >
-                            View
-                            <ArrowRight className="h-4 w-4 ml-2" />
+                            <span className="hidden sm:inline">View</span>
+                            <ArrowRight className="h-4 w-4 sm:ml-2" />
                           </Button>
                         ) : null}
                       </div>

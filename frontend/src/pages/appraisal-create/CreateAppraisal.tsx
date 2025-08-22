@@ -7,6 +7,11 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
+  ArrowLeft,
+  FolderOpen,
+  Save,
+  Send,
+  X,
 } from "lucide-react";
 import AddGoalModal from "../../features/goals/AddGoalModal";
 import EditGoalModal from "../../features/goals/EditGoalModal";
@@ -748,10 +753,10 @@ const CreateAppraisal = () => {
   };
 
   return (
-    <div className="container mx-auto max-w-5xl py-6">
+    <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 py-4 sm:py-6">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold">
+          <h1 className="text-xl sm:text-2xl font-semibold">
             {createdAppraisalId ? "Edit Appraisal" : "Create New Appraisal"}
           </h1>
           <Badge variant="outline" className="px-2 py-0.5 text-xs">
@@ -759,8 +764,14 @@ const CreateAppraisal = () => {
           </Badge>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate(-1)}>
-            Back
+          <Button
+            variant="outline"
+            onClick={() => navigate(-1)}
+            aria-label="Go back"
+            title="Go back"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="hidden sm:inline sm:ml-2">Back</span>
           </Button>
         </div>
       </div>
@@ -775,8 +786,8 @@ const CreateAppraisal = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Appraisal Details</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-base sm:text-lg">Appraisal Details</CardTitle>
+              <CardDescription className="text-sm sm:text-base">
                 Configure the basic information for this appraisal.
               </CardDescription>
             </div>
@@ -959,7 +970,7 @@ const CreateAppraisal = () => {
               <div className="md:col-span-2">
                 <div className="grid gap-2">
                   <Label>Appraisal Period</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <Input
                       type="date"
                       disabled={isLocked}
@@ -1013,10 +1024,10 @@ const CreateAppraisal = () => {
       {/* Goals Section */}
       <Card>
         <CardHeader>
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <CardTitle>Goals</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-base sm:text-lg">Goals</CardTitle>
+              <CardDescription className="text-sm sm:text-base">
                 Total weightage: {totalWeightageUi}%
                 {totalWeightageUi === 100 ? (
                   <span className="ml-2 rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-700">
@@ -1034,33 +1045,34 @@ const CreateAppraisal = () => {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="outline" className="hidden sm:inline-flex">
                 {Math.max(0, 100 - totalWeightageUi)}% left
               </Badge>
               <Button
+                size="sm"
                 variant="outline"
                 onClick={() => setImportFromTemplateOpen(true)}
                 disabled={!canAddGoals}
                 className="border-primary text-primary hover:bg-primary/10 disabled:opacity-50"
                 title={addGoalDisabledReason}
+                aria-label="Import from templates"
               >
-                Import from Templates
+                <FolderOpen className="h-4 w-4" />
+                <span className="hidden sm:inline sm:ml-2">Import from Templates</span>
               </Button>
+
               <Button
-                variant="secondary"
-                onClick={() => navigate("/goal-templates")}
-              >
-                Manage Templates
-              </Button>
-              <Button
+                size="sm"
                 variant="outline"
                 onClick={() => setAddGoalModalOpen(true)}
                 disabled={!canAddGoals}
                 className="border-primary text-primary hover:bg-primary/10 disabled:opacity-50"
                 title={addGoalDisabledReason}
+                aria-label="Add goal"
               >
-                + Add Goal
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline sm:ml-2">Add Goal</span>
               </Button>
             </div>
           </div>
@@ -1085,7 +1097,7 @@ const CreateAppraisal = () => {
                 >
                   <CardHeader className="p-4 pb-2">
                     <div className="flex items-start justify-between gap-2">
-                      <h4 className="font-semibold leading-snug line-clamp-2">
+                      <h4 className="font-semibold leading-snug line-clamp-2 text-sm sm:text-base">
                         {record.goal.goal_title}
                       </h4>
                       <Badge
@@ -1131,6 +1143,7 @@ const CreateAppraisal = () => {
                       disabled={isLocked}
                       onClick={() => handleEditGoal(record)}
                       aria-label="Edit goal"
+                      title="Edit goal"
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -1140,6 +1153,7 @@ const CreateAppraisal = () => {
                       disabled={isLocked}
                       onClick={() => handleRemoveGoal(record.goal.goal_id)}
                       aria-label="Remove goal"
+                      title="Remove goal"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -1176,21 +1190,28 @@ const CreateAppraisal = () => {
                   <span>Appraisal type and period set</span>
                 </div>
               </div>
-              <div className="mt-4">
+              <div className="mt-4 flex items-center gap-2 flex-wrap justify-center sm:justify-start">
                 <Button
+                  size="sm"
                   onClick={() => setAddGoalModalOpen(true)}
                   disabled={!canAddGoals}
                   className="gap-2"
+                  aria-label="Add goal"
+                  title={addGoalDisabledReason}
                 >
-                  <Plus className="h-4 w-4" /> Add Goal
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline sm:ml-2">Add Goal</span>
                 </Button>
                 <Button
+                  size="sm"
                   variant="outline"
                   onClick={() => setImportFromTemplateOpen(true)}
                   disabled={!canAddGoals}
-                  className="ml-2"
+                  aria-label="Import from templates"
+                  title={addGoalDisabledReason}
                 >
-                  Import from Templates
+                  <FolderOpen className="h-4 w-4" />
+                  <span className="hidden sm:inline sm:ml-2">Import from Templates</span>
                 </Button>
               </div>
             </div>
@@ -1201,23 +1222,42 @@ const CreateAppraisal = () => {
       {/* Footer Actions */}
       <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex gap-3">
-          <Button onClick={handleCancel} disabled={loading}>
-            Cancel
+          <Button onClick={handleCancel} disabled={loading} aria-label="Cancel" title="Cancel">
+            <X className="h-4 w-4" />
+            <span className="hidden sm:inline sm:ml-2">Cancel</span>
           </Button>
           {!createdAppraisalId && (
-            <Button onClick={handleSubmit} disabled={!canSaveDraft || loading}>
-              {loading ? "Saving..." : "Save as Draft"}
+            <Button
+              onClick={handleSubmit}
+              disabled={!canSaveDraft || loading}
+              aria-label={loading ? "Saving" : "Save as draft"}
+              title={loading ? "Saving" : "Save as draft"}
+            >
+              <Save className="h-4 w-4" />
+              <span className="hidden sm:inline sm:ml-2">{loading ? "Saving..." : "Save as Draft"}</span>
             </Button>
           )}
           {createdAppraisalId && createdAppraisalStatus === "Draft" && (
-            <Button onClick={handleSubmit} disabled={!canSaveDraft || loading}>
-              {loading ? "Saving..." : "Save Changes"}
+            <Button
+              onClick={handleSubmit}
+              disabled={!canSaveDraft || loading}
+              aria-label={loading ? "Saving" : "Save changes"}
+              title={loading ? "Saving" : "Save changes"}
+            >
+              <Save className="h-4 w-4" />
+              <span className="hidden sm:inline sm:ml-2">{loading ? "Saving..." : "Save Changes"}</span>
             </Button>
           )}
         </div>
         <div>
-          <Button onClick={handleFinish} disabled={!canSubmitForAck || loading}>
-            Submit for Acknowledgement
+          <Button
+            onClick={handleFinish}
+            disabled={!canSubmitForAck || loading}
+            aria-label="Submit for acknowledgement"
+            title="Submit for acknowledgement"
+          >
+            <Send className="h-4 w-4" />
+            <span className="hidden sm:inline sm:ml-2">Submit for Acknowledgement</span>
           </Button>
         </div>
       </div>

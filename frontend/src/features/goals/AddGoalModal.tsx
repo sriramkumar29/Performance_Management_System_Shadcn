@@ -21,6 +21,7 @@ import {
   Plus,
   Target,
   Weight,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -177,14 +178,14 @@ const AddGoalModal = ({
         if (!o) handleCancel();
       }}
     >
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto nice-scrollbar">
+      <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto nice-scrollbar p-4 sm:p-6">
         <DialogHeader className="pb-3">
           <div className="flex items-center justify-between gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
               <Plus className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-semibold text-foreground">
+              <DialogTitle className="text-lg sm:text-xl font-semibold text-foreground">
                 Add New Goal
               </DialogTitle>
               <p className="text-sm text-muted-foreground mt-1">
@@ -376,16 +377,21 @@ const AddGoalModal = ({
               onClick={handleCancel}
               disabled={loading}
               className="w-full sm:w-auto"
+              title="Cancel"
+              aria-label="Cancel"
             >
-              Cancel
+              <X className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Cancel</span>
             </Button>
             <Button
               type="submit"
               disabled={loading || remainingWeightage <= 0}
               className="w-full sm:w-auto"
+              title="Add goal"
+              aria-label="Add goal"
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Goal
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Add Goal</span>
             </Button>
           </div>
         </form>

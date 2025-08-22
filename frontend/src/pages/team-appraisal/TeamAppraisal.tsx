@@ -12,12 +12,18 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Avatar, AvatarFallback } from "../../components/ui/avatar";
 import { Input } from "../../components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
+import { Label } from "../../components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
 import {
   Users,
   FileEdit,
   Activity,
-  CheckCircle2,
   Calendar,
   UserRound,
   ArrowRight,
@@ -160,7 +166,8 @@ const TeamAppraisal = () => {
   const combinedTeam = useMemo(
     () =>
       [...active, ...completedTeam].sort(
-        (a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
+        (a, b) =>
+          new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
       ),
     [active, completedTeam]
   );
@@ -187,9 +194,10 @@ const TeamAppraisal = () => {
       const matchName = name
         ? empNameById(a.appraisee_id).toLowerCase().includes(name)
         : true;
-      const matchType = searchTypeId === "all"
-        ? true
-        : a.appraisal_type_id === Number(searchTypeId);
+      const matchType =
+        searchTypeId === "all"
+          ? true
+          : a.appraisal_type_id === Number(searchTypeId);
       return matchName && matchType;
     });
   }, [filteredTeam, searchName, searchTypeId, empNameById]);
@@ -217,7 +225,10 @@ const TeamAppraisal = () => {
     1,
     Math.ceil(drafts.length / ITEMS_PER_PAGE)
   );
-  const teamTotalPages = Math.max(1, Math.ceil(filteredTeamSearch.length / ITEMS_PER_PAGE));
+  const teamTotalPages = Math.max(
+    1,
+    Math.ceil(filteredTeamSearch.length / ITEMS_PER_PAGE)
+  );
 
   const draftsPaged = useMemo(
     () =>
@@ -256,7 +267,7 @@ const TeamAppraisal = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-neutral-900">
+            <div className="text-xl sm:text-2xl font-bold text-neutral-900">
               {uniqueTeamCount}
             </div>
             <p className="text-xs text-neutral-500">
@@ -272,7 +283,7 @@ const TeamAppraisal = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-neutral-900">
+            <div className="text-xl sm:text-2xl font-bold text-neutral-900">
               {drafts.length}
             </div>
             <p className="text-xs text-neutral-500">Editable appraisals</p>
@@ -286,7 +297,7 @@ const TeamAppraisal = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-neutral-900">
+            <div className="text-xl sm:text-2xl font-bold text-neutral-900">
               {active.length}
             </div>
             <p className="text-xs text-neutral-500">In progress</p>
@@ -294,49 +305,12 @@ const TeamAppraisal = () => {
         </Card>
       </div>
 
-      {/* Filters toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-        {/* Left: search */}
-        <div className="sm:flex-1">
-          <Input
-            placeholder="Search employee name"
-            value={searchName}
-            onChange={(e) => setSearchName(e.target.value)}
-          />
-        </div>
-        {/* Right: type + period */}
-        <div className="flex items-end gap-3 sm:w-auto">
-          <div className="w-full sm:w-40">
-            <Select value={searchTypeId} onValueChange={(v) => setSearchTypeId(v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="All types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                {types.map((t) => (
-                  <SelectItem key={t.id} value={String(t.id)}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="w-full sm:w-[540px]">
-            <PeriodFilter
-              defaultPreset="This Year"
-              value={period}
-              onChange={setPeriod}
-            />
-          </div>
-        </div>
-      </div>
-
       {/* Sections grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Draft Appraisals */}
         <Card className="transition-all duration-200 hover:shadow-md lg:col-span-1">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
               <FileEdit className="h-5 w-5 text-orange-600" />
               Drafts
             </CardTitle>
@@ -350,6 +324,8 @@ const TeamAppraisal = () => {
                   size="icon"
                   onClick={() => setDraftsPage((p) => Math.max(1, p - 1))}
                   disabled={draftsPage <= 1}
+                  aria-label="Previous page"
+                  title="Previous page"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
@@ -363,6 +339,8 @@ const TeamAppraisal = () => {
                     setDraftsPage((p) => Math.min(draftsTotalPages, p + 1))
                   }
                   disabled={draftsPage >= draftsTotalPages}
+                  aria-label="Next page"
+                  title="Next page"
                 >
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -416,9 +394,11 @@ const TeamAppraisal = () => {
                             variant="outline"
                             onClick={() => handleEditDraft(a.appraisal_id)}
                             className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
+                            aria-label="Edit draft appraisal"
+                            title="Edit draft appraisal"
                           >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
+                            <Edit className="h-4 w-4" />
+                            <span className="hidden sm:inline sm:ml-2">Edit</span>
                           </Button>
                         </div>
                       </div>
@@ -431,34 +411,84 @@ const TeamAppraisal = () => {
         </Card>
         {/* Team Appraisals (Active + Completed with filter) */}
         <Card className="transition-all duration-200 hover:shadow-md lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+          <CardHeader className="flex flex-col gap-3">
+            <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
               <Activity className="h-5 w-5 text-blue-600" />
               Team Appraisals
             </CardTitle>
+            <div className="w-full sm:w-auto">
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="w-full sm:w-56 md:w-60">
+                  <Label className="mb-1 block">Search</Label>
+                  <Input
+                    placeholder="Search employee name"
+                    value={searchName}
+                    onChange={(e) => setSearchName(e.target.value)}
+                  />
+                </div>
+                <div className="w-full md:w-40 flex-none">
+                  <Label className="mb-1 block">Type</Label>
+                  <Select
+                    value={searchTypeId}
+                    onValueChange={(v) => setSearchTypeId(v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="All types" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All types</SelectItem>
+                      {types.map((t) => (
+                        <SelectItem key={t.id} value={String(t.id)}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-full md:basis-full xl:flex-1 min-w-0">
+                  <PeriodFilter
+                    defaultPreset="This Year"
+                    value={period}
+                    onChange={setPeriod}
+                  />
+                </div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {/* Filters */}
-            <div className="flex items-center justify-between mb-3 gap-3">
+            <div className="flex flex-wrap items-center justify-between mb-3 gap-3">
               <div className="flex items-center gap-2">
                 <Button
                   variant={teamFilter === "Active" ? "default" : "outline"}
                   onClick={() => setTeamFilter("Active")}
-                  className={teamFilter === "Active" ? "bg-primary text-primary-foreground" : ""}
+                  className={
+                    teamFilter === "Active"
+                      ? "bg-primary text-primary-foreground"
+                      : ""
+                  }
                 >
                   Active
                 </Button>
                 <Button
                   variant={teamFilter === "Completed" ? "default" : "outline"}
                   onClick={() => setTeamFilter("Completed")}
-                  className={teamFilter === "Completed" ? "bg-primary text-primary-foreground" : ""}
+                  className={
+                    teamFilter === "Completed"
+                      ? "bg-primary text-primary-foreground"
+                      : ""
+                  }
                 >
                   Completed
                 </Button>
                 <Button
                   variant={teamFilter === "All" ? "default" : "outline"}
                   onClick={() => setTeamFilter("All")}
-                  className={teamFilter === "All" ? "bg-primary text-primary-foreground" : ""}
+                  className={
+                    teamFilter === "All"
+                      ? "bg-primary text-primary-foreground"
+                      : ""
+                  }
                 >
                   All
                 </Button>
@@ -470,6 +500,8 @@ const TeamAppraisal = () => {
                     size="icon"
                     onClick={() => setTeamPage((p) => Math.max(1, p - 1))}
                     disabled={teamPage <= 1}
+                    aria-label="Previous page"
+                    title="Previous page"
                   >
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
@@ -479,8 +511,12 @@ const TeamAppraisal = () => {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => setTeamPage((p) => Math.min(teamTotalPages, p + 1))}
+                    onClick={() =>
+                      setTeamPage((p) => Math.min(teamTotalPages, p + 1))
+                    }
                     disabled={teamPage >= teamTotalPages}
+                    aria-label="Next page"
+                    title="Next page"
                   >
                     <ArrowRight className="h-4 w-4" />
                   </Button>
@@ -512,60 +548,87 @@ const TeamAppraisal = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <Avatar>
-                            <AvatarFallback className={a.status === "Complete" ? "bg-green-100 text-green-600" : "bg-blue-100 text-blue-600"}>
+                            <AvatarFallback
+                              className={
+                                a.status === "Complete"
+                                  ? "bg-green-100 text-green-600"
+                                  : "bg-blue-100 text-blue-600"
+                              }
+                            >
                               <UserRound className="h-4 w-4" />
                             </AvatarFallback>
                           </Avatar>
                           <div className="space-y-1">
                             <div className="font-medium text-neutral-900">
-                              {empNameById(a.appraisee_id)} • {typeNameById(a.appraisal_type_id)}
+                              {empNameById(a.appraisee_id)} •{" "}
+                              {typeNameById(a.appraisal_type_id)}
                             </div>
                             <div className="text-sm text-neutral-500 flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              {formatDate(a.start_date)} – {formatDate(a.end_date)}
+                              {formatDate(a.start_date)} –{" "}
+                              {formatDate(a.end_date)}
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
                           {a.status === "Complete" ? (
-                            <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
+                            <Badge
+                              variant="default"
+                              className="bg-green-100 text-green-800 border-green-200"
+                            >
                               Completed
                             </Badge>
                           ) : (
-                            <Badge variant="default" className="bg-blue-100 text-blue-800 border-blue-200">
+                            <Badge
+                              variant="default"
+                              className="bg-blue-100 text-blue-800 border-blue-200"
+                            >
                               {displayStatus(a.status)}
                             </Badge>
                           )}
                           {a.status === "Appraiser Evaluation" && (
                             <Button
                               onClick={() =>
-                                navigate(`/appraiser-evaluation/${a.appraisal_id}`)
+                                navigate(
+                                  `/appraiser-evaluation/${a.appraisal_id}`
+                                )
                               }
                               className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                              aria-label="Evaluate appraisal"
+                              title="Evaluate appraisal"
                             >
-                              Evaluate
-                              <ArrowRight className="h-4 w-4 ml-2" />
+                              <ArrowRight className="h-4 w-4" />
+                              <span className="hidden sm:inline sm:ml-2">Evaluate</span>
                             </Button>
                           )}
-                          {a.status === "Reviewer Evaluation" && a.reviewer_id === (user?.emp_id || -1) && (
-                            <Button
-                              onClick={() =>
-                                navigate(`/reviewer-evaluation/${a.appraisal_id}`)
-                              }
-                              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                            >
-                              Evaluate
-                              <ArrowRight className="h-4 w-4 ml-2" />
-                            </Button>
-                          )}
+                          {a.status === "Reviewer Evaluation" &&
+                            a.reviewer_id === (user?.emp_id || -1) && (
+                              <Button
+                                onClick={() =>
+                                  navigate(
+                                    `/reviewer-evaluation/${a.appraisal_id}`
+                                  )
+                                }
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                                aria-label="Evaluate appraisal"
+                                title="Evaluate appraisal"
+                              >
+                                <ArrowRight className="h-4 w-4" />
+                                <span className="hidden sm:inline sm:ml-2">Evaluate</span>
+                              </Button>
+                            )}
                           {a.status === "Complete" && (
                             <Button
                               variant="outline"
-                              onClick={() => navigate(`/appraisal/${a.appraisal_id}`)}
+                              onClick={() =>
+                                navigate(`/appraisal/${a.appraisal_id}`)
+                              }
                               className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
+                              aria-label="View appraisal"
+                              title="View appraisal"
                             >
-                              View
-                              <ArrowRight className="h-4 w-4 ml-2" />
+                              <ArrowRight className="h-4 w-4" />
+                              <span className="hidden sm:inline sm:ml-2">View</span>
                             </Button>
                           )}
                         </div>

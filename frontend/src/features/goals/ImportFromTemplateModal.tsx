@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Badge } from '../../components/ui/badge'
+import { X, Download } from 'lucide-react'
 import {
   Select as UiSelect,
   SelectTrigger,
@@ -155,7 +156,7 @@ const ImportFromTemplateModal = ({ open, onClose, onGoalAdded, appraisalId: _app
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto nice-scrollbar p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>Import Goals from Templates</DialogTitle>
         </DialogHeader>
@@ -170,7 +171,7 @@ const ImportFromTemplateModal = ({ open, onClose, onGoalAdded, appraisalId: _app
             </div>
           </div>
 
-          <div className="max-h-[360px] overflow-auto rounded-md border">
+          <div className="max-h-64 sm:max-h-80 md:max-h-96 overflow-auto rounded-md border">
             {visible.length === 0 && (
               <div className="p-6 text-sm text-muted-foreground">No templates found.</div>
             )}
@@ -221,8 +222,25 @@ const ImportFromTemplateModal = ({ open, onClose, onGoalAdded, appraisalId: _app
           </div>
 
           <div className="flex flex-col sm:flex-row justify-end gap-2">
-            <Button variant="outline" onClick={onClose} disabled={loading}>Cancel</Button>
-            <Button onClick={handleImport} disabled={loading}>Import Selected</Button>
+            <Button
+              variant="outline"
+              onClick={onClose}
+              disabled={loading}
+              title="Cancel"
+              aria-label="Cancel"
+            >
+              <span className="hidden sm:inline">Cancel</span>
+              <X className="h-4 w-4 sm:ml-2" />
+            </Button>
+            <Button
+              onClick={handleImport}
+              disabled={loading}
+              title="Import selected templates"
+              aria-label="Import selected templates"
+            >
+              <span className="hidden sm:inline">Import Selected</span>
+              <Download className="h-4 w-4 sm:ml-2" />
+            </Button>
           </div>
         </div>
       </DialogContent>

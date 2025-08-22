@@ -24,15 +24,15 @@ const Navbar = () => {
   }
   return (
     <header className="w-full sticky top-0 z-50 glass-effect border-t-2 border-t-primary shadow-medium">
-      <div className="mx-auto max-w-7xl h-16 flex items-center justify-between px-4 lg:px-6">
-        <div className="flex items-center gap-3">
+      <div className="container h-14 sm:h-16 flex items-center justify-between">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="w-8 h-8 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-sm">PM</span>
           </div>
-          <h1 className="text-base sm:text-lg lg:text-xl font-bold text-gradient hidden sm:block">
+          <h1 className="text-sm sm:text-lg lg:text-xl font-bold text-gradient hidden sm:block">
             Performance Management
           </h1>
-          <h1 className="text-base font-bold text-gradient sm:hidden">
+          <h1 className="text-sm font-bold text-gradient sm:hidden">
             PM
           </h1>
         </div>

@@ -169,7 +169,7 @@ const EditGoalModal = ({ open, onClose, onGoalUpdated, goalData, remainingWeight
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleCancel() }}>
-      <DialogContent className="sm:max-w-2xl shadow-medium border-0 glass-effect">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto nice-scrollbar p-4 sm:p-6 shadow-medium border-0 glass-effect">
         <DialogHeader className="pb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-blue-100">

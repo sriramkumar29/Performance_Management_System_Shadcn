@@ -86,6 +86,15 @@ app/
 
 ---
 
+### responsive design
+- Don’t use px widths (w-[500px]) → instead use % or responsive utilities (w-full, max-w-sm, h-auto).
+- use Typography scaling.
+- use Hide or collapse on mobile.
+- use Text button on desktop, icon button on mobile.
+- use Use tooltips for icon-only buttons, so users know what it does.
+
+---
+
 ##FastAPI Guidelines
 
 - Use `async def` for all route handlers.
