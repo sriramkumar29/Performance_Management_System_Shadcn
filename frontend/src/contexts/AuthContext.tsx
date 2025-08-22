@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { apiFetch } from '../utils/api'
+import { onUnauthorized } from '../utils/auth-events'
+import { toast } from '../hooks/use-toast'
 
 export interface Employee {
   emp_id: number
@@ -33,6 +35,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   })
   const [status, setStatus] = useState<AuthContextValue['status']>(() => (sessionStorage.getItem('auth_user') ? 'succeeded' : 'idle'))
 
+  const logoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearLogoutTimer = () => {
+    if (logoutTimerRef.current) {
+      clearTimeout(logoutTimerRef.current)
+      logoutTimerRef.current = null
+    }
+  }
+
+  const decodeJwtExp = (token: string): number | null => {
+    try {
+      const parts = token.split('.')
+      if (parts.length < 2) return null
+      const payload = parts[1]
+      const base64 = payload.replace(/-/g, '+').replace(/_/g, '/')
+      const padded = base64.padEnd(base64.length + (4 - (base64.length % 4 || 4)), '=')
+      const json = atob(padded)
+      const obj = JSON.parse(json)
+      return typeof obj.exp === 'number' ? obj.exp : null
+    } catch {
+      return null
+    }
+  }
+
+  const handleExpired = (message?: string) => {
+    clearLogoutTimer()
+    toast({
+      title: 'Session expired',
+      description: message || 'Your session has expired. Please log in again.',
+    })
+    logout()
+  }
+
+  const scheduleAutoLogout = () => {
+    clearLogoutTimer()
+    const token = sessionStorage.getItem('auth_token')
+    if (!token) return
+    const exp = decodeJwtExp(token)
+    if (!exp) return
+    const msLeft = exp * 1000 - Date.now()
+    if (msLeft <= 0) {
+      handleExpired()
+      return
+    }
+    logoutTimerRef.current = setTimeout(() => handleExpired(), msLeft)
+  }
+
   const loginWithCredentials = async (email: string, password: string) => {
     setStatus('loading')
     try {
@@ -53,6 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!userRes.ok || !userRes.data) throw new Error(userRes.error || 'Could not fetch user');
       setUser(userRes.data);
       setStatus('succeeded');
+      scheduleAutoLogout();
     } catch (e) {
       setStatus('failed');
       throw e;
@@ -60,6 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const logout = () => {
+    clearLogoutTimer()
     setUser(null)
     setStatus('idle')
     sessionStorage.removeItem('auth_token')
@@ -77,6 +128,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // no-op
     }
   }, [user])
+
+  // Subscribe to unauthorized events and schedule auto logout from JWT exp
+  useEffect(() => {
+    scheduleAutoLogout()
+    const off = onUnauthorized(() => handleExpired('You have been signed out. Please log in again.'))
+    return () => {
+      off()
+      clearLogoutTimer()
+    }
+  }, [])
 
   const value = useMemo(() => ({ user, status, loginWithCredentials, logout }), [user, status])
 

@@ -1,3 +1,5 @@
+import { emitUnauthorized } from './auth-events';
+
 export type ApiResult<T> = {
   ok: boolean;
   data?: T;
@@ -29,6 +31,10 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
       ...init,
     });
     if (!res.ok) {
+      if (res.status === 401) {
+        // Token invalid/expired or unauthorized. Notify listeners to logout.
+        emitUnauthorized();
+      }
       const msg = await safeText(res);
       return { ok: false, error: msg || res.statusText };
     }
