@@ -310,42 +310,44 @@ const TeamAppraisal = () => {
         {/* Draft Appraisals */}
         <Card className="transition-all duration-200 hover:shadow-md lg:col-span-1">
           <CardHeader>
-            <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
-              <FileEdit className="h-5 w-5 text-orange-600" />
-              Drafts
-            </CardTitle>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <FileEdit className="h-5 w-5 text-orange-600" />
+                Drafts
+              </CardTitle>
+              {drafts.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setDraftsPage((p) => Math.max(1, p - 1))}
+                    disabled={draftsPage <= 1}
+                    aria-label="Previous page"
+                    title="Previous page"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-neutral-600">
+                    Page {draftsPage} of {draftsTotalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      setDraftsPage((p) => Math.min(draftsTotalPages, p + 1))
+                    }
+                    disabled={draftsPage >= draftsTotalPages}
+                    aria-label="Next page"
+                    title="Next page"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
-            {/* Pager */}
-            {drafts.length > 0 && (
-              <div className="flex items-center justify-end gap-2 mb-4">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setDraftsPage((p) => Math.max(1, p - 1))}
-                  disabled={draftsPage <= 1}
-                  aria-label="Previous page"
-                  title="Previous page"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm text-neutral-600">
-                  Page {draftsPage} of {draftsTotalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() =>
-                    setDraftsPage((p) => Math.min(draftsTotalPages, p + 1))
-                  }
-                  disabled={draftsPage >= draftsTotalPages}
-                  aria-label="Next page"
-                  title="Next page"
-                >
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
+            
             {loading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
@@ -365,17 +367,17 @@ const TeamAppraisal = () => {
                   draftsPaged.map((a) => (
                     <div
                       key={a.appraisal_id}
-                      className="rounded-lg border border-neutral-200 bg-white p-3 sm:p-4 text-sm transition-all duration-200 hover:shadow-sm"
+                      className="rounded-lg border border-neutral-200 bg-white p-3 sm:p-4 text-sm transition-all duration-200 hover:shadow-sm overflow-hidden"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
                           <Avatar>
                             <AvatarFallback className="bg-orange-100 text-orange-600">
                               <UserRound className="h-4 w-4" />
                             </AvatarFallback>
                           </Avatar>
-                          <div className="space-y-1">
-                            <div className="font-medium text-neutral-900">
+                          <div className="space-y-1 min-w-0">
+                            <div className="font-medium text-neutral-900 truncate">
                               {empNameById(a.appraisee_id)} •{" "}
                               {typeNameById(a.appraisal_type_id)}
                             </div>
@@ -386,7 +388,7 @@ const TeamAppraisal = () => {
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-none shrink-0">
                           <Badge variant="secondary">
                             {displayStatus(a.status)}
                           </Badge>
@@ -412,10 +414,41 @@ const TeamAppraisal = () => {
         {/* Team Appraisals (Active + Completed with filter) */}
         <Card className="transition-all duration-200 hover:shadow-md lg:col-span-2">
           <CardHeader className="flex flex-col gap-3">
-            <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
-              <Activity className="h-5 w-5 text-blue-600" />
-              Team Appraisals
-            </CardTitle>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <Activity className="h-5 w-5 text-blue-600" />
+                Team Appraisals
+              </CardTitle>
+              {filteredTeamSearch.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setTeamPage((p) => Math.max(1, p - 1))}
+                    disabled={teamPage <= 1}
+                    aria-label="Previous page"
+                    title="Previous page"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-neutral-600">
+                    Page {teamPage} of {teamTotalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      setTeamPage((p) => Math.min(teamTotalPages, p + 1))
+                    }
+                    disabled={teamPage >= teamTotalPages}
+                    aria-label="Next page"
+                    title="Next page"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
             <div className="w-full sm:w-auto">
               <div className="flex flex-wrap items-end gap-3">
                 <div className="w-full sm:w-56 md:w-60">
@@ -457,7 +490,7 @@ const TeamAppraisal = () => {
           </CardHeader>
           <CardContent>
             {/* Filters */}
-            <div className="flex flex-wrap items-center justify-between mb-3 gap-3">
+            <div className="flex flex-wrap items-center mb-3 gap-3">
               <div className="flex items-center gap-2">
                 <Button
                   variant={teamFilter === "Active" ? "default" : "outline"}
@@ -493,35 +526,6 @@ const TeamAppraisal = () => {
                   All
                 </Button>
               </div>
-              {filteredTeamSearch.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setTeamPage((p) => Math.max(1, p - 1))}
-                    disabled={teamPage <= 1}
-                    aria-label="Previous page"
-                    title="Previous page"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm text-neutral-600">
-                    Page {teamPage} of {teamTotalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() =>
-                      setTeamPage((p) => Math.min(teamTotalPages, p + 1))
-                    }
-                    disabled={teamPage >= teamTotalPages}
-                    aria-label="Next page"
-                    title="Next page"
-                  >
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
             </div>
 
             {loading ? (
@@ -543,10 +547,10 @@ const TeamAppraisal = () => {
                   teamPaged.map((a) => (
                     <div
                       key={a.appraisal_id}
-                      className="rounded-lg border border-neutral-200 bg-white p-3 sm:p-4 text-sm transition-all duration-200 hover:shadow-sm"
+                      className="rounded-lg border border-neutral-200 bg-white p-3 sm:p-4 text-sm transition-all duration-200 hover:shadow-sm overflow-hidden"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
                           <Avatar>
                             <AvatarFallback
                               className={
@@ -558,8 +562,8 @@ const TeamAppraisal = () => {
                               <UserRound className="h-4 w-4" />
                             </AvatarFallback>
                           </Avatar>
-                          <div className="space-y-1">
-                            <div className="font-medium text-neutral-900">
+                          <div className="space-y-1 min-w-0">
+                            <div className="font-medium text-neutral-900 truncate">
                               {empNameById(a.appraisee_id)} •{" "}
                               {typeNameById(a.appraisal_type_id)}
                             </div>
@@ -570,7 +574,7 @@ const TeamAppraisal = () => {
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-none shrink-0">
                           {a.status === "Complete" ? (
                             <Badge
                               variant="default"
