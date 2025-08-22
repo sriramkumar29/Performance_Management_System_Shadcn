@@ -73,8 +73,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const handleExpired = (message?: string) => {
+  const refreshTokens = async (): Promise<boolean> => {
+    const refreshToken = sessionStorage.getItem("refresh_token");
+    if (!refreshToken) return false;
+
+    try {
+      const refreshRes = await apiFetch<{ access_token: string; refresh_token: string }>(
+        "/employees/refresh",
+        {
+          method: "POST",
+          body: JSON.stringify({ refresh_token: refreshToken }),
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (!refreshRes.ok || !refreshRes.data?.access_token || !refreshRes.data?.refresh_token) {
+        return false;
+      }
+
+      // Update tokens
+      sessionStorage.setItem("auth_token", refreshRes.data.access_token);
+      sessionStorage.setItem("refresh_token", refreshRes.data.refresh_token);
+      
+      // Reschedule auto logout with new token
+      scheduleAutoLogout();
+      return true;
+    } catch (error) {
+      console.error("Token refresh failed:", error);
+      return false;
+    }
+  };
+
+  const handleExpired = async (message?: string) => {
     clearLogoutTimer();
+    
+    // Try to refresh tokens before logging out
+    const refreshSuccess = await refreshTokens();
+    if (refreshSuccess) {
+      // Token refreshed successfully, no need to logout
+      return;
+    }
+    
+    // Refresh failed, proceed with logout
     toast({
       title: "Session expired",
       description: message || "Your session has expired. Please log in again.",
@@ -93,13 +133,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       handleExpired();
       return;
     }
-    logoutTimerRef.current = setTimeout(() => handleExpired(), msLeft);
+    // Schedule refresh attempt 2 minutes before token expires
+    const refreshTime = Math.max(msLeft - 2 * 60 * 1000, 0);
+    logoutTimerRef.current = setTimeout(() => handleExpired(), refreshTime);
   };
 
   const loginWithCredentials = async (email: string, password: string) => {
     setStatus("loading");
     try {
-      const loginRes = await apiFetch<{ access_token: string }>(
+      const loginRes = await apiFetch<{ access_token: string; refresh_token: string }>(
         "/employees/login",
         {
           method: "POST",
@@ -107,9 +149,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           headers: { "Content-Type": "application/json" },
         }
       );
-      if (!loginRes.ok || !loginRes.data?.access_token)
+      if (!loginRes.ok || !loginRes.data?.access_token || !loginRes.data?.refresh_token)
         throw new Error(loginRes.error || "Invalid credentials");
+      
+      // Store both tokens
       sessionStorage.setItem("auth_token", loginRes.data.access_token);
+      sessionStorage.setItem("refresh_token", loginRes.data.refresh_token);
+      
       // Fetch user profile with token
       const userRes = await apiFetch<Employee>(
         `/employees/by-email?email=${encodeURIComponent(email)}`,
@@ -133,6 +179,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setUser(null);
     setStatus("idle");
     sessionStorage.removeItem("auth_token");
+    sessionStorage.removeItem("refresh_token");
   };
 
   // Persist user to sessionStorage on changes

@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "60b2c32eac0fe0b3b026b112ab8f7d6c996b88a9d20467bd1c7a5681d46e0e09"  # Change in production
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # Server settings
     HOST: str = "0.0.0.0"

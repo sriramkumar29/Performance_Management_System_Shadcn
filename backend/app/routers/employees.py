@@ -29,7 +29,11 @@ class LoginRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
 
 @router.post("/login", response_model=TokenResponse)
 async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
@@ -38,13 +42,70 @@ async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
     if not employee or not pwd_context.verify(data.password, employee.emp_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    to_encode = {
+    # Create access token
+    access_payload = {
         "sub": employee.emp_email,
         "emp_id": employee.emp_id,
+        "type": "access",
         "exp": datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     }
-    token = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return TokenResponse(access_token=token)
+    access_token = jwt.encode(access_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    
+    # Create refresh token
+    refresh_payload = {
+        "sub": employee.emp_email,
+        "emp_id": employee.emp_id,
+        "type": "refresh",
+        "exp": datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    }
+    refresh_token = jwt.encode(refresh_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(data: RefreshRequest, db: AsyncSession = Depends(get_db)):
+    """Refresh access token using refresh token."""
+    try:
+        # Decode refresh token
+        payload = jwt.decode(data.refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        email = payload.get("sub")
+        emp_id = payload.get("emp_id")
+        token_type = payload.get("type")
+        
+        if not email or not emp_id or token_type != "refresh":
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+        
+        # Verify employee still exists
+        result = await db.execute(select(Employee).where(Employee.emp_email == email))
+        employee = result.scalars().first()
+        if not employee:
+            raise HTTPException(status_code=401, detail="Employee not found")
+        
+        # Create new access token
+        access_payload = {
+            "sub": employee.emp_email,
+            "emp_id": employee.emp_id,
+            "type": "access",
+            "exp": datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        }
+        new_access_token = jwt.encode(access_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+        
+        # Create new refresh token
+        refresh_payload = {
+            "sub": employee.emp_email,
+            "emp_id": employee.emp_id,
+            "type": "refresh",
+            "exp": datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        }
+        new_refresh_token = jwt.encode(refresh_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+        
+        return TokenResponse(access_token=new_access_token, refresh_token=new_refresh_token)
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Refresh token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
 
 
 @router.post("/", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED)

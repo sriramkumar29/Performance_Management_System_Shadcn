@@ -8,10 +8,47 @@ export type ApiResult<T> = {
   headers?: Headers;
 };
 
+// Token refresh state
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
 // Get base URL from environment or use empty string for relative paths
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT ?? 10000);
 const API_RETRIES = Number(import.meta.env.VITE_API_RETRIES ?? 3);
+
+// Token refresh function
+async function refreshTokens(): Promise<boolean> {
+  const refreshToken = sessionStorage.getItem('refresh_token');
+  if (!refreshToken) return false;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/employees/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    if (!response.ok) {
+      // Refresh token is invalid/expired
+      sessionStorage.removeItem('auth_token');
+      sessionStorage.removeItem('refresh_token');
+      return false;
+    }
+
+    const data = await response.json();
+    sessionStorage.setItem('auth_token', data.access_token);
+    sessionStorage.setItem('refresh_token', data.refresh_token);
+    return true;
+  } catch (error) {
+    console.error('Token refresh failed:', error);
+    sessionStorage.removeItem('auth_token');
+    sessionStorage.removeItem('refresh_token');
+    return false;
+  }
+}
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<ApiResult<T>> {
   let attempt = 0;
@@ -66,10 +103,34 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
       }
 
       if (!res.ok) {
-        if (res.status === 401) {
-          // Token invalid/expired or unauthorized. Notify listeners only if a token was attached (avoid login 401 noise).
-          if (token) emitUnauthorized();
+        if (res.status === 401 && token && !path.includes('/refresh') && !path.includes('/login')) {
+          // Try to refresh token if we have one and this isn't a refresh/login request
+          if (!isRefreshing) {
+            isRefreshing = true;
+            refreshPromise = refreshTokens();
+          }
+          
+          const refreshSuccess = await refreshPromise;
+          isRefreshing = false;
+          refreshPromise = null;
+          
+          if (refreshSuccess) {
+            // Retry the original request with new token
+            const newToken = sessionStorage.getItem('auth_token');
+            if (newToken) {
+              baseHeaders.Authorization = `Bearer ${newToken}`;
+              attempt = 0; // Reset attempt counter for retry
+              continue;
+            }
+          } else {
+            // Refresh failed, emit unauthorized
+            emitUnauthorized();
+          }
+        } else if (res.status === 401) {
+          // Token invalid/expired or unauthorized for login/refresh requests
+          if (token && !path.includes('/login')) emitUnauthorized();
         }
+        
         // Retry only for 5xx responses
         if (res.status >= 500 && attempt < API_RETRIES) {
           attempt++;
