@@ -5,7 +5,7 @@ import { Select as UiSelect, SelectContent, SelectItem, SelectTrigger, SelectVal
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
-import { Calendar as CalendarIcon } from "lucide-react";
+// import { Calendar as CalendarIcon } from "lucide-react";
 
 // Enable quarter calculations
 dayjs.extend(quarterOfYear);
@@ -127,7 +127,7 @@ export default function PeriodFilter({ value, defaultPreset = "All", onChange, c
               }}
               aria-label="Open start date picker"
             >
-              <CalendarIcon className="h-4 w-4" />
+              {/* <CalendarIcon className="h-4 w-4" /> */}
             </Button>
             <Input
               type="date"
@@ -171,7 +171,7 @@ export default function PeriodFilter({ value, defaultPreset = "All", onChange, c
               }}
               aria-label="Open end date picker"
             >
-              <CalendarIcon className="h-4 w-4" />
+              {/* <CalendarIcon className="h-4 w-4" /> */}
             </Button>
             <Input
               type="date"

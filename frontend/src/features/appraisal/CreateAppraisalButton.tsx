@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { Button } from '../../components/ui/button'
-import { Plus, FilePlus2, LayoutGrid } from 'lucide-react'
+import { Plus, LayoutGrid } from 'lucide-react'
 
 const CreateAppraisalButton = () => {
   const navigate = useNavigate()

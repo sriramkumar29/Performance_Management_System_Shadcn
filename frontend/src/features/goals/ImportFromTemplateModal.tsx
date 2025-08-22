@@ -55,7 +55,7 @@ interface AppraisalGoal {
   }
 }
 
-const ImportFromTemplateModal = ({ open, onClose, onGoalAdded, appraisalId, remainingWeightage = 100 }: ImportFromTemplateModalProps) => {
+const ImportFromTemplateModal = ({ open, onClose, onGoalAdded, appraisalId: _appraisalId, remainingWeightage = 100 }: ImportFromTemplateModalProps) => {
   const [loading, setLoading] = useState(false)
   const [templates, setTemplates] = useState<GoalTemplate[]>([])
   const [selected, setSelected] = useState<Record<number, { checked: boolean; categoryId?: number }>>({})
@@ -114,60 +114,32 @@ const ImportFromTemplateModal = ({ open, onClose, onGoalAdded, appraisalId, rema
           continue
         }
 
-        if (appraisalId) {
-          // Create goal via API then attach using appraisal-goals endpoint
-          const createRes = await apiFetch('/api/goals', {
-            method: 'POST',
-            body: JSON.stringify({
-              goal_template_id: t.temp_id,
-              category_id: categoryId,
-              goal_title: t.temp_title,
-              goal_description: t.temp_description,
-              goal_performance_factor: t.temp_performance_factor,
-              goal_importance: t.temp_importance,
-              goal_weightage: t.temp_weightage,
-            }),
-          })
-          if (!createRes.ok || !createRes.data) throw new Error(createRes.error || 'Failed to create goal from template')
-          const createdGoalId = (createRes.data as any).goal_id as number
-
-          const attachRes = await apiFetch('/api/goals/appraisal-goals', {
-            method: 'POST',
-            body: JSON.stringify({ appraisal_id: appraisalId, goal_id: createdGoalId }),
-          })
-          if (!attachRes.ok || !attachRes.data) {
-            await apiFetch(`/api/goals/${createdGoalId}`, { method: 'DELETE' }).catch(() => {})
-            throw new Error(attachRes.error || 'Failed to attach goal to appraisal')
-          }
-
-          onGoalAdded(attachRes.data as AppraisalGoal)
-        } else {
-          // Build pseudo AppraisalGoal for local state
-          const tempId = Date.now() + Math.floor(Math.random() * 1000)
-          const category = t.categories?.find(c => c.id === categoryId)
-          const pseudo: AppraisalGoal = {
-            id: tempId,
-            appraisal_id: 0,
+            // Always build a pseudo AppraisalGoal for local staging only.
+        // Database insertion will occur on Save/Submit via syncGoalChanges().
+        const tempId = Date.now() + Math.floor(Math.random() * 1000)
+        const category = t.categories?.find(c => c.id === categoryId)
+        const pseudo: AppraisalGoal = {
+          id: tempId,
+          appraisal_id: 0,
+          goal_id: tempId,
+          goal: {
             goal_id: tempId,
-            goal: {
-              goal_id: tempId,
-              goal_template_id: t.temp_id,
-              goal_title: t.temp_title,
-              goal_description: t.temp_description,
-              goal_performance_factor: t.temp_performance_factor,
-              goal_importance: t.temp_importance,
-              goal_weightage: t.temp_weightage,
-              category_id: categoryId,
-              category: category ? { id: category.id, name: category.name } : ({ id: categoryId, name: '' } as any),
-            },
-          }
-          onGoalAdded(pseudo)
+            goal_template_id: t.temp_id,
+            goal_title: t.temp_title,
+            goal_description: t.temp_description,
+            goal_performance_factor: t.temp_performance_factor,
+            goal_importance: t.temp_importance,
+            goal_weightage: t.temp_weightage,
+            category_id: categoryId,
+            category: category ? { id: category.id, name: category.name } : ({ id: categoryId, name: '' } as any),
+          },
         }
+        onGoalAdded(pseudo)
 
         remaining -= t.temp_weightage
       }
 
-      toast.success('Imported', { description: 'Selected templates have been imported as goals.' })
+      toast.success('Imported', { description: 'Templates staged as goals. Save to apply changes.' })
       onClose()
     } catch (e: any) {
       toast.error('Import failed', { description: e?.message || 'Please try again.' })

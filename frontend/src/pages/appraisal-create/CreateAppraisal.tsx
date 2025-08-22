@@ -6,8 +6,8 @@ import {
   Trash2,
   Plus,
   ChevronDown,
-  ChevronUp,
   Calendar,
+  ChevronUp,
 } from "lucide-react";
 import AddGoalModal from "../../features/goals/AddGoalModal";
 import EditGoalModal from "../../features/goals/EditGoalModal";
@@ -134,10 +134,6 @@ const CreateAppraisal = () => {
     removed: number[]; // goal_ids
     updated: AppraisalGoal[];
   }>({ added: [], removed: [], updated: [] });
-  const [banner, setBanner] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
   const { user } = useAuth();
   const isLocked =
     createdAppraisalId !== null && createdAppraisalStatus !== "Draft";
@@ -295,12 +291,16 @@ const CreateAppraisal = () => {
 
   const handleGoalAdded = (appraisalGoal: AppraisalGoal) => {
     setGoals((prev) => [...prev, appraisalGoal]);
-    if (!createdAppraisalId) {
-      setGoalChanges((prev) => ({
-        ...prev,
-        added: [...prev.added, appraisalGoal],
-      }));
-    }
+    // Always stage added goals (even when appraisal already exists).
+    // Actual DB insertion happens in syncGoalChanges() on Save/Submit.
+    setGoalChanges((prev) => {
+      const already = prev.added.some(
+        (g) => g.goal.goal_id === appraisalGoal.goal.goal_id
+      );
+      return already
+        ? prev
+        : { ...prev, added: [...prev.added, appraisalGoal] };
+    });
   };
 
   const handleGoalUpdated = (updatedGoal: AppraisalGoal) => {
@@ -347,6 +347,9 @@ const CreateAppraisal = () => {
   };
 
   const handleRemoveGoal = async (goalId: number) => {
+    // Capture goal title for toast messages
+    const targetGoal = goals.find((g) => g.goal.goal_id === goalId);
+    const goalTitle = targetGoal?.goal.goal_title || "Goal";
     try {
       if (createdAppraisalId) {
         const goalToRemove = goals.find((g) => g.goal.goal_id === goalId);
@@ -366,12 +369,18 @@ const CreateAppraisal = () => {
               added: prev.added.filter((g) => g.goal.goal_id !== goalId),
               updated: prev.updated.filter((g) => g.goal.goal_id !== goalId),
             }));
+            toast.success("Goal marked for removal", {
+              description: `${goalTitle} will be removed when you save.`,
+            });
           } else {
             setGoalChanges((prev) => ({
               ...prev,
               added: prev.added.filter((g) => g.goal.goal_id !== goalId),
               updated: prev.updated.filter((g) => g.goal.goal_id !== goalId),
             }));
+            toast.success("Goal removed", {
+              description: `${goalTitle} removed from appraisal.`,
+            });
           }
         }
       } else {
@@ -380,10 +389,15 @@ const CreateAppraisal = () => {
           added: prev.added.filter((g) => g.goal.goal_id !== goalId),
           updated: prev.updated.filter((g) => g.goal.goal_id !== goalId),
         }));
+        toast.success("Goal removed", {
+          description: `${goalTitle} removed from draft.`,
+        });
       }
       setGoals((prev) => prev.filter((g) => g.goal.goal_id !== goalId));
-    } catch {
-      // no-op
+    } catch (error) {
+      toast.error("Failed to remove goal", {
+        description: "Please try again.",
+      });
     }
   };
 
@@ -393,15 +407,13 @@ const CreateAppraisal = () => {
       if (res.ok && res.data) {
         setEmployees(res.data);
       } else {
-        setBanner({
-          type: "error",
-          message: res.error || "Failed to fetch employees",
+        toast.error("Failed to fetch employees", {
+          description: res.error || "Please try again.",
         });
       }
     } catch {
-      setBanner({
-        type: "error",
-        message: "Failed to fetch employees. Please try again.",
+      toast.error("Failed to fetch employees", {
+        description: "Please try again.",
       });
     }
   };
@@ -412,15 +424,13 @@ const CreateAppraisal = () => {
       if (res.ok && res.data) {
         setAppraisalTypes(res.data);
       } else {
-        setBanner({
-          type: "error",
-          message: res.error || "Failed to fetch appraisal types",
+        toast.error("Failed to fetch appraisal types", {
+          description: res.error || "Please try again.",
         });
       }
     } catch {
-      setBanner({
-        type: "error",
-        message: "Failed to fetch appraisal types. Please try again.",
+      toast.error("Failed to fetch appraisal types", {
+        description: "Please try again.",
       });
     }
   };
@@ -433,15 +443,13 @@ const CreateAppraisal = () => {
       if (res.ok && res.data) {
         setRanges(res.data);
       } else {
-        setBanner({
-          type: "error",
-          message: res.error || "Failed to fetch ranges",
+        toast.error("Failed to fetch ranges", {
+          description: res.error || "Please try again.",
         });
       }
     } catch {
-      setBanner({
-        type: "error",
-        message: "Failed to fetch ranges. Please try again.",
+      toast.error("Failed to fetch ranges", {
+        description: "Please try again.",
       });
     }
   };
@@ -476,9 +484,8 @@ const CreateAppraisal = () => {
         ],
       });
     } catch (error: any) {
-      setBanner({
-        type: "error",
-        message: error.message || "Failed to load appraisal",
+      toast.error("Failed to load appraisal", {
+        description: error.message || "Please try again.",
       });
     } finally {
       setLoading(false);
@@ -587,17 +594,12 @@ const CreateAppraisal = () => {
 
   const handleSubmit = async () => {
     if (!user?.emp_id) {
-      setBanner({ type: "error", message: "Not authenticated" });
       toast.error("Not authenticated", {
         description: "Please sign in and try again.",
       });
       return;
     }
     if (!canSaveDraft) {
-      setBanner({
-        type: "error",
-        message: "Please complete required fields before saving.",
-      });
       toast.error("Cannot save", {
         description: "Select employee, reviewer and type/period.",
       });
@@ -609,10 +611,6 @@ const CreateAppraisal = () => {
       0
     );
     if (currentTotalWeightage > 100) {
-      setBanner({
-        type: "error",
-        message: `Total weightage cannot exceed 100%. Current: ${currentTotalWeightage}%`,
-      });
       toast.error("Invalid weightage", {
         description: `Total is ${currentTotalWeightage}% (> 100%).`,
       });
@@ -655,7 +653,6 @@ const CreateAppraisal = () => {
             e?.message || "Failed to sync goals after creating appraisal"
           );
         }
-        setBanner({ type: "success", message: "Draft saved" });
         toast.success("Draft saved", {
           description: "Your draft appraisal has been created.",
         });
@@ -669,16 +666,11 @@ const CreateAppraisal = () => {
         // Refresh to ensure goals in state reflect server IDs (replacing any pseudo goals)
         await loadAppraisal(createdAppraisalId);
         setGoalChanges({ added: [], removed: [], updated: [] });
-        setBanner({ type: "success", message: "Changes saved" });
         toast.success("Saved", {
           description: "Your changes have been saved.",
         });
       }
     } catch (error: any) {
-      setBanner({
-        type: "error",
-        message: error.message || "Failed to save appraisal",
-      });
       toast.error("Save failed", {
         description: error.message || "Please try again.",
       });
@@ -689,7 +681,6 @@ const CreateAppraisal = () => {
 
   const handleFinish = async () => {
     if (!user?.emp_id) {
-      setBanner({ type: "error", message: "Not authenticated" });
       toast.error("Not authenticated", {
         description: "Please sign in and try again.",
       });
@@ -702,10 +693,6 @@ const CreateAppraisal = () => {
     if (createdAppraisalId === null) return; // still null => failed create
 
     if (!canSubmitForAck) {
-      setBanner({
-        type: "error",
-        message: "Cannot submit. Ensure total weightage is exactly 100%.",
-      });
       toast.error("Cannot submit", {
         description: "Total weightage must be 100%.",
       });
@@ -745,18 +732,10 @@ const CreateAppraisal = () => {
       if (!res.ok)
         throw new Error(res.error || "Could not submit for acknowledgement");
       setCreatedAppraisalStatus("Submitted");
-      setBanner({
-        type: "success",
-        message: "Appraisal submitted for acknowledgement",
-      });
       toast.success("Submitted", {
         description: "Sent to appraisee for acknowledgement.",
       });
     } catch (error: any) {
-      setBanner({
-        type: "error",
-        message: error.message || "Failed to submit appraisal",
-      });
       toast.error("Submission failed", {
         description: error.message || "Please try again.",
       });
@@ -787,22 +766,6 @@ const CreateAppraisal = () => {
         </div>
       </div>
 
-      {banner && (
-        <div
-          className={`mb-3 flex items-start gap-2 rounded-md border p-3 text-sm ${
-            banner.type === "error"
-              ? "border-destructive/50 bg-destructive/10 text-destructive"
-              : "border-primary/50 bg-primary/10 text-primary"
-          }`}
-        >
-          {banner.type === "error" ? (
-            <AlertCircle className="mt-0.5 h-4 w-4" />
-          ) : (
-            <CheckCircle2 className="mt-0.5 h-4 w-4" />
-          )}
-          <div>{banner.message}</div>
-        </div>
-      )}
       {/* Appraisal Details */}
       <Card>
         <CardHeader

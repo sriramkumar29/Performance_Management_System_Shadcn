@@ -5,6 +5,7 @@
   html {
     scroll-behavior: auto;
   }
+
   *,
   *::before,
   *::after {
@@ -171,6 +172,35 @@ html {
 
   .animate-slide-up {
     animation: slideUp 0.3s ease-out;
+  }
+
+  /* Subtle, theme-aware custom scrollbar */
+  .nice-scrollbar {
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    /* Firefox */
+    scrollbar-color: hsla(var(--muted-foreground), 0.35) transparent;
+    /* Firefox */
+  }
+
+  .nice-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .nice-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .nice-scrollbar::-webkit-scrollbar-thumb {
+    background-color: hsla(var(--muted-foreground), 0.35);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .nice-scrollbar:hover::-webkit-scrollbar-thumb {
+    background-color: hsla(var(--primary), 0.6);
   }
 }
 
