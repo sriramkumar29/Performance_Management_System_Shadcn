@@ -40,7 +40,6 @@ import {
   CardContent,
   CardTitle,
   CardDescription,
-  CardFooter,
 } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 
@@ -782,6 +781,15 @@ const CreateAppraisal = () => {
           onClick={() =>
             setIsAppraisalDetailsCollapsed(!isAppraisalDetailsCollapsed)
           }
+          role="button"
+          aria-expanded={!isAppraisalDetailsCollapsed}
+          aria-controls="appraisal-details-content"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              setIsAppraisalDetailsCollapsed(!isAppraisalDetailsCollapsed);
+            }
+          }}
         >
           <div className="flex items-center justify-between">
             <div>
@@ -797,227 +805,237 @@ const CreateAppraisal = () => {
             )}
           </div>
         </CardHeader>
-        {!isAppraisalDetailsCollapsed && (
-          <CardContent>
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Employee */}
-              <div className="grid gap-2">
-                <Label>Employee</Label>
-                <UiSelect
-                  value={
-                    formValues.appraisee_id
-                      ? String(formValues.appraisee_id)
-                      : undefined
-                  }
-                  onValueChange={(val) =>
-                    setFormValues((v) => ({
-                      ...v,
-                      appraisee_id: Number(val),
-                      reviewer_id: 0,
-                    }))
-                  }
-                  disabled={isLocked}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select employee to appraise" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {eligibleAppraisees.map((emp) => (
-                      <SelectItem key={emp.emp_id} value={String(emp.emp_id)}>
-                        {emp.emp_name} ({emp.emp_email}){" "}
-                        {emp.emp_roles ? `- ${emp.emp_roles}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </UiSelect>
-                <p className="text-xs text-muted-foreground">
-                  Must be same level or lower than you.
-                </p>
-              </div>
-
-              {/* Reviewer */}
-              <div className="grid gap-2">
-                <Label>Reviewer</Label>
-                <UiSelect
-                  value={
-                    formValues.reviewer_id
-                      ? String(formValues.reviewer_id)
-                      : undefined
-                  }
-                  onValueChange={(val) =>
-                    setFormValues((v) => ({ ...v, reviewer_id: Number(val) }))
-                  }
-                  disabled={!appraiseeSelected || isLocked}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select reviewer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {eligibleReviewers.map((emp) => (
-                      <SelectItem key={emp.emp_id} value={String(emp.emp_id)}>
-                        {emp.emp_name} ({emp.emp_email}){" "}
-                        {emp.emp_roles ? `- ${emp.emp_roles}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </UiSelect>
-                <p className="text-xs text-muted-foreground">
-                  Must be same level or higher than you.
-                </p>
-              </div>
-
-              {/* Appraisal Type */}
-              <div className="grid gap-2">
-                <Label>Appraisal Type</Label>
-                <UiSelect
-                  value={
-                    formValues.appraisal_type_id
-                      ? String(formValues.appraisal_type_id)
-                      : undefined
-                  }
-                  onValueChange={(val) => {
-                    const id = Number(val);
-                    setSelectedTypeId(id);
-                    const meta = appraisalTypes.find((t) => t.id === id);
-                    if (meta?.has_range) {
-                      setFormValues((v) => ({
-                        ...v,
-                        appraisal_type_id: id,
-                        appraisal_type_range_id: undefined,
-                        period: undefined,
-                      }));
-                      fetchRanges(id);
-                    } else {
-                      setRanges([]);
-                      const p = computePeriod(meta);
-                      setFormValues((v) => ({
-                        ...v,
-                        appraisal_type_id: id,
-                        appraisal_type_range_id: undefined,
-                        period: p,
-                      }));
-                    }
-                  }}
-                  disabled={!reviewerSelected || isLocked}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select appraisal type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {appraisalTypes.map((type) => (
-                      <SelectItem key={type.id} value={String(type.id)}>
-                        {type.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </UiSelect>
-                <p className="text-xs text-muted-foreground">
-                  Type determines the period automatically. If the type has
-                  ranges, choose one next.
-                </p>
-              </div>
-
-              {/* Range (only if type has range) */}
-              {(() => {
-                const meta = appraisalTypes.find(
-                  (t) => t.id === selectedTypeId
-                );
-                if (!meta?.has_range) return null;
-                return (
-                  <div className="grid gap-2">
-                    <Label>Range</Label>
-                    <UiSelect
-                      value={
-                        formValues.appraisal_type_range_id
-                          ? String(formValues.appraisal_type_range_id)
-                          : undefined
-                      }
-                      onValueChange={(val) => {
-                        const rangeId = Number(val);
-                        const tMeta = appraisalTypes.find(
-                          (t) => t.id === selectedTypeId!
-                        );
-                        const r = ranges.find((rg) => rg.id === rangeId);
-                        const p = computePeriod(tMeta, r);
-                        setFormValues((v) => ({
-                          ...v,
-                          appraisal_type_range_id: rangeId,
-                          period: p,
-                        }));
-                      }}
-                      disabled={isLocked}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select range" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ranges.map((range) => (
-                          <SelectItem key={range.id} value={String(range.id)}>
-                            {range.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </UiSelect>
-                    <p className="text-xs text-muted-foreground">
-                      Range sets the exact start and end dates.
-                    </p>
-                  </div>
-                );
-              })()}
-
-              {/* Appraisal Period */}
-              <div className="md:col-span-2">
+        <div
+          id="appraisal-details-content"
+          className={`grid transition-all motion-reduce:transition-none duration-300 ease-in-out ${
+            isAppraisalDetailsCollapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100"
+          }`}
+        >
+          <div
+            className="overflow-hidden"
+            aria-hidden={isAppraisalDetailsCollapsed}
+          >
+            <CardContent>
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Employee */}
                 <div className="grid gap-2">
-                  <Label>Appraisal Period</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input
-                      type="date"
-                      disabled={isLocked}
-                      value={
-                        formValues.period
-                          ? formValues.period[0].format("YYYY-MM-DD")
-                          : ""
-                      }
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          const newStartDate = dayjs(e.target.value);
-                          setFormValues((v) => ({
-                            ...v,
-                            period: [newStartDate, v.period?.[1] || dayjs()],
-                          }));
-                        }
-                      }}
-                      placeholder="Start Date"
-                    />
-                    <Input
-                      type="date"
-                      disabled={isLocked}
-                      value={
-                        formValues.period
-                          ? formValues.period[1].format("YYYY-MM-DD")
-                          : ""
-                      }
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          const newEndDate = dayjs(e.target.value);
-                          setFormValues((v) => ({
-                            ...v,
-                            period: [v.period?.[0] || dayjs(), newEndDate],
-                          }));
-                        }
-                      }}
-                      placeholder="End Date"
-                    />
-                  </div>
+                  <Label>Employee</Label>
+                  <UiSelect
+                    value={
+                      formValues.appraisee_id
+                        ? String(formValues.appraisee_id)
+                        : undefined
+                    }
+                    onValueChange={(val) =>
+                      setFormValues((v) => ({
+                        ...v,
+                        appraisee_id: Number(val),
+                        reviewer_id: 0,
+                      }))
+                    }
+                    disabled={isLocked}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select employee to appraise" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {eligibleAppraisees.map((emp) => (
+                        <SelectItem key={emp.emp_id} value={String(emp.emp_id)}>
+                          {emp.emp_name} ({emp.emp_email}){" "}
+                          {emp.emp_roles ? `- ${emp.emp_roles}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </UiSelect>
                   <p className="text-xs text-muted-foreground">
-                    Automatically calculated from appraisal type and range.
-                    Click on dates to manually adjust if needed.
+                    Must be same level or lower than you.
                   </p>
                 </div>
+
+                {/* Reviewer */}
+                <div className="grid gap-2">
+                  <Label>Reviewer</Label>
+                  <UiSelect
+                    value={
+                      formValues.reviewer_id
+                        ? String(formValues.reviewer_id)
+                        : undefined
+                    }
+                    onValueChange={(val) =>
+                      setFormValues((v) => ({ ...v, reviewer_id: Number(val) }))
+                    }
+                    disabled={!appraiseeSelected || isLocked}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select reviewer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {eligibleReviewers.map((emp) => (
+                        <SelectItem key={emp.emp_id} value={String(emp.emp_id)}>
+                          {emp.emp_name} ({emp.emp_email}){" "}
+                          {emp.emp_roles ? `- ${emp.emp_roles}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </UiSelect>
+                  <p className="text-xs text-muted-foreground">
+                    Must be same level or higher than you.
+                  </p>
+                </div>
+
+                {/* Appraisal Type */}
+                <div className="grid gap-2">
+                  <Label>Appraisal Type</Label>
+                  <UiSelect
+                    value={
+                      formValues.appraisal_type_id
+                        ? String(formValues.appraisal_type_id)
+                        : undefined
+                    }
+                    onValueChange={(val) => {
+                      const id = Number(val);
+                      setSelectedTypeId(id);
+                      const meta = appraisalTypes.find((t) => t.id === id);
+                      if (meta?.has_range) {
+                        setFormValues((v) => ({
+                          ...v,
+                          appraisal_type_id: id,
+                          appraisal_type_range_id: undefined,
+                          period: undefined,
+                        }));
+                        fetchRanges(id);
+                      } else {
+                        setRanges([]);
+                        const p = computePeriod(meta);
+                        setFormValues((v) => ({
+                          ...v,
+                          appraisal_type_id: id,
+                          appraisal_type_range_id: undefined,
+                          period: p,
+                        }));
+                      }
+                    }}
+                    disabled={!reviewerSelected || isLocked}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select appraisal type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {appraisalTypes.map((type) => (
+                        <SelectItem key={type.id} value={String(type.id)}>
+                          {type.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </UiSelect>
+                  <p className="text-xs text-muted-foreground">
+                    Type determines the period automatically. If the type has
+                    ranges, choose one next.
+                  </p>
+                </div>
+
+                {/* Range (only if type has range) */}
+                {(() => {
+                  const meta = appraisalTypes.find(
+                    (t) => t.id === selectedTypeId
+                  );
+                  if (!meta?.has_range) return null;
+                  return (
+                    <div className="grid gap-2">
+                      <Label>Range</Label>
+                      <UiSelect
+                        value={
+                          formValues.appraisal_type_range_id
+                            ? String(formValues.appraisal_type_range_id)
+                            : undefined
+                        }
+                        onValueChange={(val) => {
+                          const rangeId = Number(val);
+                          const tMeta = appraisalTypes.find(
+                            (t) => t.id === selectedTypeId!
+                          );
+                          const r = ranges.find((rg) => rg.id === rangeId);
+                          const p = computePeriod(tMeta, r);
+                          setFormValues((v) => ({
+                            ...v,
+                            appraisal_type_range_id: rangeId,
+                            period: p,
+                          }));
+                        }}
+                        disabled={isLocked}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select range" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ranges.map((range) => (
+                            <SelectItem key={range.id} value={String(range.id)}>
+                              {range.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </UiSelect>
+                      <p className="text-xs text-muted-foreground">
+                        Range sets the exact start and end dates.
+                      </p>
+                    </div>
+                  );
+                })()}
+
+                {/* Appraisal Period */}
+                <div className="md:col-span-2">
+                  <div className="grid gap-2">
+                    <Label>Appraisal Period</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        type="date"
+                        disabled={isLocked}
+                        value={
+                          formValues.period
+                            ? formValues.period[0].format("YYYY-MM-DD")
+                            : ""
+                        }
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            const newStartDate = dayjs(e.target.value);
+                            setFormValues((v) => ({
+                              ...v,
+                              period: [newStartDate, v.period?.[1] || dayjs()],
+                            }));
+                          }
+                        }}
+                        placeholder="Start Date"
+                      />
+                      <Input
+                        type="date"
+                        disabled={isLocked}
+                        value={
+                          formValues.period
+                            ? formValues.period[1].format("YYYY-MM-DD")
+                            : ""
+                        }
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            const newEndDate = dayjs(e.target.value);
+                            setFormValues((v) => ({
+                              ...v,
+                              period: [v.period?.[0] || dayjs(), newEndDate],
+                            }));
+                          }
+                        }}
+                        placeholder="End Date"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Automatically calculated from appraisal type and range.
+                      Click on dates to manually adjust if needed.
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        )}
+            </CardContent>
+          </div>
+        </div>
       </Card>
 
       {/* Goals Section */}
@@ -1067,7 +1085,10 @@ const CreateAppraisal = () => {
               <Progress value={totalWeightageUi} />
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {goals.map((record) => (
-                  <Card key={record.goal.goal_id} className="group relative overflow-hidden border shadow-sm hover:shadow-md transition-shadow">
+                  <Card
+                    key={record.goal.goal_id}
+                    className="group relative overflow-hidden border shadow-sm hover:shadow-md transition-shadow"
+                  >
                     <CardHeader className="h-full p-4 pr-4 flex flex-col">
                       {/* Weightage badge */}
                       <div className="absolute top-2 right-2 rounded-full bg-primary/10 text-primary text-xs font-medium px-2 py-0.5">
@@ -1080,7 +1101,10 @@ const CreateAppraisal = () => {
                           <Target className="h-4 w-4" />
                         </div>
                         <div className="min-w-0 space-y-0.5">
-                          <CardTitle className="text-sm font-semibold truncate" title={record.goal.goal_title}>
+                          <CardTitle
+                            className="text-sm font-semibold truncate"
+                            title={record.goal.goal_title}
+                          >
                             {record.goal.goal_title}
                           </CardTitle>
                           {record.goal.goal_description && (
@@ -1100,7 +1124,9 @@ const CreateAppraisal = () => {
                       {/* Meta row at bottom */}
                       <div className="pt-2 mt-auto flex flex-wrap items-center gap-2 text-xs">
                         {record.goal.category?.name ? (
-                          <Badge variant="outline">{record.goal.category.name}</Badge>
+                          <Badge variant="outline">
+                            {record.goal.category.name}
+                          </Badge>
                         ) : null}
                         <Badge
                           variant={
@@ -1196,7 +1222,9 @@ const CreateAppraisal = () => {
                   title={addGoalDisabledReason}
                 >
                   <FolderOpen className="h-4 w-4" />
-                  <span className="hidden sm:inline sm:ml-2">Import from Templates</span>
+                  <span className="hidden sm:inline sm:ml-2">
+                    Import from Templates
+                  </span>
                 </Button>
               </div>
             </div>
@@ -1207,7 +1235,12 @@ const CreateAppraisal = () => {
       {/* Footer Actions */}
       <div className="mt-6 grid grid-cols-2 gap-3 items-center sm:flex sm:flex-row sm:items-center sm:justify-between">
         <div className="flex gap-3">
-          <Button onClick={handleCancel} disabled={loading} aria-label="Cancel" title="Cancel">
+          <Button
+            onClick={handleCancel}
+            disabled={loading}
+            aria-label="Cancel"
+            title="Cancel"
+          >
             <X className="h-4 w-4" />
             <span className="hidden sm:inline sm:ml-2">Cancel</span>
           </Button>
@@ -1219,7 +1252,9 @@ const CreateAppraisal = () => {
               title={loading ? "Saving" : "Save as draft"}
             >
               <Save className="h-4 w-4" />
-              <span className="hidden sm:inline sm:ml-2">{loading ? "Saving..." : "Save as Draft"}</span>
+              <span className="hidden sm:inline sm:ml-2">
+                {loading ? "Saving..." : "Save as Draft"}
+              </span>
             </Button>
           )}
           {createdAppraisalId && createdAppraisalStatus === "Draft" && (
@@ -1230,7 +1265,9 @@ const CreateAppraisal = () => {
               title={loading ? "Saving" : "Save changes"}
             >
               <Save className="h-4 w-4" />
-              <span className="hidden sm:inline sm:ml-2">{loading ? "Saving..." : "Save Changes"}</span>
+              <span className="hidden sm:inline sm:ml-2">
+                {loading ? "Saving..." : "Save Changes"}
+              </span>
             </Button>
           )}
         </div>
@@ -1242,7 +1279,9 @@ const CreateAppraisal = () => {
             title="Submit for acknowledgement"
           >
             <Send className="h-4 w-4" />
-            <span className="hidden sm:inline sm:ml-2">Submit for Acknowledgement</span>
+            <span className="hidden sm:inline sm:ml-2">
+              Submit for Acknowledgement
+            </span>
           </Button>
         </div>
       </div>
