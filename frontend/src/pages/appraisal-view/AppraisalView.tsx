@@ -7,6 +7,7 @@ import { Textarea } from '../../components/ui/textarea'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
 import { Progress } from '../../components/ui/progress'
+import { useAuth } from '../../contexts/AuthContext'
 import {
   Calendar,
   Target,
@@ -66,6 +67,7 @@ const statusClass = (_s: string) => 'bg-muted text-foreground border-border'
 const AppraisalView = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [appraisal, setAppraisal] = useState<AppraisalWithGoals | null>(null)
   const [idx, setIdx] = useState(0) // 0..goals.length, where last index is overall page
@@ -83,11 +85,42 @@ const AppraisalView = () => {
     load()
   }, [id])
 
+  // Role/Status-based access guard
+  useEffect(() => {
+    if (!appraisal) return
+    const empId = user?.emp_id
+    if (!empId) {
+      navigate('/', { replace: true })
+      return
+    }
+    const status = appraisal.status
+    const isAppraisee = empId === appraisal.appraisee_id
+    const isAppraiser = empId === appraisal.appraiser_id
+    const isReviewer = empId === appraisal.reviewer_id
+
+    let allowed = false
+    if (isAppraisee) {
+      // Appraisee can view only during Submitted (Waiting Acknowledgement), Self Assessment, or Complete
+      allowed = status === 'Submitted' || status === 'Appraisee Self Assessment' || status === 'Complete'
+    } else if (isAppraiser) {
+      // Appraiser should NOT view during Appraiser/Reviewer Evaluation; allow Complete only
+      allowed = status === 'Complete'
+    } else if (isReviewer) {
+      // Reviewer: allow Complete only (evaluation happens in its own page)
+      allowed = status === 'Complete'
+    }
+
+    if (!allowed) navigate('/', { replace: true })
+  }, [appraisal, user?.emp_id, navigate])
+
   const goals = appraisal?.appraisal_goals || []
-  const isOverallPage = idx === goals.length
+  const showOverall = appraisal?.status === 'Complete'
+  const totalGoals = goals.length
+  const maxIndex = showOverall ? totalGoals : Math.max(0, totalGoals - 1)
+  const isOverallPage = showOverall && idx === totalGoals
   const current = goals[idx]
-  const total = goals.length
-  const progressPct = total > 0 ? Math.round((Math.min(idx, total) / total) * 100) : 100
+  // Keep progress behavior consistent with prior implementation: 100% on overall page
+  const progressPct = totalGoals > 0 ? Math.round((Math.min(idx, totalGoals) / totalGoals) * 100) : 100
 
   if (!appraisal) return (
     <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8" aria-busy={loading}>
@@ -126,7 +159,7 @@ const AppraisalView = () => {
                 </Badge>
                 <div className="text-right">
                   <div className="text-sm font-medium text-foreground">
-                    {isOverallPage ? 'Overall Summary' : `Goal ${Math.min(idx + 1, total)} of ${total}`}
+                    {isOverallPage ? 'Overall Summary' : `Goal ${Math.min(idx + 1, totalGoals)} of ${totalGoals}`}
                   </div>
                   <div className="text-xs text-muted-foreground">{progressPct}% Complete</div>
                 </div>
@@ -184,27 +217,29 @@ const AppraisalView = () => {
                 </div>
               </div>
 
-              {/* Appraiser Evaluation (read-only) */}
-              <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <UserCheck className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-medium text-foreground">Appraiser Evaluation</h3>
-                </div>
-                <div className="space-y-3">
+              {/* Appraiser Evaluation (read-only, visible only when Complete) */}
+              {showOverall && (
+                <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
                   <div className="flex items-center gap-2">
-                    <Star className="h-4 w-4 text-primary" />
-                    <label className="text-sm font-medium text-foreground">Appraiser Rating</label>
-                    {current.appraiser_rating && (
-                      <Badge variant="outline" className="ml-auto">{current.appraiser_rating}/5</Badge>
-                    )}
+                    <UserCheck className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-medium text-foreground">Appraiser Evaluation</h3>
                   </div>
-                  <Slider min={1} max={5} step={1} value={current.appraiser_rating != null ? [current.appraiser_rating] : undefined} disabled className="opacity-70" />
-                  <div>
-                    <label className="text-sm font-medium text-foreground flex items-center gap-2"><MessageSquare className="h-4 w-4 text-primary" /> Appraiser Comments</label>
-                    <Textarea rows={4} value={current.appraiser_comment ?? 'No comments provided'} disabled className="bg-card/50 border-border resize-none" />
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Star className="h-4 w-4 text-primary" />
+                      <label className="text-sm font-medium text-foreground">Appraiser Rating</label>
+                      {current.appraiser_rating && (
+                        <Badge variant="outline" className="ml-auto">{current.appraiser_rating}/5</Badge>
+                      )}
+                    </div>
+                    <Slider min={1} max={5} step={1} value={current.appraiser_rating != null ? [current.appraiser_rating] : undefined} disabled className="opacity-70" />
+                    <div>
+                      <label className="text-sm font-medium text-foreground flex items-center gap-2"><MessageSquare className="h-4 w-4 text-primary" /> Appraiser Comments</label>
+                      <Textarea rows={4} value={current.appraiser_comment ?? 'No comments provided'} disabled className="bg-card/50 border-border resize-none" />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Navigation */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-border/50">
@@ -215,11 +250,11 @@ const AppraisalView = () => {
 
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <div className="flex gap-1" role="list" aria-label="Progress steps">
-                    {Array.from({ length: total + 1 }, (_, i) => (
+                    {Array.from({ length: showOverall ? totalGoals + 1 : totalGoals }, (_, i) => (
                       <div
                         key={i}
                         role="listitem"
-                        aria-label={`Step ${i + 1} of ${total + 1}${i === idx ? ', current step' : ''}`}
+                        aria-label={`Step ${i + 1} of ${showOverall ? totalGoals + 1 : totalGoals}${i === idx ? ', current step' : ''}`}
                         aria-current={i === idx ? 'step' : undefined}
                         className={`w-2 h-2 rounded-full ${i === idx ? 'bg-primary' : i < idx ? 'bg-primary/60' : 'bg-border'}`}
                       />
@@ -227,8 +262,8 @@ const AppraisalView = () => {
                   </div>
                 </div>
 
-                <Button onClick={() => setIdx((i) => Math.min(total, i + 1))} disabled={loading || idx === total} className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
-                  {idx === total - 1 ? 'Overall Summary' : 'Next Goal'}
+                <Button onClick={() => setIdx((i) => Math.min(maxIndex, i + 1))} disabled={loading || idx === maxIndex} className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
+                  {showOverall && idx === totalGoals - 1 ? 'Overall Summary' : 'Next Goal'}
                   <ChevronRight className="h-4 w-4 ml-2" />
                 </Button>
               </div>

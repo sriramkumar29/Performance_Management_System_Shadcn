@@ -257,6 +257,15 @@ html {
   .nice-scrollbar:hover::-webkit-scrollbar-thumb {
     background-color: hsla(var(--primary), 0.6);
   }
+
+  /* Multi-line clamp utilities without plugin */
+  .line-clamp-5 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 5;
+    line-clamp: 5; /* Standard property for newer engines */
+    overflow: hidden;
+  }
 }
 
 @keyframes fadeIn {

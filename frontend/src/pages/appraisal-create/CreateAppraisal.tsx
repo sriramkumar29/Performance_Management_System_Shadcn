@@ -12,6 +12,7 @@ import {
   Save,
   Send,
   X,
+  Target,
 } from "lucide-react";
 import AddGoalModal from "../../features/goals/AddGoalModal";
 import EditGoalModal from "../../features/goals/EditGoalModal";
@@ -1064,39 +1065,59 @@ const CreateAppraisal = () => {
                 </div>
               </div>
               <Progress value={totalWeightageUi} />
-              <div className="mt-4 space-y-4">
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {goals.map((record) => (
-                  <Card key={record.goal.goal_id}>
-                    <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-4">
-                      <div className="space-y-1">
-                        <CardTitle className="text-base">
-                          {record.goal.goal_title}
-                        </CardTitle>
-                        <CardDescription className="text-sm">
-                          {record.goal.goal_description}
-                        </CardDescription>
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          {record.goal.category?.name ? (
-                            <Badge variant="outline">{record.goal.category.name}</Badge>
-                          ) : null}
-                          <Badge
-                            variant={
-                              record.goal.goal_importance === "High"
-                                ? "destructive"
-                                : record.goal.goal_importance === "Medium"
-                                ? "warning"
-                                : "success"
-                            }
-                            title="Importance"
-                          >
-                            {record.goal.goal_importance}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            Weightage: {record.goal.goal_weightage}%
-                          </span>
+                  <Card key={record.goal.goal_id} className="group relative overflow-hidden border shadow-sm hover:shadow-md transition-shadow">
+                    <CardHeader className="h-full p-4 pr-4 flex flex-col">
+                      {/* Weightage badge */}
+                      <div className="absolute top-2 right-2 rounded-full bg-primary/10 text-primary text-xs font-medium px-2 py-0.5">
+                        {record.goal.goal_weightage}%
+                      </div>
+
+                      {/* Header with icon and text */}
+                      <div className="flex items-start gap-2">
+                        <div className="p-2 rounded-md bg-primary/10 text-primary">
+                          <Target className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0 space-y-0.5">
+                          <CardTitle className="text-sm font-semibold truncate" title={record.goal.goal_title}>
+                            {record.goal.goal_title}
+                          </CardTitle>
+                          {record.goal.goal_description && (
+                            <CardDescription
+                              className="text-xs text-muted-foreground line-clamp-5 leading-snug"
+                              title={record.goal.goal_description}
+                            >
+                              {record.goal.goal_description}
+                            </CardDescription>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+
+                      {/* Spacer to push meta to bottom */}
+                      <div className="flex-1" />
+
+                      {/* Meta row at bottom */}
+                      <div className="pt-2 mt-auto flex flex-wrap items-center gap-2 text-xs">
+                        {record.goal.category?.name ? (
+                          <Badge variant="outline">{record.goal.category.name}</Badge>
+                        ) : null}
+                        <Badge
+                          variant={
+                            record.goal.goal_importance === "High"
+                              ? "destructive"
+                              : record.goal.goal_importance === "Medium"
+                              ? "warning"
+                              : "success"
+                          }
+                          title="Importance"
+                        >
+                          {record.goal.goal_importance}
+                        </Badge>
+                      </div>
+
+                      {/* Action buttons bottom-right (show on hover on larger screens) */}
+                      <div className="absolute bottom-2 right-2 flex items-center gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                         <Button
                           size="icon"
                           variant="outline"
