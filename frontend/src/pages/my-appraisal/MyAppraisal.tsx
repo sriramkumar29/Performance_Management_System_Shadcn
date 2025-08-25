@@ -64,7 +64,7 @@ const MyAppraisal = () => {
   const ITEMS_PER_PAGE = 5
   const [myPage, setMyPage] = useState(1)
   // Filter for combined list
-  const [myFilter, setMyFilter] = useState<'Active' | 'Completed' | 'All'>('Active')
+  const [myFilter, setMyFilter] = useState<'Active' | 'Completed' | 'All'>('All')
   // Show/hide advanced filters and type filter
   const [showFilters, setShowFilters] = useState(false)
   const [searchTypeId, setSearchTypeId] = useState<string>('all')
@@ -119,7 +119,22 @@ const MyAppraisal = () => {
     const end = new Date(a.end_date)
     return activeStatuses.has(a.status) && end >= now
   })
-  const selectedAppraisal = upcomingActive.sort((a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime())[0] || null
+  const selectedAppraisal = useMemo(() => {
+    const activeSoonest = [...upcomingActive]
+      .sort((a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime())[0]
+    if (activeSoonest) return activeSoonest
+    // Fallback: most recent in period (including completed)
+    const inPeriod = (period.startDate && period.endDate)
+      ? appraisals.filter(
+          (a) =>
+            new Date(a.end_date) >= new Date(period.startDate!) &&
+            new Date(a.start_date) <= new Date(period.endDate!)
+        )
+      : appraisals
+    const latest = [...inPeriod]
+      .sort((a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0]
+    return latest || null
+  }, [upcomingActive, period, appraisals])
   const dueDateStr = selectedAppraisal ? formatDate(selectedAppraisal.end_date) : '—'
 
   const appraisalsInPeriod = useMemo(() => {
@@ -130,7 +145,14 @@ const MyAppraisal = () => {
   }, [appraisals, period])
 
   const myActives = useMemo(
-    () => appraisalsInPeriod.filter(a => a.status === 'Submitted' || a.status === 'Appraisee Self Assessment'),
+    () =>
+      appraisalsInPeriod.filter(
+        (a) =>
+          a.status === 'Submitted' ||
+          a.status === 'Appraisee Self Assessment' ||
+          a.status === 'Appraiser Evaluation' ||
+          a.status === 'Reviewer Evaluation'
+      ),
     [appraisalsInPeriod]
   )
   const myCompleted = useMemo(
@@ -218,18 +240,18 @@ const MyAppraisal = () => {
     return Math.round((completed / total) * 100)
   })()
   return (
-    <div className="space-y-6 text-neutral-800">
+    <div className="space-y-6 text-foreground">
       {/* Overview cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="transition-all duration-200 hover:shadow-md">
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">
             <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-primary" />
+              <Calendar className="h-4 w-4 icon-appraisal-type" />
               Appraisal Type
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-neutral-900">
+            <div className="text-2xl font-bold text-foreground">
               {selectedAppraisal ? typeNameById(selectedAppraisal.appraisal_type_id) : '—'}
             </div>
           </CardContent>
@@ -239,28 +261,28 @@ const MyAppraisal = () => {
         <Card className="transition-all duration-200 hover:shadow-md">
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">
             <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2">
-              <Clock className="h-4 w-4 text-orange-600" />
+              <Clock className="h-4 w-4 icon-due-date" />
               Due Date
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-neutral-900">{dueDateStr}</div>
+            <div className="text-2xl font-bold text-foreground">{dueDateStr}</div>
           </CardContent>
         </Card>
 
         <Card className="transition-all duration-200 hover:shadow-md">
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">
             <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-600" />
+              <TrendingUp className="h-4 w-4 icon-overall-progress" />
               Overall Progress
             </CardTitle>
           </CardHeader>
           <CardContent>
             {completionPct == null ? (
-              <div className="text-2xl font-bold text-neutral-400">—</div>
+              <div className="text-2xl font-bold text-muted-foreground">—</div>
             ) : (
               <div className="space-y-2">
-                <div className="text-2xl font-bold text-neutral-900">{completionPct}%</div>
+                <div className="text-2xl font-bold text-foreground">{completionPct}%</div>
                 <Progress value={completionPct} className="h-2" />
               </div>
             )}
@@ -275,7 +297,7 @@ const MyAppraisal = () => {
         <CardHeader className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-2 min-w-0 flex-nowrap">
             <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2 min-w-0 flex-1 truncate">
-              <CheckCircle2 className="h-5 w-5 text-primary" />
+              <CheckCircle2 className="h-5 w-5 icon-my-appraisals" />
               My Appraisals
             </CardTitle>
             <div className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap flex-nowrap">
@@ -367,12 +389,12 @@ const MyAppraisal = () => {
         </CardHeader>
         <CardContent>
           {actionError && (
-            <div className="text-sm text-red-600 mb-4 p-3 bg-red-50 rounded-md border border-red-200">
+            <div className="text-sm text-destructive mb-4 p-3 bg-destructive/10 rounded-md border border-destructive/20">
               {actionError}
             </div>
           )}
           {appraisalsError && (
-            <div className="text-sm text-red-600 mb-4 p-3 bg-red-50 rounded-md border border-red-200">
+            <div className="text-sm text-destructive mb-4 p-3 bg-destructive/10 rounded-md border border-destructive/20">
               {appraisalsError}
             </div>
           )}
@@ -380,7 +402,7 @@ const MyAppraisal = () => {
             <div className="space-y-4">
               {[1, 2, 3].map(i => (
                 <div key={i} className="animate-pulse">
-                  <div className="h-20 bg-neutral-200 rounded-lg"></div>
+                  <div className="h-20 bg-muted rounded-lg"></div>
                 </div>
               ))}
             </div>
@@ -412,25 +434,25 @@ const MyAppraisal = () => {
                 </div>
               </div>
               <div className="space-y-3">
-              {filteredMine.length === 0 ? (
-                <div className="text-center py-8 text-neutral-500">
-                  <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-neutral-300" />
+              {filteredMineSearch.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle2 className="h-12 w-12 mx-auto mb-4 icon-my-appraisals" />
                   <p>No items</p>
                 </div>
               ) : (
                 listPaged.map((a: any) => (
-                  <div key={a.appraisal_id} className="rounded-lg border border-neutral-200 bg-white p-3 sm:p-4 text-sm transition-all duration-200 hover:shadow-sm">
+                  <div key={a.appraisal_id} className="rounded-lg border border-border bg-card p-3 sm:p-4 text-sm transition-all duration-200 hover:shadow-sm">
                     <div className="flex items-center justify-between">
                       <div className="space-y-1">
-                        <div className="font-medium text-neutral-900">{typeNameById(a.appraisal_type_id)}</div>
-                        <div className="text-xs text-neutral-500 flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
+                        <div className="font-medium text-foreground">{typeNameById(a.appraisal_type_id)}</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3 icon-due-date" />
                           {formatDate(a.start_date)} – {formatDate(a.end_date)}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
                         {a.status === 'Complete' ? (
-                          <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">Completed</Badge>
+                          <Badge>Completed</Badge>
                         ) : (
                           <Badge variant={a.status === 'Submitted' ? 'secondary' : 'default'}>
                             {displayStatus(a.status)}
@@ -459,6 +481,18 @@ const MyAppraisal = () => {
                             <ArrowRight className="h-4 w-4 sm:ml-2" />
                           </Button>
                         ) : null}
+                        {(a.status === 'Appraiser Evaluation' || a.status === 'Reviewer Evaluation') && (
+                          <Button
+                            variant="outline"
+                            onClick={() => navigate(`/appraisal/${a.appraisal_id}`)}
+                            className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
+                            aria-label="View appraisal"
+                            title="View appraisal"
+                          >
+                            <span className="hidden sm:inline">View</span>
+                            <ArrowRight className="h-4 w-4 sm:ml-2" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>

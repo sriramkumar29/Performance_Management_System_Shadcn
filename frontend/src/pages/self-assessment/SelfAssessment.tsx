@@ -156,12 +156,12 @@ const SelfAssessment = () => {
   }
 
   if (!appraisal) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-6 lg:p-8" aria-busy={loading}>
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8" aria-busy={loading}>
       <div className="mx-auto max-w-4xl">
         <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-slate-200 rounded-lg w-1/3"></div>
-          <div className="h-32 bg-slate-200 rounded-xl"></div>
-          <div className="h-96 bg-slate-200 rounded-xl"></div>
+          <div className="h-8 bg-muted rounded-lg w-1/3"></div>
+          <div className="h-32 bg-muted rounded-xl"></div>
+          <div className="h-96 bg-muted rounded-xl"></div>
         </div>
       </div>
       {/* Mobile-only floating Home button for better discoverability */}
@@ -179,7 +179,7 @@ const SelfAssessment = () => {
   const progressPercentage = total > 0 ? ((idx + 1) / total) * 100 : 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-6 lg:p-8 animate-fade-in" aria-busy={loading}>
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8 animate-fade-in" aria-busy={loading}>
       <div className="mx-auto max-w-4xl space-y-6">
         
 
@@ -188,7 +188,7 @@ const SelfAssessment = () => {
           <CardHeader className="pb-4">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="space-y-2">
-                <h1 className="text-2xl lg:text-3xl font-bold text-gradient">
+                <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
                   Self Assessment
                 </h1>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -259,7 +259,7 @@ const SelfAssessment = () => {
               {/* Rating Section */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-amber-500" />
+                  <Star className="h-4 w-4 text-primary" />
                   <label className="text-sm font-medium text-foreground">
                     Your Rating (1-5)
                   </label>
@@ -297,7 +297,7 @@ const SelfAssessment = () => {
               {/* Comments Section */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-blue-500" />
+                  <MessageSquare className="h-4 w-4 text-primary" />
                   <label className="text-sm font-medium text-foreground">
                     Your Comments
                   </label>
@@ -337,7 +337,7 @@ const SelfAssessment = () => {
                           i === idx 
                             ? 'bg-primary' 
                             : i < idx 
-                            ? 'bg-green-500' 
+                            ? 'bg-primary/60' 
                             : 'bg-border'
                         }`}
                       />
@@ -358,7 +358,7 @@ const SelfAssessment = () => {
                   <Button
                     onClick={handleSubmit}
                     disabled={loading || !validateCurrent()}
-                    className="w-full sm:w-auto bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white shadow-lg"
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
                   >
                     <Send className="h-4 w-4 mr-2" />
                     Submit Assessment

@@ -95,27 +95,36 @@ html {
     --warning-foreground: 0 0% 98%;
     --info: 199 89% 48%;
     --info-foreground: 0 0% 98%;
+    /* Icon tokens: tuned for light mode */
+    --icon: 240 4% 46%;
+    --icon-strong: 240 6% 20%;
   }
 
   .dark {
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+    /* Slightly lighter than background for clearer separation */
+    --card: 240 8% 6.5%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+    /* Keep popovers close to card but distinct */
+    --popover: 240 8% 6%;
     --popover-foreground: 0 0% 98%;
     --primary: 239 84% 67%;
     --primary-foreground: 240 10% 3.9%;
-    --secondary: 240 3.7% 15.9%;
+    /* Subtle elevated surfaces */
+    --secondary: 240 4% 12%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
+    /* Muted surfaces for toolbars/stripes */
+    --muted: 240 4% 14%;
     --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
+    /* Accent surfaces slightly brighter than muted */
+    --accent: 240 5% 16%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
+    /* Stronger border/input for clearer outlines */
+    --border: 240 5% 20%;
+    --input: 240 5% 20%;
     --ring: 239 84% 67%;
     --success: 142 71% 45%;
     --success-foreground: 0 0% 98%;
@@ -123,6 +132,9 @@ html {
     --warning-foreground: 0 0% 98%;
     --info: 199 89% 48%;
     --info-foreground: 0 0% 98%;
+    /* Icon tokens: brighter for dark mode */
+    --icon: 240 5% 70%;
+    --icon-strong: 0 0% 98%;
   }
 }
 
@@ -141,21 +153,64 @@ html {
 @layer utilities {
   .text-gradient {
     /* Replace Tailwind @apply (from-primary) with raw CSS to avoid unknown utility errors */
-    background-image: linear-gradient(to right,
-        hsl(var(--primary)),
-        rgb(37 99 235));
-    /* blue-600 */
+    background-image: linear-gradient(
+      to right,
+      hsl(var(--primary)),
+      hsl(var(--accent))
+    );
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
 
+  /* Theme-aware icon utilities */
+  .text-icon {
+    color: hsl(var(--icon));
+  }
+
+  .text-icon-strong {
+    color: hsl(var(--icon-strong));
+  }
+
+  /* Category-specific icon colors (theme-aware via tokens) */
+  .icon-appraisal-type {
+    color: hsl(var(--info));
+  }
+
+  .icon-due-date {
+    color: hsl(var(--warning));
+  }
+
+  .icon-overall-progress {
+    color: hsl(var(--success));
+  }
+
+  .icon-my-appraisals {
+    color: hsl(var(--primary));
+  }
+
+  .icon-team-members {
+    color: hsl(var(--info));
+  }
+
+  .icon-drafts {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .icon-active {
+    color: hsl(var(--success));
+  }
+
+  .icon-team-appraisals {
+    color: hsl(var(--primary));
+  }
+
   .glass-effect {
-    /* Replace Tailwind @apply with raw CSS */
-    background-color: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    /* Theme-aware glass using design tokens */
+    background-color: hsl(var(--background) / 0.65);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid hsl(var(--border) / 0.6);
   }
 
   .shadow-soft {

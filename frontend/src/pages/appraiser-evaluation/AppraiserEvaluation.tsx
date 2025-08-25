@@ -216,12 +216,12 @@ const AppraiserEvaluation = () => {
 
   if (!appraisal)
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-6 lg:p-8">
+      <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
         <div className="mx-auto max-w-5xl">
           <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-slate-200 rounded-lg w-1/3"></div>
-            <div className="h-32 bg-slate-200 rounded-xl"></div>
-            <div className="h-96 bg-slate-200 rounded-xl"></div>
+            <div className="h-8 bg-muted rounded-lg w-1/3"></div>
+            <div className="h-32 bg-muted rounded-xl"></div>
+            <div className="h-96 bg-muted rounded-xl"></div>
           </div>
         </div>
         {/* Mobile-only floating Home button for better discoverability */}
@@ -239,7 +239,7 @@ const AppraiserEvaluation = () => {
   const progressPercentage = total > 0 ? ((idx + 1) / (total + 1)) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-6 lg:p-8 animate-fade-in" aria-busy={loading}>
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8 animate-fade-in" aria-busy={loading}>
       <div className="mx-auto max-w-5xl space-y-6">
 
         {/* Header Card */}
@@ -247,7 +247,7 @@ const AppraiserEvaluation = () => {
           <CardHeader className="pb-4">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="space-y-2">
-                <h1 className="text-2xl lg:text-3xl font-bold text-gradient">
+                <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
                   Appraiser Evaluation
                 </h1>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -316,15 +316,15 @@ const AppraiserEvaluation = () => {
 
             <CardContent className="space-y-6">
               {/* Self Assessment (read-only) */}
-              <div className="rounded-lg border border-border/50 bg-muted/30 p-4 space-y-4">
+              <div className="rounded-lg border border-border/50 bg-background p-4 space-y-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <User className="h-4 w-4 text-blue-500" />
+                  <User className="h-4 w-4 text-primary" />
                   <h3 className="text-sm font-medium text-foreground">Employee Self Assessment</h3>
                 </div>
                 
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <Star className="h-4 w-4 text-amber-500" />
+                    <Star className="h-4 w-4 text-primary" />
                     <label className="text-sm font-medium text-foreground">Self Rating</label>
                     {current.self_rating && (
                       <Badge variant="outline" className="ml-auto">
@@ -354,7 +354,7 @@ const AppraiserEvaluation = () => {
 
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-blue-500" />
+                    <MessageSquare className="h-4 w-4 text-primary" />
                     <label className="text-sm font-medium text-foreground">Self Comments</label>
                   </div>
                   <Textarea
@@ -376,7 +376,7 @@ const AppraiserEvaluation = () => {
 
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <Star className="h-4 w-4 text-amber-500" />
+                    <Star className="h-4 w-4 text-primary" />
                     <label className="text-sm font-medium text-foreground">Your Rating (1-5)</label>
                     {form[current.goal.goal_id]?.rating && (
                       <Badge variant="outline" className="ml-auto">
@@ -457,7 +457,7 @@ const AppraiserEvaluation = () => {
                           i === idx 
                             ? 'bg-primary' 
                             : i < idx 
-                            ? 'bg-green-500' 
+                            ? 'bg-primary/60' 
                             : 'bg-border'
                         }`}
                       />
@@ -483,7 +483,7 @@ const AppraiserEvaluation = () => {
           <Card className="shadow-medium border-0 glass-effect animate-slide-up">
             <CardHeader className="pb-4">
               <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-gradient-to-br from-primary/10 to-blue-500/10">
+                <div className="p-2 rounded-lg bg-primary/10">
                   <BarChart3 className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1 space-y-2">
@@ -501,7 +501,7 @@ const AppraiserEvaluation = () => {
               {/* Overall Rating */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-amber-500" />
+                  <Star className="h-4 w-4 text-primary" />
                   <label className="text-sm font-medium text-foreground">
                     Overall Rating (1-5)
                   </label>
@@ -577,7 +577,7 @@ const AppraiserEvaluation = () => {
                           i === idx 
                             ? 'bg-primary' 
                             : i < idx 
-                            ? 'bg-green-500' 
+                            ? 'bg-primary/60' 
                             : 'bg-border'
                         }`}
                       />
@@ -588,7 +588,7 @@ const AppraiserEvaluation = () => {
                 <Button
                   onClick={handleSubmit}
                   disabled={loading || !validateCurrent()}
-                  className="w-full sm:w-auto bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white shadow-lg"
+                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
                 >
                   <Send className="h-4 w-4 mr-2" />
                   Submit to Reviewer

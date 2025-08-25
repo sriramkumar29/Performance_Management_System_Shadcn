@@ -60,22 +60,8 @@ interface AppraisalWithGoals {
 // Map API status to user-friendly text
 const displayStatus = (s: string) => s === 'Submitted' ? 'Waiting Acknowledgement' : s
 
-// Status badge coloring
-const statusClass = (s: string) => {
-  switch (s) {
-    case 'Draft':
-      return 'bg-orange-100 text-orange-800 border-orange-200'
-    case 'Appraisee Self Assessment':
-    case 'Appraiser Evaluation':
-      return 'bg-blue-100 text-blue-800 border-blue-200'
-    case 'Reviewer Evaluation':
-      return 'bg-purple-100 text-purple-800 border-purple-200'
-    case 'Complete':
-      return 'bg-green-100 text-green-800 border-green-200'
-    default:
-      return 'bg-neutral-100 text-neutral-800 border-neutral-200'
-  }
-}
+// Status badge coloring (neutral theme-aware styling)
+const statusClass = (_s: string) => 'bg-muted text-foreground border-border'
 
 const AppraisalView = () => {
   const { id } = useParams()
@@ -104,30 +90,30 @@ const AppraisalView = () => {
   const progressPct = total > 0 ? Math.round((Math.min(idx, total) / total) * 100) : 100
 
   if (!appraisal) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-6 lg:p-8" aria-busy={loading}>
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8" aria-busy={loading}>
       <div className="mx-auto max-w-5xl">
         <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-slate-200 rounded-lg w-1/3"></div>
-          <div className="h-32 bg-slate-200 rounded-xl"></div>
-          <div className="h-96 bg-slate-200 rounded-xl"></div>
+          <div className="h-8 bg-muted rounded-lg w-1/3"></div>
+          <div className="h-32 bg-muted rounded-xl"></div>
+          <div className="h-96 bg-muted rounded-xl"></div>
         </div>
       </div>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-6 lg:p-8 animate-fade-in" aria-busy={loading}>
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8 animate-fade-in" aria-busy={loading}>
       <div className="mx-auto max-w-5xl space-y-6">
         {/* Header Card */}
         <Card className="shadow-medium border-0 glass-effect">
           <CardHeader className="pb-4">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-gradient-to-br from-primary/10 to-blue-500/10">
+                <div className="p-2 rounded-lg bg-primary/10">
                   <Eye className="h-5 w-5 text-primary" />
                 </div>
                 <div className="space-y-1">
-                  <h1 className="text-2xl lg:text-3xl font-bold text-gradient">Appraisal View</h1>
+                  <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Appraisal View</h1>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
                     {new Date(appraisal.start_date).toLocaleDateString()} – {new Date(appraisal.end_date).toLocaleDateString()}
@@ -177,14 +163,14 @@ const AppraisalView = () => {
 
             <CardContent className="space-y-6">
               {/* Self Assessment (read-only) */}
-              <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 space-y-3">
+              <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
                 <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-blue-600" />
-                  <h3 className="text-sm font-medium text-blue-900">Employee Self Assessment</h3>
+                  <User className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-medium text-foreground">Employee Self Assessment</h3>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <Star className="h-4 w-4 text-amber-500" />
+                    <Star className="h-4 w-4 text-primary" />
                     <label className="text-sm font-medium text-foreground">Self Rating</label>
                     {current.self_rating && (
                       <Badge variant="outline" className="ml-auto">{current.self_rating}/5</Badge>
@@ -192,21 +178,21 @@ const AppraisalView = () => {
                   </div>
                   <Slider min={1} max={5} step={1} value={current.self_rating != null ? [current.self_rating] : undefined} disabled className="opacity-70" />
                   <div>
-                    <label className="text-sm font-medium text-foreground flex items-center gap-2"><MessageSquare className="h-4 w-4 text-blue-500" /> Self Comments</label>
-                    <Textarea rows={3} value={current.self_comment ?? 'No comments provided'} disabled className="bg-white/50 border-blue-200 resize-none" />
+                    <label className="text-sm font-medium text-foreground flex items-center gap-2"><MessageSquare className="h-4 w-4 text-primary" /> Self Comments</label>
+                    <Textarea rows={3} value={current.self_comment ?? 'No comments provided'} disabled className="bg-card/50 border-border resize-none" />
                   </div>
                 </div>
               </div>
 
               {/* Appraiser Evaluation (read-only) */}
-              <div className="rounded-lg border border-green-200 bg-green-50/50 p-4 space-y-3">
+              <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
                 <div className="flex items-center gap-2">
-                  <UserCheck className="h-4 w-4 text-green-600" />
-                  <h3 className="text-sm font-medium text-green-900">Appraiser Evaluation</h3>
+                  <UserCheck className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-medium text-foreground">Appraiser Evaluation</h3>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <Star className="h-4 w-4 text-amber-500" />
+                    <Star className="h-4 w-4 text-primary" />
                     <label className="text-sm font-medium text-foreground">Appraiser Rating</label>
                     {current.appraiser_rating && (
                       <Badge variant="outline" className="ml-auto">{current.appraiser_rating}/5</Badge>
@@ -214,8 +200,8 @@ const AppraisalView = () => {
                   </div>
                   <Slider min={1} max={5} step={1} value={current.appraiser_rating != null ? [current.appraiser_rating] : undefined} disabled className="opacity-70" />
                   <div>
-                    <label className="text-sm font-medium text-foreground flex items-center gap-2"><MessageSquare className="h-4 w-4 text-green-600" /> Appraiser Comments</label>
-                    <Textarea rows={4} value={current.appraiser_comment ?? 'No comments provided'} disabled className="bg-white/50 border-green-200 resize-none" />
+                    <label className="text-sm font-medium text-foreground flex items-center gap-2"><MessageSquare className="h-4 w-4 text-primary" /> Appraiser Comments</label>
+                    <Textarea rows={4} value={current.appraiser_comment ?? 'No comments provided'} disabled className="bg-card/50 border-border resize-none" />
                   </div>
                 </div>
               </div>
@@ -235,7 +221,7 @@ const AppraisalView = () => {
                         role="listitem"
                         aria-label={`Step ${i + 1} of ${total + 1}${i === idx ? ', current step' : ''}`}
                         aria-current={i === idx ? 'step' : undefined}
-                        className={`w-2 h-2 rounded-full ${i === idx ? 'bg-primary' : i < idx ? 'bg-green-500' : 'bg-border'}`}
+                        className={`w-2 h-2 rounded-full ${i === idx ? 'bg-primary' : i < idx ? 'bg-primary/60' : 'bg-border'}`}
                       />
                     ))}
                   </div>
@@ -254,8 +240,8 @@ const AppraisalView = () => {
           <Card className="shadow-medium border-0 glass-effect animate-slide-up">
             <CardHeader className="pb-4">
               <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500/10 to-orange-600/10">
-                  <BarChart3 className="h-5 w-5 text-amber-600" />
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <BarChart3 className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1 space-y-1">
                   <h2 className="text-xl font-semibold text-foreground leading-tight">Overall Evaluation</h2>
@@ -267,14 +253,14 @@ const AppraisalView = () => {
             <CardContent className="space-y-6">
               <div className="grid gap-6 sm:grid-cols-2">
                 {/* Appraiser Overall - read only */}
-                <div className="rounded-lg border border-green-200 bg-green-50/50 p-4 space-y-3">
+                <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
                   <div className="flex items-center gap-2">
-                    <UserCheck className="h-4 w-4 text-green-600" />
-                    <h3 className="text-sm font-medium text-green-900">Appraiser Overall Assessment</h3>
+                    <UserCheck className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-medium text-foreground">Appraiser Overall Assessment</h3>
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <Star className="h-4 w-4 text-amber-500" />
+                      <Star className="h-4 w-4 text-primary" />
                       <label className="text-sm font-medium text-foreground">Overall Rating</label>
                       {appraisal.appraiser_overall_rating && (
                         <Badge variant="outline" className="ml-auto">{appraisal.appraiser_overall_rating}/5</Badge>
@@ -282,21 +268,21 @@ const AppraisalView = () => {
                     </div>
                     <Slider min={1} max={5} step={1} value={appraisal.appraiser_overall_rating != null ? [appraisal.appraiser_overall_rating] : undefined} disabled className="opacity-70" />
                     <div>
-                      <label className="text-sm font-medium text-foreground flex items-center gap-2"><MessageSquare className="h-4 w-4 text-green-600" /> Overall Comments</label>
-                      <Textarea rows={4} value={appraisal.appraiser_overall_comments ?? 'No comments provided'} disabled className="bg-white/50 border-green-200 resize-none" />
+                      <label className="text-sm font-medium text-foreground flex items-center gap-2"><MessageSquare className="h-4 w-4 text-primary" /> Overall Comments</label>
+                      <Textarea rows={4} value={appraisal.appraiser_overall_comments ?? 'No comments provided'} disabled className="bg-card/50 border-border resize-none" />
                     </div>
                   </div>
                 </div>
 
                 {/* Reviewer Overall - read only */}
-                <div className="rounded-lg border border-purple-200 bg-purple-50/50 p-4 space-y-3">
+                <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
                   <div className="flex items-center gap-2">
-                    <Eye className="h-4 w-4 text-purple-600" />
-                    <h3 className="text-sm font-medium text-purple-900">Reviewer Overall Assessment</h3>
+                    <Eye className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-medium text-foreground">Reviewer Overall Assessment</h3>
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <Star className="h-4 w-4 text-amber-500" />
+                      <Star className="h-4 w-4 text-primary" />
                       <label className="text-sm font-medium text-foreground">Overall Rating</label>
                       {appraisal.reviewer_overall_rating && (
                         <Badge variant="outline" className="ml-auto">{appraisal.reviewer_overall_rating}/5</Badge>
@@ -304,8 +290,8 @@ const AppraisalView = () => {
                     </div>
                     <Slider min={1} max={5} step={1} value={appraisal.reviewer_overall_rating != null ? [appraisal.reviewer_overall_rating] : undefined} disabled className="opacity-70" />
                     <div>
-                      <label className="text-sm font-medium text-foreground flex items-center gap-2"><MessageSquare className="h-4 w-4 text-purple-600" /> Overall Comments</label>
-                      <Textarea rows={5} value={appraisal.reviewer_overall_comments ?? 'No comments provided'} disabled className="bg-white/50 border-purple-200 resize-none" />
+                      <label className="text-sm font-medium text-foreground flex items-center gap-2"><MessageSquare className="h-4 w-4 text-primary" /> Overall Comments</label>
+                      <Textarea rows={5} value={appraisal.reviewer_overall_comments ?? 'No comments provided'} disabled className="bg-card/50 border-border resize-none" />
                     </div>
                   </div>
                 </div>

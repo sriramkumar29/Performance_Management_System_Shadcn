@@ -23,12 +23,12 @@ function App() {
       <main className="px-3 sm:px-6 py-4 sm:py-6">
         <div className="container w-full">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-semibold text-gray-900">
+            <h1 className="text-2xl font-semibold text-foreground">
               Performance Management
             </h1>
             <CreateAppraisalButton />
           </div>
-          <div className="bg-white rounded-md border border-neutral-200 p-4 shadow-sm w-full">
+          <div className="bg-card rounded-md border border-border p-4 shadow-sm w-full">
             <Tabs defaultValue="my-appraisal" className="w-full">
               <div className="flex justify-center">
                 <TabsList>

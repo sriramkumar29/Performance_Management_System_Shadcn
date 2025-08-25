@@ -259,21 +259,21 @@ const TeamAppraisal = () => {
   }, [filteredTeamSearch.length, teamFilter, searchName, searchTypeId]);
 
   return (
-    <div className="space-y-6 text-neutral-800">
+    <div className="space-y-6 text-foreground">
       {/* Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="transition-all duration-200 hover:shadow-md lg:col-span-1">
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="h-4 w-4 text-blue-600" />
+              <Users className="h-4 w-4 icon-team-members" />
               Team Members
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-neutral-900">
+            <div className="text-xl sm:text-2xl font-bold text-foreground">
               {uniqueTeamCount}
             </div>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-muted-foreground">
               Direct reports in appraisals
             </p>
           </CardContent>
@@ -281,29 +281,29 @@ const TeamAppraisal = () => {
         <Card className="transition-all duration-200 hover:shadow-md">
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <FileEdit className="h-4 w-4 text-orange-600" />
+              <FileEdit className="h-4 w-4 icon-drafts" />
               Drafts
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-neutral-900">
+            <div className="text-xl sm:text-2xl font-bold text-foreground">
               {drafts.length}
             </div>
-            <p className="text-xs text-neutral-500">Editable appraisals</p>
+            <p className="text-xs text-muted-foreground">Editable appraisals</p>
           </CardContent>
         </Card>
         <Card className="transition-all duration-200 hover:shadow-md">
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Activity className="h-4 w-4 text-green-600" />
+              <Activity className="h-4 w-4 icon-active" />
               Active
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-neutral-900">
+            <div className="text-xl sm:text-2xl font-bold text-foreground">
               {active.length}
             </div>
-            <p className="text-xs text-neutral-500">In progress</p>
+            <p className="text-xs text-muted-foreground">In progress</p>
           </CardContent>
         </Card>
       </div>
@@ -315,7 +315,7 @@ const TeamAppraisal = () => {
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                <FileEdit className="h-5 w-5 text-orange-600" />
+                <FileEdit className="h-5 w-5 icon-drafts" />
                 Drafts
               </CardTitle>
               {drafts.length > 0 && (
@@ -362,44 +362,40 @@ const TeamAppraisal = () => {
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="animate-pulse">
-                    <div className="h-16 bg-neutral-200 rounded-lg"></div>
+                    <div className="h-16 bg-muted rounded-lg"></div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="space-y-3">
                 {drafts.length === 0 ? (
-                  <div className="text-center py-8 text-neutral-500">
-                    <FileEdit className="h-12 w-12 mx-auto mb-4 text-neutral-300" />
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileEdit className="h-12 w-12 mx-auto mb-4 icon-drafts" />
                     <p>No drafts</p>
                   </div>
                 ) : (
                   draftsPaged.map((a) => (
                     <div
                       key={a.appraisal_id}
-                      className="rounded-lg border border-neutral-200 bg-white p-3 sm:p-4 text-sm transition-all duration-200 hover:shadow-sm overflow-hidden"
+                      className="rounded-lg border border-border bg-card p-3 sm:p-4 text-sm transition-all duration-200 hover:shadow-sm overflow-hidden"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
                           <Avatar>
-                            <AvatarFallback className="bg-orange-100 text-orange-600">
+                            <AvatarFallback className="bg-primary/10 text-primary">
                               <UserRound className="h-4 w-4" />
                             </AvatarFallback>
                           </Avatar>
                           <div className="space-y-1 min-w-0">
-                            <div className="font-medium text-neutral-900 truncate">
-                              {empNameById(a.appraisee_id)} •{" "}
-                              {typeNameById(a.appraisal_type_id)}
+                            <div className="font-medium text-foreground truncate">
+                              {empNameById(a.appraisee_id)} • {typeNameById(a.appraisal_type_id)}
                             </div>
-                            <div className="text-sm text-neutral-500 flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {formatDate(a.start_date)} –{" "}
-                              {formatDate(a.end_date)}
+                            <div className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Calendar className="h-3 w-3 icon-due-date" />
+                              {formatDate(a.start_date)} – {formatDate(a.end_date)}
                             </div>
                             <div className="pt-1">
-                              <Badge variant="secondary">
-                                {displayStatus(a.status)}
-                              </Badge>
+                              <Badge variant="secondary">Draft</Badge>
                             </div>
                           </div>
                         </div>
@@ -430,7 +426,7 @@ const TeamAppraisal = () => {
           <CardHeader className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                <Activity className="h-5 w-5 text-blue-600" />
+                <Activity className="h-5 w-5 icon-team-appraisals" />
                 Team Appraisals
               </CardTitle>
               <div className="flex items-center gap-2">
@@ -575,22 +571,22 @@ const TeamAppraisal = () => {
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="animate-pulse">
-                    <div className="h-16 bg-neutral-200 rounded-lg"></div>
+                    <div className="h-16 bg-muted rounded-lg"></div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="space-y-3">
                 {filteredTeamSearch.length === 0 ? (
-                  <div className="text-center py-8 text-neutral-500">
-                    <Activity className="h-12 w-12 mx-auto mb-4 text-neutral-300" />
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Activity className="h-12 w-12 mx-auto mb-4 icon-team-appraisals" />
                     <p>No items</p>
                   </div>
                 ) : (
                   teamPaged.map((a) => (
                     <div
                       key={a.appraisal_id}
-                      className="rounded-lg border border-neutral-200 bg-white p-3 sm:p-4 text-sm transition-all duration-200 hover:shadow-sm overflow-hidden"
+                      className="rounded-lg border border-border bg-card p-3 sm:p-4 text-sm transition-all duration-200 hover:shadow-sm overflow-hidden"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
@@ -598,38 +594,28 @@ const TeamAppraisal = () => {
                             <AvatarFallback
                               className={
                                 a.status === "Complete"
-                                  ? "bg-green-100 text-green-600"
-                                  : "bg-blue-100 text-blue-600"
+                                  ? "bg-muted text-foreground"
+                                  : "bg-primary/10 text-primary"
                               }
                             >
                               <UserRound className="h-4 w-4" />
                             </AvatarFallback>
                           </Avatar>
                           <div className="space-y-1 min-w-0">
-                            <div className="font-medium text-neutral-900 truncate">
+                            <div className="font-medium text-foreground truncate">
                               {empNameById(a.appraisee_id)} •{" "}
                               {typeNameById(a.appraisal_type_id)}
                             </div>
-                            <div className="text-sm text-neutral-500 flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
+                            <div className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Calendar className="h-3 w-3 icon-due-date" />
                               {formatDate(a.start_date)} –{" "}
                               {formatDate(a.end_date)}
                             </div>
                             <div className="pt-1">
                               {a.status === "Complete" ? (
-                                <Badge
-                                  variant="default"
-                                  className="bg-green-100 text-green-800 border-green-200"
-                                >
-                                  Completed
-                                </Badge>
+                                <Badge variant="secondary">Completed</Badge>
                               ) : (
-                                <Badge
-                                  variant="default"
-                                  className="bg-blue-100 text-blue-800 border-blue-200"
-                                >
-                                  {displayStatus(a.status)}
-                                </Badge>
+                                <Badge variant="secondary">{displayStatus(a.status)}</Badge>
                               )}
                             </div>
                           </div>

@@ -1024,138 +1024,107 @@ const CreateAppraisal = () => {
       {/* Goals Section */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base sm:text-lg">Goals</CardTitle>
               <CardDescription className="text-sm sm:text-base">
-                Total weightage: {totalWeightageUi}%
-                {totalWeightageUi === 100 ? (
-                  <span className="ml-2 rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-700">
-                    Balanced
-                  </span>
-                ) : (
-                  <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-700">
-                    Should total 100%
-                  </span>
-                )}
+                Add goals, set importance and weightage. Total must be 100%.
               </CardDescription>
-              {isLocked && (
-                <div className="mt-1 text-xs text-amber-600">
-                  Goals are read-only in status: {createdAppraisalStatus}
-                </div>
-              )}
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="outline" className="hidden sm:inline-flex">
-                {Math.max(0, 100 - totalWeightageUi)}% left
-              </Badge>
+            <div className="hidden sm:flex gap-2">
+              <Button
+                size="sm"
+                onClick={() => setAddGoalModalOpen(true)}
+                disabled={!canAddGoals}
+                aria-label="Add goal"
+                title={addGoalDisabledReason}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="ml-2">Add Goal</span>
+              </Button>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setImportFromTemplateOpen(true)}
                 disabled={!canAddGoals}
-                className="border-primary text-primary hover:bg-primary/10 disabled:opacity-50"
-                title={addGoalDisabledReason}
                 aria-label="Import from templates"
-              >
-                <FolderOpen className="h-4 w-4" />
-                <span className="hidden sm:inline sm:ml-2">Import from Templates</span>
-              </Button>
-
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setAddGoalModalOpen(true)}
-                disabled={!canAddGoals}
-                className="border-primary text-primary hover:bg-primary/10 disabled:opacity-50"
                 title={addGoalDisabledReason}
-                aria-label="Add goal"
               >
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline sm:ml-2">Add Goal</span>
+                <FolderOpen className="h-4 w-4 text-icon" />
+                <span className="ml-2">Import from Templates</span>
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-4">
-            <Progress value={totalWeightageUi} />
-            <div className="mt-2 flex items-center justify-between text-sm text-muted-foreground">
-              <div>{Math.max(0, 100 - totalWeightageUi)}% remaining</div>
-              {totalWeightageUi > 100 && (
-                <span className="text-destructive">Exceeds 100%</span>
-              )}
-            </div>
-          </div>
-
           {goals.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {goals.map((record) => (
-                <Card
-                  key={record.id}
-                  className="hover:shadow-md h-full flex flex-col"
-                >
-                  <CardHeader className="p-4 pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <h4 className="font-semibold leading-snug line-clamp-2 text-sm sm:text-base">
-                        {record.goal.goal_title}
-                      </h4>
-                      <Badge
-                        variant="outline"
-                        className="shrink-0"
-                        title="Weightage"
-                      >
-                        {record.goal.goal_weightage}%
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0 flex-1">
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      {record.goal.goal_description}
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                      <Badge variant="outline" title="Category">
-                        {record.goal.category?.name || "Uncategorized"}
-                      </Badge>
-                      <Badge
-                        className={
-                          record.goal.goal_importance === "High"
-                            ? "border-transparent bg-red-500 text-white"
-                            : record.goal.goal_importance === "Medium"
-                            ? "border-transparent bg-orange-500 text-white"
-                            : "border-transparent bg-green-500 text-white"
-                        }
-                        title="Importance"
-                      >
-                        {record.goal.goal_importance}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="p-4 pt-0 flex justify-end gap-2">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      disabled={isLocked}
-                      onClick={() => handleEditGoal(record)}
-                      aria-label="Edit goal"
-                      title="Edit goal"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="destructive"
-                      disabled={isLocked}
-                      onClick={() => handleRemoveGoal(record.goal.goal_id)}
-                      aria-label="Remove goal"
-                      title="Remove goal"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
+            <>
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Total weightage</span>
+                  <span className="font-medium">{totalWeightageUi}%</span>
+                </div>
+              </div>
+              <Progress value={totalWeightageUi} />
+              <div className="mt-4 space-y-4">
+                {goals.map((record) => (
+                  <Card key={record.goal.goal_id}>
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-4">
+                      <div className="space-y-1">
+                        <CardTitle className="text-base">
+                          {record.goal.goal_title}
+                        </CardTitle>
+                        <CardDescription className="text-sm">
+                          {record.goal.goal_description}
+                        </CardDescription>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          {record.goal.category?.name ? (
+                            <Badge variant="outline">{record.goal.category.name}</Badge>
+                          ) : null}
+                          <Badge
+                            variant={
+                              record.goal.goal_importance === "High"
+                                ? "destructive"
+                                : record.goal.goal_importance === "Medium"
+                                ? "warning"
+                                : "success"
+                            }
+                            title="Importance"
+                          >
+                            {record.goal.goal_importance}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            Weightage: {record.goal.goal_weightage}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          disabled={isLocked}
+                          onClick={() => handleEditGoal(record)}
+                          aria-label="Edit goal"
+                          title="Edit goal"
+                        >
+                          <Pencil className="h-4 w-4 text-icon" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          disabled={isLocked}
+                          onClick={() => handleRemoveGoal(record.goal.goal_id)}
+                          aria-label="Remove goal"
+                          title="Remove goal"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                ))}
+              </div>
+            </>
           ) : (
             <div className="py-10 text-muted-foreground border border-dashed border-border rounded-lg">
               <div className="flex flex-col items-center">
@@ -1163,25 +1132,25 @@ const CreateAppraisal = () => {
                 <div className="mt-4 space-y-1 text-sm">
                   <div className="flex items-center gap-2">
                     {appraiseeSelected ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <CheckCircle2 className="h-4 w-4 text-[hsl(var(--success))]" />
                     ) : (
-                      <AlertCircle className="h-4 w-4 text-amber-600" />
+                      <AlertCircle className="h-4 w-4 text-[hsl(var(--warning))]" />
                     )}
                     <span>Employee selected</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {reviewerSelected ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <CheckCircle2 className="h-4 w-4 text-[hsl(var(--success))]" />
                     ) : (
-                      <AlertCircle className="h-4 w-4 text-amber-600" />
+                      <AlertCircle className="h-4 w-4 text-[hsl(var(--warning))]" />
                     )}
                     <span>Reviewer selected</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {typeSelected && periodSelected ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <CheckCircle2 className="h-4 w-4 text-[hsl(var(--success))]" />
                     ) : (
-                      <AlertCircle className="h-4 w-4 text-amber-600" />
+                      <AlertCircle className="h-4 w-4 text-[hsl(var(--warning))]" />
                     )}
                     <span>Appraisal type and period set</span>
                   </div>

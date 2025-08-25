@@ -159,7 +159,7 @@ const ReviewerEvaluation = () => {
 
   if (!appraisal)
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6" aria-busy={loading}>
+      <div className="min-h-screen bg-background p-6" aria-busy={loading}>
         <div className="max-w-4xl mx-auto">
           <Card className="glass-effect shadow-medium border-0 p-8 animate-fade-in">
             <div className="flex items-center justify-center h-32">
@@ -180,14 +180,14 @@ const ReviewerEvaluation = () => {
     );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6" aria-busy={loading}>
+    <div className="min-h-screen bg-background p-6" aria-busy={loading}>
       <div className="max-w-4xl mx-auto space-y-6">
         
         {/* Header Card */}
         <Card className="glass-effect shadow-medium border-0 p-6 animate-fade-in">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white">
+              <div className="p-3 rounded-xl bg-primary text-primary-foreground">
                 <Eye className="h-6 w-6" />
               </div>
               <div>
@@ -199,7 +199,7 @@ const ReviewerEvaluation = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Badge className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-3 py-1">
+              <Badge variant="secondary" className="px-3 py-1">
                 {appraisal.status}
               </Badge>
               <div className="text-right">
@@ -264,14 +264,14 @@ const ReviewerEvaluation = () => {
 
               <div className="grid gap-6">
                 {/* Self Assessment (read-only) */}
-                <div className="rounded-xl border border-blue-200 p-4 bg-blue-50/50">
+                <div className="rounded-xl border border-border p-4 bg-muted/40">
                   <div className="flex items-center gap-2 mb-4">
-                    <User className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-900">Employee Self Assessment</span>
+                    <User className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium text-foreground">Employee Self Assessment</span>
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <label className="text-xs font-medium text-blue-800 mb-2 block">
+                      <label className="text-xs font-medium text-foreground mb-2 block">
                         Self Rating: {current.self_rating || 'Not rated'}
                       </label>
                       <Slider
@@ -284,28 +284,28 @@ const ReviewerEvaluation = () => {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-blue-800 mb-2 block">
+                      <label className="text-xs font-medium text-foreground mb-2 block">
                         Self Comments
                       </label>
                       <Textarea
                         rows={3}
                         value={current.self_comment ?? "No comments provided"}
                         disabled
-                        className="bg-white/50 border-blue-200"
+                        className="bg-card/50 border-border"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Appraiser Evaluation (read-only) */}
-                <div className="rounded-xl border border-green-200 p-4 bg-green-50/50">
+                <div className="rounded-xl border border-border p-4 bg-muted/40">
                   <div className="flex items-center gap-2 mb-4">
-                    <UserCheck className="h-4 w-4 text-green-600" />
-                    <span className="text-sm font-medium text-green-900">Appraiser Evaluation</span>
+                    <UserCheck className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium text-foreground">Appraiser Evaluation</span>
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <label className="text-xs font-medium text-green-800 mb-2 block">
+                      <label className="text-xs font-medium text-foreground mb-2 block">
                         Appraiser Rating: {current.appraiser_rating || 'Not rated'}
                       </label>
                       <Slider
@@ -318,14 +318,14 @@ const ReviewerEvaluation = () => {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-green-800 mb-2 block">
+                      <label className="text-xs font-medium text-foreground mb-2 block">
                         Appraiser Comments
                       </label>
                       <Textarea
                         rows={4}
                         value={current.appraiser_comment ?? "No comments provided"}
                         disabled
-                        className="bg-white/50 border-green-200"
+                        className="bg-card/50 border-border"
                       />
                     </div>
                   </div>
@@ -353,7 +353,7 @@ const ReviewerEvaluation = () => {
                           i === idx
                             ? 'bg-primary'
                             : i < idx
-                            ? 'bg-green-500'
+                            ? 'bg-primary/60'
                             : 'bg-border'
                         }`}
                       />
@@ -363,7 +363,7 @@ const ReviewerEvaluation = () => {
 
                 <Button
                   onClick={handleNext}
-                  className="w-full sm:w-auto bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white flex items-center gap-2"
+                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2"
                 >
                   {idx === total - 1 ? "Overall Review" : "Next Goal"}
                   <ChevronRight className="h-4 w-4" />
@@ -378,7 +378,7 @@ const ReviewerEvaluation = () => {
           <Card className="glass-effect shadow-medium border-0 p-6 animate-fade-in">
             <div className="space-y-6">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white">
+                <div className="p-3 rounded-xl bg-primary text-primary-foreground">
                   <Star className="h-6 w-6" />
                 </div>
                 <div>
@@ -388,14 +388,14 @@ const ReviewerEvaluation = () => {
               </div>
 
               {/* Appraiser Overall - read only */}
-              <div className="rounded-xl border border-green-200 p-5 bg-green-50/50">
+              <div className="rounded-xl border border-border p-5 bg-muted/40">
                 <div className="flex items-center gap-2 mb-4">
-                  <UserCheck className="h-5 w-5 text-green-600" />
-                  <span className="text-lg font-semibold text-green-900">Appraiser Overall Assessment</span>
+                  <UserCheck className="h-5 w-5 text-primary" />
+                  <span className="text-lg font-semibold text-foreground">Appraiser Overall Assessment</span>
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-green-800 mb-3 block">
+                    <label className="text-sm font-medium text-foreground mb-3 block">
                       Overall Rating: {appraisal.appraiser_overall_rating || 'Not provided'}
                     </label>
                     <Slider
@@ -408,28 +408,28 @@ const ReviewerEvaluation = () => {
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-green-800 mb-3 block">
+                    <label className="text-sm font-medium text-foreground mb-3 block">
                       Overall Comments
                     </label>
                     <Textarea
                       rows={4}
                       value={appraisal.appraiser_overall_comments ?? "No comments provided"}
                       disabled
-                      className="bg-white/50 border-green-200"
+                      className="bg-card/50 border-border"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Reviewer Overall - inputs */}
-              <div className="rounded-xl border border-purple-200 p-5 bg-purple-50/50">
+              <div className="rounded-xl border border-border p-5 bg-muted/40">
                 <div className="flex items-center gap-2 mb-4">
-                  <Eye className="h-5 w-5 text-purple-600" />
-                  <span className="text-lg font-semibold text-purple-900">Your Reviewer Assessment</span>
+                  <Eye className="h-5 w-5 text-primary" />
+                  <span className="text-lg font-semibold text-foreground">Your Reviewer Assessment</span>
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-purple-800 mb-3 block">
+                    <label className="text-sm font-medium text-foreground mb-3 block">
                       Overall Rating (1-5): {overall.rating || 'Please select'}
                     </label>
                     <Slider
@@ -442,7 +442,7 @@ const ReviewerEvaluation = () => {
                       }
                       className="mb-2"
                     />
-                    <div className="flex justify-between text-xs text-purple-600">
+                    <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Poor</span>
                       <span>Below Average</span>
                       <span>Average</span>
@@ -451,7 +451,7 @@ const ReviewerEvaluation = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-purple-800 mb-3 flex items-center gap-2">
+                    <label className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
                       <MessageSquare className="h-4 w-4" />
                       Overall Comments
                     </label>
@@ -462,9 +462,9 @@ const ReviewerEvaluation = () => {
                       onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                         setOverall((p) => ({ ...p, comment: e.target.value }))
                       }
-                      className="bg-white border-purple-200 focus:ring-2 focus:ring-purple-200 resize-none"
+                      className="bg-card border-border focus:ring-2 focus:ring-primary/30 resize-none"
                     />
-                    <div className="text-xs text-purple-600 mt-2">
+                    <div className="text-xs text-muted-foreground mt-2">
                       {overall.comment.length} characters
                     </div>
                   </div>
@@ -492,7 +492,7 @@ const ReviewerEvaluation = () => {
                           i === idx
                             ? 'bg-primary'
                             : i < idx
-                            ? 'bg-green-500'
+                            ? 'bg-primary/60'
                             : 'bg-border'
                         }`}
                       />
@@ -503,7 +503,7 @@ const ReviewerEvaluation = () => {
                 <Button
                   onClick={handleSubmit}
                   disabled={loading || !validateOverall()}
-                  className="w-full sm:w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white flex items-center gap-2 px-6 py-2 shadow-lg"
+                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2 px-6 py-2 shadow-lg"
                 >
                   <CheckCircle2 className="h-4 w-4" />
                   {loading ? 'Submitting...' : 'Submit & Complete'}

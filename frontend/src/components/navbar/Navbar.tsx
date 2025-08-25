@@ -1,4 +1,4 @@
-import { LogOut } from "lucide-react";
+import { LogOut, Sun, Moon } from "lucide-react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import {
   DropdownMenu,
@@ -10,13 +10,16 @@ import {
 } from "../ui/dropdown-menu";
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-// ThemeToggle removed to enforce global light theme
+import { useTheme } from '../../contexts/ThemeContext'
+import { Button } from "../ui/button"
+// Theme toggle re-enabled with dark mode support
 
  
 
 const Navbar = () => {
   const { user: authUser, logout } = useAuth()
   const navigate = useNavigate()
+  const { isDarkMode, toggleTheme } = useTheme()
 
   const handleSignOut = () => {
     logout()
@@ -26,26 +29,40 @@ const Navbar = () => {
     <header className="w-full sticky top-0 z-50 glass-effect border-t-2 border-t-primary shadow-medium">
       <div className="container h-14 sm:h-16 flex items-center justify-between">
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">PM</span>
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <span className="text-primary-foreground font-bold text-sm">PM</span>
           </div>
-          <h1 className="text-sm sm:text-lg lg:text-xl font-bold text-gradient hidden sm:block">
+          <h1 className="text-sm sm:text-lg lg:text-xl font-bold text-foreground hidden sm:block">
             Performance Management
           </h1>
-          <h1 className="text-sm font-bold text-gradient sm:hidden">
+          <h1 className="text-sm font-bold text-foreground sm:hidden">
             PM
           </h1>
         </div>
         
         <div className="flex items-center gap-2 sm:gap-4">
-          
+          {/* Theme toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+            title={isDarkMode ? "Light mode" : "Dark mode"}
+            onClick={toggleTheme}
+            className="rounded-lg"
+          >
+            {isDarkMode ? (
+              <Sun className="h-5 w-5 text-icon" />
+            ) : (
+              <Moon className="h-5 w-5 text-icon" />
+            )}
+          </Button>
 
           {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 rounded-xl ring-1 ring-border hover:ring-primary/50 hover:bg-primary/5 px-2 py-1.5 transition-all">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-gradient-to-br from-primary to-blue-600 text-white text-sm font-medium">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
                     {authUser?.emp_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'U'}
                   </AvatarFallback>
                 </Avatar>
@@ -63,7 +80,7 @@ const Navbar = () => {
               <DropdownMenuLabel>
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-gradient-to-br from-primary to-blue-600 text-white font-medium">
+                    <AvatarFallback className="bg-primary text-primary-foreground font-medium">
                       {authUser?.emp_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'U'}
                     </AvatarFallback>
                   </Avatar>
@@ -81,7 +98,7 @@ const Navbar = () => {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut} className="hover:bg-red-50 focus:bg-red-50 text-red-600">
+              <DropdownMenuItem onClick={handleSignOut} className="text-destructive hover:bg-destructive/10 focus:bg-destructive/10">
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Sign out</span>
               </DropdownMenuItem>

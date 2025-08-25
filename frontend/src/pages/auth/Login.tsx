@@ -52,18 +52,18 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 animate-fade-in">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 animate-fade-in">
       <div className="w-full max-w-md">
         
 
         {/* Login Card */}
         <Card className="shadow-medium border-0 glass-effect animate-slide-up">
           <CardHeader className="text-center space-y-4 pb-6">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <LogIn className="h-8 w-8 text-white" />
+            <div className="mx-auto w-16 h-16 bg-primary text-primary-foreground rounded-2xl flex items-center justify-center shadow-lg">
+              <LogIn className="h-8 w-8" />
             </div>
             <div className="space-y-2">
-              <CardTitle className="text-2xl lg:text-3xl font-bold text-gradient">
+              <CardTitle className="text-2xl lg:text-3xl font-bold text-foreground">
                 Performance Management
               </CardTitle>
               <p className="text-muted-foreground">Welcome back! Please sign in to continue</p>
@@ -89,7 +89,7 @@ const Login = () => {
                   />
                 </div>
                 {errors.email && (
-                  <div className="flex items-center gap-2 text-sm text-red-600">
+                  <div className="flex items-center gap-2 text-sm text-destructive">
                     <AlertCircle className="h-4 w-4" />
                     {errors.email}
                   </div>
@@ -112,7 +112,7 @@ const Login = () => {
                   />
                 </div>
                 {errors.password && (
-                  <div className="flex items-center gap-2 text-sm text-red-600">
+                  <div className="flex items-center gap-2 text-sm text-destructive">
                     <AlertCircle className="h-4 w-4" />
                     {errors.password}
                   </div>
@@ -121,7 +121,7 @@ const Login = () => {
               <Button
                 type="submit"
                 disabled={status === 'loading'}
-                className="w-full h-12 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white font-medium transition-all duration-200 transform hover:scale-[1.02] shadow-lg"
+                className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-all duration-200 transform hover:scale-[1.02] shadow-lg"
               >
                 {status === 'loading' ? (
                   <>
