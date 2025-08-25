@@ -13,6 +13,7 @@ import {
   SelectItem,
 } from '../../components/ui/select'
 import { Edit3, Target, Weight, Save } from 'lucide-react'
+import { X } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface EditGoalModalProps {
@@ -169,23 +170,26 @@ const EditGoalModal = ({ open, onClose, onGoalUpdated, goalData, remainingWeight
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleCancel() }}>
-      <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto nice-scrollbar p-4 sm:p-6 shadow-medium border-0 glass-effect">
-        <DialogHeader className="pb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-100">
-              <Edit3 className="h-5 w-5 text-blue-600" />
+      <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto nice-scrollbar p-4 sm:p-6">
+        <DialogHeader className="pb-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Edit3 className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-semibold text-foreground">Edit Goal</DialogTitle>
+              <DialogTitle className="text-lg sm:text-xl font-semibold text-foreground">Edit Goal</DialogTitle>
               <p className="text-sm text-muted-foreground mt-1">Update the performance goal details</p>
+            </div>
+            <div className="text-xs text-muted-foreground ml-auto">
+              Remaining: <span className="font-medium">{maxWeightage}%</span>
             </div>
           </div>
         </DialogHeader>
 
         
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid gap-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="rounded-md border p-4 space-y-4">
+            <div className="grid gap-4">
             <div className="space-y-2">
               <Label htmlFor="goal_title" className="text-sm font-medium text-foreground flex items-center gap-2">
                 <Target className="h-4 w-4 text-primary" />
@@ -290,32 +294,38 @@ const EditGoalModal = ({ open, onClose, onGoalUpdated, goalData, remainingWeight
               />
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">
-                  Available weightage: <span className="font-medium text-foreground">{maxWeightage}%</span>
+                  Remaining weightage: <span className="font-medium text-foreground">{maxWeightage}%</span>
                 </span>
                 {maxWeightage <= 0 && (
-                  <span className="text-red-600 font-medium">No weightage available</span>
+                  <span className="text-red-600 font-medium">No weightage remaining</span>
                 )}
               </div>
             </div>
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-border/50">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={handleCancel} 
+          <div className="flex flex-col sm:flex-row justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancel}
               disabled={loading}
               className="w-full sm:w-auto"
+              title="Cancel"
+              aria-label="Cancel"
             >
-              Cancel
+              <X className="hidden sm:inline h-4 w-4 sm:mr-2" />
+              <span className="sm:ml-2">Cancel</span>
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg"
+              className="w-full sm:w-auto"
+              title="Update goal"
+              aria-label="Update goal"
             >
-              <Save className="h-4 w-4 mr-2" />
-              Update Goal
+              <Save className="hidden sm:inline h-4 w-4 sm:mr-2" />
+              <span className="sm:ml-2">Update Goal</span>
             </Button>
           </div>
         </form>

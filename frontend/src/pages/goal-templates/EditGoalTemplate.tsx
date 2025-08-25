@@ -171,10 +171,9 @@ const EditGoalTemplate = () => {
         </div>
         <div className="flex items-center">
           <Button
-            variant="outline"
             size="sm"
             onClick={() => navigate('/')}
-            className="flex items-center gap-2"
+            className="hidden sm:inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
             aria-label="Home"
             title="Home"
           >
@@ -235,9 +234,9 @@ const EditGoalTemplate = () => {
                   <SelectValue placeholder="Select importance level" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="High">High</SelectItem>
-                  <SelectItem value="Medium">Medium</SelectItem>
-                  <SelectItem value="Low">Low</SelectItem>
+                  <SelectItem value="High">🔴 High Priority</SelectItem>
+                  <SelectItem value="Medium">🟡 Medium Priority</SelectItem>
+                  <SelectItem value="Low">🟢 Low Priority</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -320,6 +319,16 @@ const EditGoalTemplate = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Mobile-only floating Home button for better discoverability */}
+      <Button
+        onClick={() => navigate('/')}
+        title="Home"
+        aria-label="Home"
+        className="sm:hidden fixed bottom-20 right-4 z-50 rounded-full h-12 w-12 p-0 bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30"
+      >
+        <Home className="h-5 w-5" />
+      </Button>
     </div>
   )
 }

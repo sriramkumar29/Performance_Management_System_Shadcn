@@ -19,6 +19,7 @@ import {
   User,
   UserCheck,
   Eye,
+  Home,
 } from 'lucide-react'
 
 interface GoalCategory { id: number; name: string }
@@ -316,7 +317,15 @@ const AppraisalView = () => {
                   <ChevronLeft className="h-4 w-4 mr-2" />
                   Previous Goal
                 </Button>
-                <Button className="w-full sm:w-auto bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white shadow-lg" onClick={() => navigate('/')}>Go Home</Button>
+                <Button
+                  onClick={() => navigate('/')}
+                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2"
+                  aria-label="Home"
+                  title="Home"
+                >
+                  <Home className="h-4 w-4" />
+                  <span className="hidden sm:inline">Go Home</span>
+                </Button>
               </div>
             </CardContent>
           </Card>

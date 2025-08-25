@@ -9,9 +9,9 @@
     variants: {
       variant: {
          // default visual primary
-         default: "bg-primary text-primary-foreground hover:opacity-90",
+         default: "bg-primary text-primary-foreground hover:bg-primary/90",
          // safe alias; some pages may use variant=\"primary\"
-         primary: "bg-primary text-primary-foreground hover:opacity-90",
+         primary: "bg-primary text-primary-foreground hover:bg-primary/90",
         secondary: "bg-secondary text-secondary-foreground hover:bg-muted",
         outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         ghost: "hover:bg-accent hover:text-accent-foreground",

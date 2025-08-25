@@ -1117,11 +1117,6 @@ const CreateAppraisal = () => {
                       <Badge variant="outline" title="Category">
                         {record.goal.category?.name || "Uncategorized"}
                       </Badge>
-                      <Badge variant="outline" title="Performance Factor">
-                        Perf: {record.goal.goal_performance_factor}
-                      </Badge>
-                    </div>
-                    <div className="mt-3">
                       <Badge
                         className={
                           record.goal.goal_importance === "High"

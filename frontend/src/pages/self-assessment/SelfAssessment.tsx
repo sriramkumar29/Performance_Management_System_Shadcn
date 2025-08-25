@@ -15,7 +15,8 @@ import {
   Star, 
   ChevronLeft, 
   ChevronRight, 
-  Send
+  Send,
+  Home
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -163,6 +164,15 @@ const SelfAssessment = () => {
           <div className="h-96 bg-slate-200 rounded-xl"></div>
         </div>
       </div>
+      {/* Mobile-only floating Home button for better discoverability */}
+      <Button
+        onClick={() => navigate('/')}
+        title="Home"
+        aria-label="Home"
+        className="sm:hidden fixed bottom-20 right-4 z-50 rounded-full h-12 w-12 p-0 bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30"
+      >
+        <Home className="h-5 w-5" />
+      </Button>
     </div>
   )
 
@@ -198,6 +208,15 @@ const SelfAssessment = () => {
                     {Math.round(progressPercentage)}% Complete
                   </div>
                 </div>
+                <Button
+                  onClick={() => navigate('/')}
+                  title="Home"
+                  aria-label="Home"
+                  className="ml-1 hidden sm:inline-flex bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  <Home className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-2">Home</span>
+                </Button>
               </div>
             </div>
             <Progress value={progressPercentage} className="h-2 mt-4" />
@@ -350,6 +369,16 @@ const SelfAssessment = () => {
           </Card>
         )}
       </div>
+
+      {/* Mobile-only floating Home button for better discoverability */}
+      <Button
+        onClick={() => navigate('/')}
+        title="Home"
+        aria-label="Home"
+        className="sm:hidden fixed bottom-20 right-4 z-50 rounded-full h-12 w-12 p-0 bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30"
+      >
+        <Home className="h-5 w-5" />
+      </Button>
     </div>
   )
 }
