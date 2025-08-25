@@ -197,7 +197,7 @@ const SelfAssessment = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Badge variant="outline" className="px-3 py-1 text-sm font-medium">
+                <Badge variant="outline" className="px-3 py-1 text-sm font-medium bg-purple-50 text-purple-700 border-purple-200">
                   {appraisal.status}
                 </Badge>
                 <div className="text-right">
@@ -246,7 +246,7 @@ const SelfAssessment = () => {
                       <span>Weightage: {current.goal.goal_weightage}%</span>
                     </div>
                     {current.goal.category && (
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="secondary" className="text-xs bg-indigo-100 text-indigo-700 border-indigo-200">
                         {current.goal.category.name}
                       </Badge>
                     )}
@@ -264,7 +264,7 @@ const SelfAssessment = () => {
                     Your Rating (1-5)
                   </label>
                   {form[current.goal.goal_id]?.rating && (
-                    <Badge variant="outline" className="ml-auto">
+                    <Badge variant="outline" className="ml-auto bg-emerald-50 text-emerald-700 border-emerald-200">
                       {form[current.goal.goal_id]?.rating}/5
                     </Badge>
                   )}

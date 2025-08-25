@@ -293,14 +293,13 @@ const EditGoalTemplate = () => {
             )}
             <div className="flex flex-wrap gap-2 mt-2">
               {categories.map((c) => (
-                <Badge key={c} variant="outline" className="flex items-center gap-2">
+                <Badge key={c} variant="outline" className="flex items-center gap-2 bg-rose-50 text-rose-700 border-rose-200">
                   {c}
                   <button
                     type="button"
-                    className="text-xs text-muted-foreground hover:text-foreground"
                     onClick={() => removeCategory(c)}
-                    disabled={loading || saving}
-                    aria-label={`Remove category ${c}`}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label={`Remove ${c} category`}
                   >
                     ×
                   </button>

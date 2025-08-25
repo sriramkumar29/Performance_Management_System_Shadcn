@@ -256,7 +256,7 @@ const AppraiserEvaluation = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Badge variant="outline" className="px-3 py-1 text-sm font-medium">
+                <Badge variant="outline" className="px-3 py-1 text-sm font-medium bg-teal-50 text-teal-700 border-teal-200">
                   {appraisal.status}
                 </Badge>
                 <div className="text-right">
@@ -305,7 +305,7 @@ const AppraiserEvaluation = () => {
                       <span>Weightage: {current.goal.goal_weightage}%</span>
                     </div>
                     {current.goal.category && (
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="secondary" className="text-xs bg-pink-100 text-pink-700 border-pink-200">
                         {current.goal.category.name}
                       </Badge>
                     )}
@@ -379,7 +379,7 @@ const AppraiserEvaluation = () => {
                     <Star className="h-4 w-4 text-primary" />
                     <label className="text-sm font-medium text-foreground">Your Rating (1-5)</label>
                     {form[current.goal.goal_id]?.rating && (
-                      <Badge variant="outline" className="ml-auto">
+                      <Badge variant="outline" className="ml-auto bg-lime-50 text-lime-700 border-lime-200">
                         {form[current.goal.goal_id]?.rating}/5
                       </Badge>
                     )}

@@ -46,7 +46,12 @@ type Appraisal = {
   status: string;
 };
 
-type Employee = { emp_id: number; emp_name: string; emp_roles?: string };
+type Employee = {
+  emp_id: number;
+  emp_name: string;
+  emp_roles?: string;
+  emp_reporting_manager_id?: number | null;
+};
 type AppraisalType = { id: number; name: string };
 
 const TeamAppraisal = () => {
@@ -159,9 +164,13 @@ const TeamAppraisal = () => {
         a.reviewer_id === (user?.emp_id || -1))
   );
 
-  const uniqueTeamCount = useMemo(
-    () => new Set(appraisalsInPeriod.map((a) => a.appraisee_id)).size,
-    [appraisalsInPeriod]
+  // Number of direct reports under current manager (org structure)
+  const directReportsCount = useMemo(
+    () =>
+      employees.filter(
+        (e) => e.emp_reporting_manager_id === (user?.emp_id || -1)
+      ).length,
+    [employees, user?.emp_id]
   );
 
   // Combined list (Active + Completed) with filter controls
@@ -269,12 +278,12 @@ const TeamAppraisal = () => {
               Team Members
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="text-left">
             <div className="text-xl sm:text-2xl font-bold text-foreground">
-              {uniqueTeamCount}
+              {directReportsCount}
             </div>
             <p className="text-xs text-muted-foreground">
-              Direct reports in appraisals
+              Employees reporting to you
             </p>
           </CardContent>
         </Card>
@@ -285,7 +294,7 @@ const TeamAppraisal = () => {
               Drafts
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="text-left">
             <div className="text-xl sm:text-2xl font-bold text-foreground">
               {drafts.length}
             </div>
@@ -299,7 +308,7 @@ const TeamAppraisal = () => {
               Active
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="text-left">
             <div className="text-xl sm:text-2xl font-bold text-foreground">
               {active.length}
             </div>
@@ -335,7 +344,8 @@ const TeamAppraisal = () => {
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
                   <span className="hidden sm:inline px-2 text-xs font-medium text-muted-foreground">
-                    Page {draftsPage} <span className="mx-1">/</span> {draftsTotalPages}
+                    Page {draftsPage} <span className="mx-1">/</span>{" "}
+                    {draftsTotalPages}
                   </span>
                   <span className="sr-only sm:hidden">
                     Page {draftsPage} of {draftsTotalPages}
@@ -388,14 +398,16 @@ const TeamAppraisal = () => {
                           </Avatar>
                           <div className="space-y-1 min-w-0">
                             <div className="font-medium text-foreground truncate">
-                              {empNameById(a.appraisee_id)} • {typeNameById(a.appraisal_type_id)}
+                              {empNameById(a.appraisee_id)} •{" "}
+                              {typeNameById(a.appraisal_type_id)}
                             </div>
                             <div className="text-sm text-muted-foreground flex items-center gap-1">
                               <Calendar className="h-3 w-3 icon-due-date" />
-                              {formatDate(a.start_date)} – {formatDate(a.end_date)}
+                              {formatDate(a.start_date)} –{" "}
+                              {formatDate(a.end_date)}
                             </div>
                             <div className="pt-1">
-                              <Badge variant="secondary">Draft</Badge>
+                              <Badge variant="outline" className="border-orange-200 text-orange-700 bg-orange-50">Draft</Badge>
                             </div>
                           </div>
                         </div>
@@ -464,7 +476,8 @@ const TeamAppraisal = () => {
                       <ArrowLeft className="h-4 w-4" />
                     </Button>
                     <span className="hidden sm:inline px-2 text-xs font-medium text-muted-foreground">
-                      Page {teamPage} <span className="mx-1">/</span> {teamTotalPages}
+                      Page {teamPage} <span className="mx-1">/</span>{" "}
+                      {teamTotalPages}
                     </span>
                     <span className="sr-only sm:hidden">
                       Page {teamPage} of {teamTotalPages}
@@ -613,9 +626,11 @@ const TeamAppraisal = () => {
                             </div>
                             <div className="pt-1">
                               {a.status === "Complete" ? (
-                                <Badge variant="secondary">Completed</Badge>
+                                <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">Completed</Badge>
                               ) : (
-                                <Badge variant="secondary">{displayStatus(a.status)}</Badge>
+                                <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200">
+                                  {displayStatus(a.status)}
+                                </Badge>
                               )}
                             </div>
                           </div>

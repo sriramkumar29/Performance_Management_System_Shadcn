@@ -199,7 +199,7 @@ const ReviewerEvaluation = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Badge variant="secondary" className="px-3 py-1">
+              <Badge variant="secondary" className="px-3 py-1 bg-violet-100 text-violet-800 border-violet-200">
                 {appraisal.status}
               </Badge>
               <div className="text-right">
@@ -253,7 +253,7 @@ const ReviewerEvaluation = () => {
                     </span>
                     {current.goal.category && (
                       <span className="flex items-center gap-1">
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs bg-cyan-50 text-cyan-700 border-cyan-200">
                           {current.goal.category.name}
                         </Badge>
                       </span>

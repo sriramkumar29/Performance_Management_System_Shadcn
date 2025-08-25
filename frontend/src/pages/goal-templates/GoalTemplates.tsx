@@ -164,14 +164,14 @@ const GoalTemplates = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 mb-2">
                           <h3 className="font-semibold text-lg truncate">{t.temp_title}</h3>
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 border-amber-200">
                             {t.temp_weightage}% Weight
                           </Badge>
                         </div>
                         <p className="text-muted-foreground mb-3 line-clamp-2">{t.temp_description}</p>
                         <div className="flex flex-wrap gap-2 mb-3">
                           {t.categories?.map(c => (
-                            <Badge key={c.id} variant="outline" className="text-xs">
+                            <Badge key={c.id} variant="outline" className="text-xs bg-slate-50 text-slate-700 border-slate-200">
                               {c.name}
                             </Badge>
                           ))}
