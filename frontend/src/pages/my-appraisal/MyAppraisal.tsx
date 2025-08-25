@@ -112,8 +112,6 @@ const MyAppraisal = () => {
   const activeStatuses = new Set<string>([
     'Submitted',
     'Appraisee Self Assessment',
-    'Appraiser Evaluation',
-    'Reviewer Evaluation',
   ])
   const upcomingActive = (appraisals || []).filter(a => {
     const end = new Date(a.end_date)
@@ -123,7 +121,7 @@ const MyAppraisal = () => {
     const activeSoonest = [...upcomingActive]
       .sort((a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime())[0]
     if (activeSoonest) return activeSoonest
-    // Fallback: most recent in period (including completed)
+    // Fallback: most recent in period among allowed statuses
     const inPeriod = (period.startDate && period.endDate)
       ? appraisals.filter(
           (a) =>
@@ -131,7 +129,13 @@ const MyAppraisal = () => {
             new Date(a.start_date) <= new Date(period.endDate!)
         )
       : appraisals
-    const latest = [...inPeriod]
+    const allowedForOverview = inPeriod.filter(
+      (a) =>
+        a.status === 'Submitted' ||
+        a.status === 'Appraisee Self Assessment' ||
+        a.status === 'Complete'
+    )
+    const latest = [...allowedForOverview]
       .sort((a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())[0]
     return latest || null
   }, [upcomingActive, period, appraisals])
@@ -149,9 +153,7 @@ const MyAppraisal = () => {
       appraisalsInPeriod.filter(
         (a) =>
           a.status === 'Submitted' ||
-          a.status === 'Appraisee Self Assessment' ||
-          a.status === 'Appraiser Evaluation' ||
-          a.status === 'Reviewer Evaluation'
+          a.status === 'Appraisee Self Assessment'
       ),
     [appraisalsInPeriod]
   )
@@ -481,18 +483,7 @@ const MyAppraisal = () => {
                             <ArrowRight className="h-4 w-4 sm:ml-2" />
                           </Button>
                         ) : null}
-                        {(a.status === 'Appraiser Evaluation' || a.status === 'Reviewer Evaluation') && (
-                          <Button
-                            variant="outline"
-                            onClick={() => navigate(`/appraisal/${a.appraisal_id}`)}
-                            className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
-                            aria-label="View appraisal"
-                            title="View appraisal"
-                          >
-                            <span className="hidden sm:inline">View</span>
-                            <ArrowRight className="h-4 w-4 sm:ml-2" />
-                          </Button>
-                        )}
+                        
                       </div>
                     </div>
                   </div>
