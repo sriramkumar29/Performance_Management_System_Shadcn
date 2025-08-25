@@ -154,28 +154,34 @@ const EditGoalTemplate = () => {
 
   return (
     <div className="mx-auto max-w-4xl p-4 sm:p-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+      <div className="flex items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3 sm:gap-4">
           <Button
             variant="outline"
             size="sm"
             onClick={() => navigate('/goal-templates')}
             className="flex items-center gap-2"
+            aria-label="Back"
+            title="Back"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back
+            <span className="hidden sm:inline sm:ml-2">Back</span>
           </Button>
+          <h1 className="text-2xl font-bold">{isEdit ? 'Edit Goal Template' : 'Create Template'}</h1>
+        </div>
+        <div className="flex items-center">
           <Button
             variant="outline"
             size="sm"
             onClick={() => navigate('/')}
             className="flex items-center gap-2"
+            aria-label="Home"
+            title="Home"
           >
             <Home className="h-4 w-4" />
-            Home
+            <span className="hidden sm:inline sm:ml-2">Home</span>
           </Button>
         </div>
-        <h1 className="text-2xl font-bold">{isEdit ? 'Edit Goal Template' : 'Create Template'}</h1>
       </div>
 
       <Card className="shadow-lg">

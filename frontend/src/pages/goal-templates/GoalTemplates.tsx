@@ -72,24 +72,31 @@ const GoalTemplates = () => {
 
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+      <div className="flex items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3 sm:gap-4">
           <Button
             variant="outline"
             size="sm"
             onClick={() => navigate('/')}
             className="flex items-center gap-2"
+            aria-label="Back"
+            title="Back"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back
+            <span className="hidden sm:inline sm:ml-2">Back</span>
           </Button>
           <h1 className="text-2xl font-bold">Manage Goal Templates</h1>
         </div>
-        <div className="flex items-center gap-2 sm:self-auto self-stretch">
+        <div className="flex items-center gap-2">
           {isManagerOrAbove(user?.emp_roles, user?.emp_roles_level) && (
-            <Button onClick={() => navigate('/goal-templates/new')} className="flex items-center gap-2">
+            <Button
+              onClick={() => navigate('/goal-templates/new')}
+              className="flex items-center gap-2"
+              aria-label="Create Template"
+              title="Create Template"
+            >
               <Plus className="h-4 w-4" />
-              Create Template
+              <span className="hidden sm:inline sm:ml-2">Create Template</span>
             </Button>
           )}
         </div>
@@ -181,9 +188,11 @@ const GoalTemplates = () => {
                             variant="outline"
                             onClick={() => navigate(`/goal-templates/${t.temp_id}/edit`)}
                             className="flex items-center gap-2"
+                            aria-label="Edit template"
+                            title="Edit template"
                           >
                             <Edit className="h-4 w-4" aria-hidden="true" />
-                            Edit
+                            <span className="hidden sm:inline sm:ml-2">Edit</span>
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -192,9 +201,11 @@ const GoalTemplates = () => {
                                 variant="destructive"
                                 disabled={deletingId === t.temp_id}
                                 className="flex items-center gap-2"
+                                aria-label={deletingId === t.temp_id ? 'Deleting…' : 'Delete template'}
+                                title={deletingId === t.temp_id ? 'Deleting…' : 'Delete template'}
                               >
                                 <Trash2 className="h-4 w-4" aria-hidden="true" />
-                                {deletingId === t.temp_id ? 'Deleting…' : 'Delete'}
+                                <span className="hidden sm:inline sm:ml-2">{deletingId === t.temp_id ? 'Deleting…' : 'Delete'}</span>
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
