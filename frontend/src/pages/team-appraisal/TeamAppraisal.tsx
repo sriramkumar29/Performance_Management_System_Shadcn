@@ -319,22 +319,29 @@ const TeamAppraisal = () => {
                 Drafts
               </CardTitle>
               {drafts.length > 0 && (
-                <div className="flex items-center gap-2">
+                <div
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-background/60 px-1.5 py-1 shadow-sm backdrop-blur"
+                  aria-live="polite"
+                >
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="icon"
                     onClick={() => setDraftsPage((p) => Math.max(1, p - 1))}
                     disabled={draftsPage <= 1}
                     aria-label="Previous page"
                     title="Previous page"
+                    className="rounded-full hover:bg-primary/10"
                   >
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
-                  <span className="text-sm text-neutral-600">
+                  <span className="hidden sm:inline px-2 text-xs font-medium text-muted-foreground">
+                    Page {draftsPage} <span className="mx-1">/</span> {draftsTotalPages}
+                  </span>
+                  <span className="sr-only sm:hidden">
                     Page {draftsPage} of {draftsTotalPages}
                   </span>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="icon"
                     onClick={() =>
                       setDraftsPage((p) => Math.min(draftsTotalPages, p + 1))
@@ -342,6 +349,7 @@ const TeamAppraisal = () => {
                     disabled={draftsPage >= draftsTotalPages}
                     aria-label="Next page"
                     title="Next page"
+                    className="rounded-full hover:bg-primary/10"
                   >
                     <ArrowRight className="h-4 w-4" />
                   </Button>
@@ -444,22 +452,29 @@ const TeamAppraisal = () => {
                   />
                 </Button>
                 {filteredTeamSearch.length > 0 && (
-                  <div className="flex items-center gap-2">
+                  <div
+                    className="inline-flex items-center gap-1 rounded-full border border-border bg-background/60 px-1.5 py-1 shadow-sm backdrop-blur"
+                    aria-live="polite"
+                  >
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="icon"
                       onClick={() => setTeamPage((p) => Math.max(1, p - 1))}
                       disabled={teamPage <= 1}
                       aria-label="Previous page"
                       title="Previous page"
+                      className="rounded-full hover:bg-primary/10"
                     >
                       <ArrowLeft className="h-4 w-4" />
                     </Button>
-                    <span className="text-sm text-neutral-600">
+                    <span className="hidden sm:inline px-2 text-xs font-medium text-muted-foreground">
+                      Page {teamPage} <span className="mx-1">/</span> {teamTotalPages}
+                    </span>
+                    <span className="sr-only sm:hidden">
                       Page {teamPage} of {teamTotalPages}
                     </span>
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="icon"
                       onClick={() =>
                         setTeamPage((p) => Math.min(teamTotalPages, p + 1))
@@ -467,6 +482,7 @@ const TeamAppraisal = () => {
                       disabled={teamPage >= teamTotalPages}
                       aria-label="Next page"
                       title="Next page"
+                      className="rounded-full hover:bg-primary/10"
                     >
                       <ArrowRight className="h-4 w-4" />
                     </Button>

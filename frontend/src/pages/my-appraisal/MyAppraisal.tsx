@@ -7,7 +7,10 @@ import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
 import { Progress } from '../../components/ui/progress'
 import PeriodFilter, { type Period } from '../../components/PeriodFilter'
-import { Calendar, Clock, TrendingUp, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react'
+import { Calendar, Clock, TrendingUp, CheckCircle2, ArrowRight, ArrowLeft, Filter, ChevronDown } from 'lucide-react'
+import { Label } from '../../components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
+import { Input } from '../../components/ui/input'
 
  type Appraisal = {
   appraisal_id: number
@@ -62,6 +65,10 @@ const MyAppraisal = () => {
   const [myPage, setMyPage] = useState(1)
   // Filter for combined list
   const [myFilter, setMyFilter] = useState<'Active' | 'Completed' | 'All'>('Active')
+  // Show/hide advanced filters and type filter
+  const [showFilters, setShowFilters] = useState(false)
+  const [searchTypeId, setSearchTypeId] = useState<string>('all')
+  const [searchName, setSearchName] = useState('')
 
   useEffect(() => {
     const loadTypes = async () => {
@@ -146,14 +153,24 @@ const MyAppraisal = () => {
     }
   }, [myFilter, myActives, myCompleted, combinedMine])
 
-  const listTotalPages = Math.max(1, Math.ceil(filteredMine.length / ITEMS_PER_PAGE))
+  // Apply Type filter
+  const filteredMineSearch = useMemo(() => {
+    const q = searchName.trim().toLowerCase()
+    return filteredMine.filter((a) => {
+      const matchType = searchTypeId === 'all' ? true : a.appraisal_type_id === Number(searchTypeId)
+      const matchQuery = q ? typeNameById(a.appraisal_type_id).toLowerCase().includes(q) : true
+      return matchType && matchQuery
+    })
+  }, [filteredMine, searchTypeId, searchName, typeNameById])
+
+  const listTotalPages = Math.max(1, Math.ceil(filteredMineSearch.length / ITEMS_PER_PAGE))
 
   const listPaged = useMemo(
-    () => filteredMine.slice((myPage - 1) * ITEMS_PER_PAGE, myPage * ITEMS_PER_PAGE),
-    [filteredMine, myPage]
+    () => filteredMineSearch.slice((myPage - 1) * ITEMS_PER_PAGE, myPage * ITEMS_PER_PAGE),
+    [filteredMineSearch, myPage]
   )
 
-  useEffect(() => { setMyPage(1) }, [filteredMine.length, myFilter])
+  useEffect(() => { setMyPage(1) }, [filteredMineSearch.length, myFilter, searchTypeId, searchName])
 
   useEffect(() => {
     const loadDetails = async (appraisalId: number) => {
@@ -255,19 +272,98 @@ const MyAppraisal = () => {
       <div className="grid grid-cols-1 gap-6">
       {/* My Appraisals (Active + Completed with filter) */}
       <Card className="transition-all duration-200 hover:shadow-md">
-        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-primary" />
-            My Appraisals
-          </CardTitle>
-          <div className="w-full sm:w-auto">
-            <PeriodFilter
-              defaultPreset="This Year"
-              value={period}
-              onChange={setPeriod}
-              className="w-full sm:max-w-xl"
-            />
+        <CardHeader className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-2 min-w-0 flex-nowrap">
+            <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2 min-w-0 flex-1 truncate">
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+              My Appraisals
+            </CardTitle>
+            <div className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap flex-nowrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters((v) => !v)}
+                aria-expanded={showFilters}
+                aria-controls="my-filters"
+                title="Toggle filters"
+              >
+                <Filter className="h-4 w-4" />
+                <span className="hidden sm:inline sm:ml-2">Filters</span>
+                <ChevronDown className={(showFilters ? 'rotate-180 ' : '') + 'h-4 w-4 ml-2 transition-transform'} />
+              </Button>
+              {filteredMineSearch.length > 0 && (
+                <div
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-background/60 px-1.5 py-1 shadow-sm backdrop-blur flex-shrink-0 whitespace-nowrap"
+                  aria-live="polite"
+                >
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setMyPage((p) => Math.max(1, p - 1))}
+                    disabled={myPage <= 1}
+                    title="Previous page"
+                    aria-label="Previous page"
+                    className="rounded-full hover:bg-primary/10"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="hidden sm:inline px-2 text-xs font-medium text-muted-foreground">
+                    Page {myPage} <span className="mx-1">/</span> {listTotalPages}
+                  </span>
+                  <span className="sr-only sm:hidden">Page {myPage} of {listTotalPages}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setMyPage((p) => Math.min(listTotalPages, p + 1))}
+                    disabled={myPage >= listTotalPages}
+                    title="Next page"
+                    aria-label="Next page"
+                    className="rounded-full hover:bg-primary/10"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
+          {showFilters && (
+            <div id="my-filters" className="w-full">
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="w-full md:flex-1 min-w-0">
+                  <Label className="mb-1 block">Search</Label>
+                  <Input
+                    placeholder="Search appraisal type"
+                    value={searchName}
+                    onChange={(e) => setSearchName(e.target.value)}
+                  />
+                </div>
+                <div className="w-full md:w-40 flex-none">
+                  <Label className="mb-1 block">Type</Label>
+                  <Select value={searchTypeId} onValueChange={(v) => setSearchTypeId(v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All types" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All types</SelectItem>
+                      {types.map((t) => (
+                        <SelectItem key={t.id} value={String(t.id)}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-full md:basis-full xl:flex-1 min-w-0">
+                  <PeriodFilter
+                    defaultPreset="This Year"
+                    value={period}
+                    onChange={setPeriod}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          
         </CardHeader>
         <CardContent>
           {actionError && (
@@ -290,7 +386,7 @@ const MyAppraisal = () => {
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-3 mb-4">
                 <div className="flex items-center gap-2">
                   <Button
                     variant={myFilter === 'Active' ? 'default' : 'outline'}
@@ -314,31 +410,6 @@ const MyAppraisal = () => {
                     All
                   </Button>
                 </div>
-                {filteredMine.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setMyPage(p => Math.max(1, p - 1))}
-                      disabled={myPage <= 1}
-                      title="Previous page"
-                      aria-label="Previous page"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm text-neutral-600">Page {myPage} of {listTotalPages}</span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setMyPage(p => Math.min(listTotalPages, p + 1))}
-                      disabled={myPage >= listTotalPages}
-                      title="Next page"
-                      aria-label="Next page"
-                    >
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
               </div>
               <div className="space-y-3">
               {filteredMine.length === 0 ? (
@@ -352,7 +423,7 @@ const MyAppraisal = () => {
                     <div className="flex items-center justify-between">
                       <div className="space-y-1">
                         <div className="font-medium text-neutral-900">{typeNameById(a.appraisal_type_id)}</div>
-                        <div className="text-sm text-neutral-500 flex items-center gap-1">
+                        <div className="text-xs text-neutral-500 flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           {formatDate(a.start_date)} – {formatDate(a.end_date)}
                         </div>
