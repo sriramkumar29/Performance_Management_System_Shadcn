@@ -754,16 +754,8 @@ const CreateAppraisal = () => {
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 py-4 sm:py-6">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-start">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl sm:text-2xl font-semibold">
-            {createdAppraisalId ? "Edit Appraisal" : "Create New Appraisal"}
-          </h1>
-          <Badge variant="outline" className="px-2 py-0.5 text-xs">
-            {statusLabel}
-          </Badge>
-        </div>
-        <div className="flex gap-2">
           <Button
             variant="outline"
             onClick={() => navigate(-1)}
@@ -773,6 +765,12 @@ const CreateAppraisal = () => {
             <ArrowLeft className="h-4 w-4" />
             <span className="hidden sm:inline sm:ml-2">Back</span>
           </Button>
+          <h1 className="text-xl sm:text-2xl font-semibold">
+            {createdAppraisalId ? "Edit Appraisal" : "Create New Appraisal"}
+          </h1>
+          <Badge variant="outline" className="px-2 py-0.5 text-xs">
+            {statusLabel}
+          </Badge>
         </div>
       </div>
 
