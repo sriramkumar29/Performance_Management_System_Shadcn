@@ -1162,35 +1162,37 @@ const CreateAppraisal = () => {
               ))}
             </div>
           ) : (
-            <div className="text-center py-10 text-muted-foreground border border-dashed border-border rounded-lg">
-              <div>No goals added yet.</div>
-              <div className="mt-4 mx-auto max-w-md text-left space-y-1 text-sm">
-                <div className="flex items-center gap-2">
-                  {appraiseeSelected ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-amber-600" />
-                  )}
-                  <span>Employee selected</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {reviewerSelected ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-amber-600" />
-                  )}
-                  <span>Reviewer selected</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {typeSelected && periodSelected ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-amber-600" />
-                  )}
-                  <span>Appraisal type and period set</span>
+            <div className="py-10 text-muted-foreground border border-dashed border-border rounded-lg">
+              <div className="flex flex-col items-center">
+                <div className="text-center">No goals added yet.</div>
+                <div className="mt-4 space-y-1 text-sm">
+                  <div className="flex items-center gap-2">
+                    {appraiseeSelected ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-amber-600" />
+                    )}
+                    <span>Employee selected</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {reviewerSelected ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-amber-600" />
+                    )}
+                    <span>Reviewer selected</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {typeSelected && periodSelected ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-amber-600" />
+                    )}
+                    <span>Appraisal type and period set</span>
+                  </div>
                 </div>
               </div>
-              <div className="mt-4 flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+              <div className="mt-4 flex items-center gap-2 flex-wrap justify-center">
                 <Button
                   size="sm"
                   onClick={() => setAddGoalModalOpen(true)}
@@ -1220,7 +1222,7 @@ const CreateAppraisal = () => {
       </Card>
 
       {/* Footer Actions */}
-      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-6 grid grid-cols-2 gap-3 items-center sm:flex sm:flex-row sm:items-center sm:justify-between">
         <div className="flex gap-3">
           <Button onClick={handleCancel} disabled={loading} aria-label="Cancel" title="Cancel">
             <X className="h-4 w-4" />
@@ -1249,7 +1251,7 @@ const CreateAppraisal = () => {
             </Button>
           )}
         </div>
-        <div>
+        <div className="justify-self-end sm:self-auto">
           <Button
             onClick={handleFinish}
             disabled={!canSubmitForAck || loading}

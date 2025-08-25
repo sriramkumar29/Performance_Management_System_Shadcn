@@ -72,8 +72,8 @@ const GoalTemplates = () => {
 
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+        <div className="flex items-center gap-3 sm:gap-4">
           <Button
             variant="outline"
             size="sm"
@@ -85,7 +85,7 @@ const GoalTemplates = () => {
           </Button>
           <h1 className="text-2xl font-bold">Manage Goal Templates</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:self-auto self-stretch">
           {isManagerOrAbove(user?.emp_roles, user?.emp_roles_level) && (
             <Button onClick={() => navigate('/goal-templates/new')} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
@@ -97,7 +97,7 @@ const GoalTemplates = () => {
 
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+          <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <span className="flex items-center gap-2">
               <Search className="h-5 w-5" />
               Search Templates
@@ -114,7 +114,7 @@ const GoalTemplates = () => {
               placeholder="Search by title or category..." 
               value={filter} 
               onChange={(e) => setFilter(e.target.value)}
-              className="max-w-md transition-shadow focus:shadow-sm motion-reduce:transition-none"
+              className="w-full max-w-md transition-shadow focus:shadow-sm motion-reduce:transition-none"
             />
           </div>
 
@@ -153,7 +153,7 @@ const GoalTemplates = () => {
               {visible.map(t => (
                 <Card key={t.temp_id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-6">
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 mb-2">
                           <h3 className="font-semibold text-lg truncate">{t.temp_title}</h3>
@@ -175,7 +175,7 @@ const GoalTemplates = () => {
                         </div>
                       </div>
                       {isManagerOrAbove(user?.emp_roles, user?.emp_roles_level) && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 mt-3 sm:mt-0 self-start sm:self-auto">
                           <Button
                             size="sm"
                             variant="outline"

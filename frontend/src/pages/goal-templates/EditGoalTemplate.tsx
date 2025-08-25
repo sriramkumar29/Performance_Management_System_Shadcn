@@ -154,8 +154,8 @@ const EditGoalTemplate = () => {
 
   return (
     <div className="mx-auto max-w-4xl p-4 sm:p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+        <div className="flex items-center gap-3 sm:gap-4">
           <Button
             variant="outline"
             size="sm"
@@ -256,7 +256,7 @@ const EditGoalTemplate = () => {
 
           <div className="grid gap-2">
             <Label>Categories</Label>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Input
                 placeholder="Add category name"
                 value={newCategory}
@@ -264,7 +264,7 @@ const EditGoalTemplate = () => {
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCategory() } }}
                 autoComplete="off"
                 disabled={loading || saving}
-                className="transition-shadow focus:shadow-sm motion-reduce:transition-none"
+                className="w-full sm:flex-1 transition-shadow focus:shadow-sm motion-reduce:transition-none"
                 aria-describedby="category-help"
               />
               <Button type="button" onClick={addCategory} disabled={loading || saving}>Add</Button>
@@ -304,11 +304,11 @@ const EditGoalTemplate = () => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="outline" type="button" onClick={() => navigate('/goal-templates')} disabled={saving}>
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 pt-4 border-t">
+            <Button variant="outline" type="button" onClick={() => navigate('/goal-templates')} disabled={saving} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button type="button" onClick={save} disabled={saving || loading} className="px-6">
+            <Button type="button" onClick={save} disabled={saving || loading} className="w-full sm:w-auto px-6">
               {saving ? 'Saving...' : (isEdit ? 'Save Changes' : 'Create Template')}
             </Button>
           </div>

@@ -29,6 +29,8 @@ import {
   ArrowRight,
   ArrowLeft,
   Edit,
+  Filter,
+  ChevronDown,
 } from "lucide-react";
 import PeriodFilter, { type Period } from "../../components/PeriodFilter";
 
@@ -220,6 +222,7 @@ const TeamAppraisal = () => {
   const ITEMS_PER_PAGE = 5;
   const [draftsPage, setDraftsPage] = useState(1);
   const [teamPage, setTeamPage] = useState(1);
+  const [showFilters, setShowFilters] = useState(false);
 
   const draftsTotalPages = Math.max(
     1,
@@ -347,7 +350,6 @@ const TeamAppraisal = () => {
             </div>
           </CardHeader>
           <CardContent>
-            
             {loading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
@@ -386,12 +388,14 @@ const TeamAppraisal = () => {
                               {formatDate(a.start_date)} –{" "}
                               {formatDate(a.end_date)}
                             </div>
+                            <div className="pt-1">
+                              <Badge variant="secondary">
+                                {displayStatus(a.status)}
+                              </Badge>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 flex-none shrink-0">
-                          <Badge variant="secondary">
-                            {displayStatus(a.status)}
-                          </Badge>
+                        <div className="ml-auto flex items-center gap-3 flex-none shrink-0 whitespace-nowrap self-center">
                           <Button
                             variant="outline"
                             onClick={() => handleEditDraft(a.appraisal_id)}
@@ -400,7 +404,9 @@ const TeamAppraisal = () => {
                             title="Edit draft appraisal"
                           >
                             <Edit className="h-4 w-4" />
-                            <span className="hidden sm:inline sm:ml-2">Edit</span>
+                            <span className="hidden sm:inline sm:ml-2">
+                              Edit
+                            </span>
                           </Button>
                         </div>
                       </div>
@@ -419,74 +425,95 @@ const TeamAppraisal = () => {
                 <Activity className="h-5 w-5 text-blue-600" />
                 Team Appraisals
               </CardTitle>
-              {filteredTeamSearch.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setTeamPage((p) => Math.max(1, p - 1))}
-                    disabled={teamPage <= 1}
-                    aria-label="Previous page"
-                    title="Previous page"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm text-neutral-600">
-                    Page {teamPage} of {teamTotalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() =>
-                      setTeamPage((p) => Math.min(teamTotalPages, p + 1))
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFilters((v) => !v)}
+                  aria-expanded={showFilters}
+                  aria-controls="team-filters"
+                  title="Toggle filters"
+                >
+                  <Filter className="h-4 w-4" />
+                  <span className="hidden sm:inline sm:ml-2">Filters</span>
+                  <ChevronDown
+                    className={
+                      (showFilters ? "rotate-180 " : "") +
+                      "h-4 w-4 ml-2 transition-transform"
                     }
-                    disabled={teamPage >= teamTotalPages}
-                    aria-label="Next page"
-                    title="Next page"
-                  >
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-            <div className="w-full sm:w-auto">
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="w-full sm:w-56 md:w-60">
-                  <Label className="mb-1 block">Search</Label>
-                  <Input
-                    placeholder="Search employee name"
-                    value={searchName}
-                    onChange={(e) => setSearchName(e.target.value)}
                   />
-                </div>
-                <div className="w-full md:w-40 flex-none">
-                  <Label className="mb-1 block">Type</Label>
-                  <Select
-                    value={searchTypeId}
-                    onValueChange={(v) => setSearchTypeId(v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="All types" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All types</SelectItem>
-                      {types.map((t) => (
-                        <SelectItem key={t.id} value={String(t.id)}>
-                          {t.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="w-full md:basis-full xl:flex-1 min-w-0">
-                  <PeriodFilter
-                    defaultPreset="This Year"
-                    value={period}
-                    onChange={setPeriod}
-                  />
-                </div>
+                </Button>
+                {filteredTeamSearch.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setTeamPage((p) => Math.max(1, p - 1))}
+                      disabled={teamPage <= 1}
+                      aria-label="Previous page"
+                      title="Previous page"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm text-neutral-600">
+                      Page {teamPage} of {teamTotalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() =>
+                        setTeamPage((p) => Math.min(teamTotalPages, p + 1))
+                      }
+                      disabled={teamPage >= teamTotalPages}
+                      aria-label="Next page"
+                      title="Next page"
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
+            {showFilters && (
+              <div id="team-filters" className="w-full sm:w-auto">
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="w-full sm:w-56 md:w-60">
+                    <Label className="mb-1 block">Search</Label>
+                    <Input
+                      placeholder="Search employee name"
+                      value={searchName}
+                      onChange={(e) => setSearchName(e.target.value)}
+                    />
+                  </div>
+                  <div className="w-full md:w-40 flex-none">
+                    <Label className="mb-1 block">Type</Label>
+                    <Select
+                      value={searchTypeId}
+                      onValueChange={(v) => setSearchTypeId(v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="All types" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All types</SelectItem>
+                        {types.map((t) => (
+                          <SelectItem key={t.id} value={String(t.id)}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-full md:basis-full xl:flex-1 min-w-0">
+                    <PeriodFilter
+                      defaultPreset="This Year"
+                      value={period}
+                      onChange={setPeriod}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {/* Filters */}
@@ -572,24 +599,26 @@ const TeamAppraisal = () => {
                               {formatDate(a.start_date)} –{" "}
                               {formatDate(a.end_date)}
                             </div>
+                            <div className="pt-1">
+                              {a.status === "Complete" ? (
+                                <Badge
+                                  variant="default"
+                                  className="bg-green-100 text-green-800 border-green-200"
+                                >
+                                  Completed
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  variant="default"
+                                  className="bg-blue-100 text-blue-800 border-blue-200"
+                                >
+                                  {displayStatus(a.status)}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 flex-none shrink-0">
-                          {a.status === "Complete" ? (
-                            <Badge
-                              variant="default"
-                              className="bg-green-100 text-green-800 border-green-200"
-                            >
-                              Completed
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="default"
-                              className="bg-blue-100 text-blue-800 border-blue-200"
-                            >
-                              {displayStatus(a.status)}
-                            </Badge>
-                          )}
+                        <div className="ml-auto flex items-center gap-3 flex-none shrink-0 whitespace-nowrap self-center">
                           {a.status === "Appraiser Evaluation" && (
                             <Button
                               onClick={() =>
@@ -602,7 +631,9 @@ const TeamAppraisal = () => {
                               title="Evaluate appraisal"
                             >
                               <ArrowRight className="h-4 w-4" />
-                              <span className="hidden sm:inline sm:ml-2">Evaluate</span>
+                              <span className="hidden sm:inline sm:ml-2">
+                                Evaluate
+                              </span>
                             </Button>
                           )}
                           {a.status === "Reviewer Evaluation" &&
@@ -618,7 +649,9 @@ const TeamAppraisal = () => {
                                 title="Evaluate appraisal"
                               >
                                 <ArrowRight className="h-4 w-4" />
-                                <span className="hidden sm:inline sm:ml-2">Evaluate</span>
+                                <span className="hidden sm:inline sm:ml-2">
+                                  Evaluate
+                                </span>
                               </Button>
                             )}
                           {a.status === "Complete" && (
@@ -632,7 +665,9 @@ const TeamAppraisal = () => {
                               title="View appraisal"
                             >
                               <ArrowRight className="h-4 w-4" />
-                              <span className="hidden sm:inline sm:ml-2">View</span>
+                              <span className="hidden sm:inline sm:ml-2">
+                                View
+                              </span>
                             </Button>
                           )}
                         </div>
