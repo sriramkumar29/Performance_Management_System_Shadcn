@@ -378,7 +378,7 @@ export class MyAppraisalsComponent implements OnInit {
 
   private async loadAppraisalTypes(): Promise<void> {
     try {
-      const types = await this.http.get<AppraisalType[]>(`${environment.apiUrl}/appraisal-types`).toPromise();
+      const types = await this.http.get<AppraisalType[]>(`${environment.apiUrl}/api/appraisal-types`).toPromise();
       this.appraisalTypes.set(types || []);
     } catch (error) {
       console.error('Failed to load appraisal types:', error);
@@ -394,7 +394,7 @@ export class MyAppraisalsComponent implements OnInit {
 
     try {
       const appraisals = await this.http.get<Appraisal[]>(
-        `${environment.apiUrl}/appraisals?appraisee_id=${user.emp_id}`
+        `${environment.apiUrl}/api/appraisals?appraisee_id=${user.emp_id}`
       ).toPromise();
       
       this.appraisals.set(appraisals || []);
@@ -415,7 +415,7 @@ export class MyAppraisalsComponent implements OnInit {
   private async loadAppraisalDetails(appraisalId: number): Promise<void> {
     try {
       const details = await this.http.get<AppraisalWithGoals>(
-        `${environment.apiUrl}/appraisals/${appraisalId}`
+        `${environment.apiUrl}/api/appraisals/${appraisalId}`
       ).toPromise();
       
       if (details) {
@@ -470,7 +470,7 @@ export class MyAppraisalsComponent implements OnInit {
       // If status is Submitted, move to Self Assessment first
       if (appraisal.status === 'Submitted') {
         await this.http.put(
-          `${environment.apiUrl}/appraisals/${appraisal.appraisal_id}/status`,
+          `${environment.apiUrl}/api/appraisals/${appraisal.appraisal_id}/status`,
           { status: 'Appraisee Self Assessment' }
         ).toPromise();
       }

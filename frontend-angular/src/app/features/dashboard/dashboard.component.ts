@@ -1,12 +1,11 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatGridListModule } from '@angular/material/grid-list';
-import { AuthService } from '../../core/services/auth.service';
-import { User } from '../../core/models/user.model';
+import { Router, RouterModule } from '@angular/router';
+import { AuthService, User } from '@core/services/auth.service';
+import { PermissionsService, Permission } from '@core/services/permissions.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -55,7 +54,7 @@ import { User } from '../../core/models/user.model';
           <!-- Team Appraisals Card -->
           <mat-card class="hover:shadow-lg transition-shadow cursor-pointer" 
                     routerLink="/appraisals/team-appraisals"
-                    *ngIf="isManager">
+                    *ngIf="canViewTeamAppraisals">
             <mat-card-header>
               <mat-icon mat-card-avatar class="text-secondary">group</mat-icon>
               <mat-card-title>Team Appraisals</mat-card-title>
@@ -77,7 +76,7 @@ import { User } from '../../core/models/user.model';
           <!-- Goal Templates Card -->
           <mat-card class="hover:shadow-lg transition-shadow cursor-pointer" 
                     routerLink="/goal-templates"
-                    *ngIf="canManageTemplates">
+                    *ngIf="canManageGoalTemplates">
             <mat-card-header>
               <mat-icon mat-card-avatar class="text-accent">track_changes</mat-icon>
               <mat-card-title>Goal Templates</mat-card-title>
@@ -98,7 +97,8 @@ import { User } from '../../core/models/user.model';
 
           <!-- Create Appraisal Card -->
           <mat-card class="hover:shadow-lg transition-shadow cursor-pointer" 
-                    routerLink="/appraisals/create">
+                    routerLink="/appraisals/create"
+                    *ngIf="canCreateAppraisal">
             <mat-card-header>
               <mat-icon mat-card-avatar class="text-primary">add_circle</mat-icon>
               <mat-card-title>Create Appraisal</mat-card-title>
@@ -155,10 +155,9 @@ import { User } from '../../core/models/user.model';
 })
 export class DashboardComponent implements OnInit {
   private authService = inject(AuthService);
+  private permissionsService = inject(PermissionsService);
   
   currentUser: User | null = null;
-  isManager = false;
-  canManageTemplates = false;
   
   stats = {
     totalAppraisals: 0,
@@ -167,19 +166,23 @@ export class DashboardComponent implements OnInit {
     averageRating: '0.0'
   };
 
+  // Permission-based computed properties
+  get canViewTeamAppraisals(): boolean {
+    return this.permissionsService.hasPermission(Permission.VIEW_TEAM_APPRAISALS);
+  }
+
+  get canManageGoalTemplates(): boolean {
+    return this.permissionsService.hasPermission(Permission.VIEW_GOAL_TEMPLATES);
+  }
+
+  get canCreateAppraisal(): boolean {
+    return this.permissionsService.hasPermission(Permission.CREATE_APPRAISAL);
+  }
+
   ngOnInit(): void {
     this.currentUser = this.authService.getCurrentUser();
     
     if (this.currentUser) {
-      // Check if user is a manager (has reporting manager role or high role level)
-      this.isManager = this.currentUser.emp_roles_level >= 3 || 
-                      this.currentUser.emp_roles.toLowerCase().includes('manager');
-      
-      // Check if user can manage templates (HR or Admin roles)
-      this.canManageTemplates = this.currentUser.emp_roles.toLowerCase().includes('hr') ||
-                               this.currentUser.emp_roles.toLowerCase().includes('admin') ||
-                               this.currentUser.emp_roles_level >= 4;
-      
       // Load dashboard statistics (placeholder for now)
       this.loadDashboardStats();
     }

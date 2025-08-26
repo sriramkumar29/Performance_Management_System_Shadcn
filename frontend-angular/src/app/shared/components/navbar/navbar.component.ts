@@ -7,16 +7,17 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
-import { AuthService } from '../../../core/services/auth.service';
-import { ThemeService } from '../../../core/services/theme.service';
+import { AuthService, User } from '@core/services/auth.service';
+import { ThemeService } from '@core/services/theme.service';
 import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
-import { User } from '../../../core/models/user.model';
+import { PermissionsService, Permission } from '@core/services/permissions.service';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
   imports: [
     CommonModule,
+    RouterModule,
     MatToolbarModule,
     MatButtonModule,
     MatIconModule,
@@ -28,9 +29,33 @@ import { User } from '../../../core/models/user.model';
     <mat-toolbar class="bg-background border-b border-border shadow-sm">
       <div class="flex items-center justify-between w-full">
         <div class="flex items-center space-x-4">
-          <span class="text-gradient font-bold text-xl">
+          <span class="text-gradient font-bold text-xl cursor-pointer" routerLink="/dashboard">
             Performance Management
           </span>
+          
+          <!-- Navigation Links -->
+          <nav class="hidden md:flex items-center space-x-4 ml-8">
+            <button mat-button routerLink="/dashboard" routerLinkActive="text-primary">
+              <mat-icon>dashboard</mat-icon>
+              Dashboard
+            </button>
+            <button mat-button routerLink="/appraisals/my-appraisals" routerLinkActive="text-primary">
+              <mat-icon>assignment</mat-icon>
+              My Appraisals
+            </button>
+            <button mat-button routerLink="/appraisals/team-appraisals" 
+                    routerLinkActive="text-primary"
+                    *ngIf="canViewTeamAppraisals">
+              <mat-icon>group</mat-icon>
+              Team Appraisals
+            </button>
+            <button mat-button routerLink="/goal-templates" 
+                    routerLinkActive="text-primary"
+                    *ngIf="canManageGoalTemplates">
+              <mat-icon>track_changes</mat-icon>
+              Goal Templates
+            </button>
+          </nav>
         </div>
         
         <div class="flex items-center space-x-4">
@@ -65,6 +90,7 @@ import { User } from '../../../core/models/user.model';
 })
 export class NavbarComponent implements OnInit {
   currentUser$: Observable<User | null>;
+  private permissionsService = inject(PermissionsService);
 
   constructor(
     private authService: AuthService,
@@ -74,6 +100,14 @@ export class NavbarComponent implements OnInit {
   }
 
   ngOnInit(): void {}
+
+  get canViewTeamAppraisals(): boolean {
+    return this.permissionsService.hasPermission(Permission.VIEW_TEAM_APPRAISALS);
+  }
+
+  get canManageGoalTemplates(): boolean {
+    return this.permissionsService.hasPermission(Permission.VIEW_GOAL_TEMPLATES);
+  }
 
   logout(): void {
     this.authService.logout();

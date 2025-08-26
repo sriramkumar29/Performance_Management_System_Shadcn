@@ -175,7 +175,7 @@ export class ImportFromTemplateModalComponent implements OnInit {
   private async loadTemplates() {
     try {
       this.loading.set(true);
-      const templates = await this.http.get<GoalTemplate[]>(`${environment.apiUrl}/goal-templates`).toPromise();
+      const templates = await this.http.get<GoalTemplate[]>(`${environment.apiUrl}/api/goals/templates`).toPromise();
       this.templates.set(templates || []);
     } catch (error) {
       console.error('Error loading templates:', error);
@@ -259,7 +259,7 @@ export class ImportFromTemplateModalComponent implements OnInit {
       };
 
       const response = await this.http.post<any>(
-        `${environment.apiUrl}/appraisals/${this.data.appraisalId}/goals/import`,
+        `${environment.apiUrl}/api/appraisals/${this.data.appraisalId}/goals/import`,
         request
       ).toPromise();
 

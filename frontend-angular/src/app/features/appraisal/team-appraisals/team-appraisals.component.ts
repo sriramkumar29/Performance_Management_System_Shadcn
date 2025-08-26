@@ -449,11 +449,11 @@ export class TeamAppraisalsComponent implements OnInit {
 
     try {
       const [appraiserAppraisals, reviewerActiveAppraisals, reviewerCompletedAppraisals, employees, types] = await Promise.all([
-        this.http.get<Appraisal[]>(`${environment.apiUrl}/appraisals?appraiser_id=${this.currentUser.emp_id}`).toPromise(),
-        this.http.get<Appraisal[]>(`${environment.apiUrl}/appraisals?reviewer_id=${this.currentUser.emp_id}&status=Reviewer Evaluation`).toPromise(),
-        this.http.get<Appraisal[]>(`${environment.apiUrl}/appraisals?reviewer_id=${this.currentUser.emp_id}&status=Complete`).toPromise(),
-        this.http.get<Employee[]>(`${environment.apiUrl}/employees`).toPromise(),
-        this.http.get<AppraisalType[]>(`${environment.apiUrl}/appraisal-types`).toPromise()
+        this.http.get<Appraisal[]>(`${environment.apiUrl}/api/appraisals?appraiser_id=${this.currentUser.emp_id}`).toPromise(),
+        this.http.get<Appraisal[]>(`${environment.apiUrl}/api/appraisals?reviewer_id=${this.currentUser.emp_id}&status=Reviewer Evaluation`).toPromise(),
+        this.http.get<Appraisal[]>(`${environment.apiUrl}/api/appraisals?reviewer_id=${this.currentUser.emp_id}&status=Complete`).toPromise(),
+        this.http.get<Employee[]>(`${environment.apiUrl}/api/employees`).toPromise(),
+        this.http.get<AppraisalType[]>(`${environment.apiUrl}/api/appraisal-types`).toPromise()
       ]);
 
       // Combine and deduplicate appraisals

@@ -93,26 +93,73 @@ interface CreateAppraisalRequest {
     MatBadgeModule
   ],
   template: `
-    <div class="animate-fade-in space-y-6">
-      <!-- Header -->
-      <div class="mb-8">
-        <h1 class="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-          {{ createdAppraisalId() ? 'Edit Appraisal' : 'Create Appraisal' }}
-        </h1>
-        <p class="text-muted-foreground text-sm sm:text-base">
-          {{ createdAppraisalId() ? 'Modify appraisal details and goals' : 'Create a new performance appraisal for your team member' }}
-        </p>
-      </div>
+    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 sm:p-6">
+      <div class="max-w-7xl mx-auto space-y-8">
+        <!-- Enhanced Header with Progress Indicator -->
+        <div class="relative">
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl opacity-10"></div>
+          <div class="relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-lg border border-white/20">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="flex items-center gap-3 mb-2">
+                  <div class="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                    <mat-icon class="text-white">{{ createdAppraisalId() ? 'edit' : 'add_circle' }}</mat-icon>
+                  </div>
+                  <h1 class="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    {{ createdAppraisalId() ? 'Edit Appraisal' : 'Create Appraisal' }}
+                  </h1>
+                </div>
+                <p class="text-slate-600 text-sm sm:text-base">
+                  {{ createdAppraisalId() ? 'Modify appraisal details and goals' : 'Create a new performance appraisal for your team member' }}
+                </p>
+              </div>
+              
+              <!-- Status Badge -->
+              <div class="hidden sm:block">
+                <div class="px-4 py-2 rounded-full text-sm font-medium" 
+                     [ngClass]="{
+                       'bg-amber-100 text-amber-800 border border-amber-200': createdAppraisalStatus() === 'Draft',
+                       'bg-blue-100 text-blue-800 border border-blue-200': createdAppraisalStatus() === 'Submitted',
+                       'bg-green-100 text-green-800 border border-green-200': createdAppraisalStatus() === 'Complete'
+                     }">
+                  <mat-icon class="text-xs mr-1">{{ getStatusIcon() }}</mat-icon>
+                  {{ createdAppraisalStatus() || 'New' }}
+                </div>
+              </div>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="mt-6">
+              <div class="flex justify-between text-xs text-slate-600 mb-2">
+                <span>Progress</span>
+                <span>{{ getCompletionPercentage() }}%</span>
+              </div>
+              <div class="w-full bg-slate-200 rounded-full h-2">
+                <div class="bg-gradient-to-r from-blue-600 to-purple-600 h-2 rounded-full transition-all duration-500"
+                     [style.width.%]="getCompletionPercentage()"></div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      <!-- Basic Information Card -->
-      <mat-card class="overflow-hidden">
-        <mat-card-header>
-          <mat-card-title class="text-base sm:text-lg">Basic Information</mat-card-title>
-          <mat-card-subtitle class="text-sm sm:text-base">
-            Select employee, reviewer, appraisal type and period.
-          </mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content class="p-6">
+        <!-- Enhanced Basic Information Card -->
+        <div class="relative">
+          <div class="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl opacity-5"></div>
+          <mat-card class="relative overflow-hidden border-0 shadow-xl bg-white/90 backdrop-blur-sm">
+            <mat-card-header class="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-100">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
+                  <mat-icon class="text-white text-sm">person</mat-icon>
+                </div>
+                <div>
+                  <mat-card-title class="text-lg font-semibold text-slate-800">Basic Information</mat-card-title>
+                  <mat-card-subtitle class="text-sm text-slate-600">
+                    Select employee, reviewer, appraisal type and period.
+                  </mat-card-subtitle>
+                </div>
+              </div>
+            </mat-card-header>
+            <mat-card-content class="p-8">
           <form [formGroup]="appraisalForm" class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <!-- Employee Selection -->
@@ -184,158 +231,235 @@ interface CreateAppraisalRequest {
             </div>
           </form>
         </mat-card-content>
-      </mat-card>
+          </mat-card>
+        </div>
 
-      <!-- Goals Section -->
-      <mat-card>
-        <mat-card-header>
-          <div class="flex items-center justify-between w-full">
-            <div>
-              <mat-card-title class="text-base sm:text-lg">Goals</mat-card-title>
-              <mat-card-subtitle class="text-sm sm:text-base">
-                Add goals, set importance and weightage. Total must be 100%.
-              </mat-card-subtitle>
-            </div>
-            <div class="hidden sm:flex gap-2">
-              <button mat-raised-button color="primary" (click)="openAddGoalModal()" [disabled]="!canAddGoals()">
-                <mat-icon>add</mat-icon>
-                Add Goal
-              </button>
-              <button mat-stroked-button (click)="openImportFromTemplateModal()" [disabled]="!canAddGoals()">
-                <mat-icon>folder_open</mat-icon>
-                Import from Templates
-              </button>
-            </div>
-          </div>
-        </mat-card-header>
-        <mat-card-content>
-          <div *ngIf="goals().length > 0; else noGoals">
-            <!-- Progress Bar -->
-            <div class="mb-3 flex items-center justify-between">
-              <div class="flex items-center gap-2 text-sm">
-                <span class="text-muted-foreground">Total weightage</span>
-                <span class="font-medium">{{ totalWeightage() }}%</span>
+        <!-- Enhanced Goals Section -->
+        <div class="relative">
+          <div class="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl opacity-5"></div>
+          <mat-card class="relative overflow-hidden border-0 shadow-xl bg-white/90 backdrop-blur-sm">
+            <mat-card-header class="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100">
+              <div class="flex items-center justify-between w-full">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                    <mat-icon class="text-white text-sm">track_changes</mat-icon>
+                  </div>
+                  <div>
+                    <mat-card-title class="text-lg font-semibold text-slate-800">Goals</mat-card-title>
+                    <mat-card-subtitle class="text-sm text-slate-600">
+                      Add goals, set importance and weightage. Total must be 100%.
+                    </mat-card-subtitle>
+                  </div>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button mat-raised-button color="primary" (click)="openAddGoalModal()" [disabled]="!canAddGoals()"
+                          class="px-6 py-2 shadow-lg hover:shadow-xl transition-shadow">
+                    <mat-icon>add</mat-icon>
+                    Add Goal
+                  </button>
+                  <button mat-stroked-button (click)="openImportFromTemplateModal()" [disabled]="!canAddGoals()"
+                          class="px-6 py-2 hover:shadow-lg transition-shadow">
+                    <mat-icon>folder_open</mat-icon>
+                    Import from Templates
+                  </button>
+                </div>
               </div>
-            </div>
-            <mat-progress-bar mode="determinate" [value]="totalWeightage()" class="mb-4"></mat-progress-bar>
+            </mat-card-header>
+            <mat-card-content class="p-8">
+              <div *ngIf="goals().length > 0; else noGoals">
+                <!-- Enhanced Progress Bar -->
+                <div class="mb-6 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-xl border border-slate-200">
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                      <mat-icon class="text-slate-600 text-sm">analytics</mat-icon>
+                      <span class="text-sm font-medium text-slate-700">Total Weightage</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-lg font-bold" [ngClass]="{
+                        'text-green-600': totalWeightage() === 100,
+                        'text-amber-600': totalWeightage() > 0 && totalWeightage() < 100,
+                        'text-red-600': totalWeightage() > 100,
+                        'text-slate-400': totalWeightage() === 0
+                      }">{{ totalWeightage() }}%</span>
+                      <mat-icon class="text-sm" [ngClass]="{
+                        'text-green-600': totalWeightage() === 100,
+                        'text-amber-600': totalWeightage() > 0 && totalWeightage() < 100,
+                        'text-red-600': totalWeightage() > 100,
+                        'text-slate-400': totalWeightage() === 0
+                      }">{{ getWeightageIcon() }}</mat-icon>
+                    </div>
+                  </div>
+                  <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                    <div class="h-3 rounded-full transition-all duration-700 ease-out" 
+                         [ngClass]="{
+                           'bg-gradient-to-r from-green-500 to-emerald-500': totalWeightage() === 100,
+                           'bg-gradient-to-r from-amber-500 to-orange-500': totalWeightage() > 0 && totalWeightage() < 100,
+                           'bg-gradient-to-r from-red-500 to-pink-500': totalWeightage() > 100,
+                           'bg-gradient-to-r from-slate-300 to-slate-400': totalWeightage() === 0
+                         }"
+                         [style.width.%]="Math.min(totalWeightage(), 100)"></div>
+                  </div>
+                  <p class="text-xs text-slate-600 mt-2" *ngIf="totalWeightage() !== 100">
+                    {{ totalWeightage() < 100 ? 'Add more goals to reach 100%' : 'Reduce weightage to 100%' }}
+                  </p>
+                </div>
             
-            <!-- Goals Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              <mat-card *ngFor="let record of goals()" class="group relative overflow-hidden border shadow-sm hover:shadow-md transition-shadow">
-                <mat-card-header class="h-full p-4 pr-4 flex flex-col">
-                  <!-- Weightage badge -->
-                  <div class="absolute top-2 right-2 rounded-full bg-primary/10 text-primary text-xs font-medium px-2 py-0.5">
-                    {{ record.goal.goal_weightage }}%
-                  </div>
+                <!-- Enhanced Goals Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div *ngFor="let record of goals()" class="group relative">
+                    <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <mat-card class="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white/90 backdrop-blur-sm">
+                      <mat-card-header class="p-6 flex flex-col h-full">
+                        <!-- Enhanced Weightage badge -->
+                        <div class="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold shadow-sm" 
+                             [ngClass]="{
+                               'bg-gradient-to-r from-green-500 to-emerald-500 text-white': record.goal.goal_importance === 'High',
+                               'bg-gradient-to-r from-amber-500 to-orange-500 text-white': record.goal.goal_importance === 'Medium',
+                               'bg-gradient-to-r from-blue-500 to-cyan-500 text-white': record.goal.goal_importance === 'Low'
+                             }">
+                          {{ record.goal.goal_weightage }}%
+                        </div>
 
-                  <!-- Header with icon and text -->
-                  <div class="flex items-start gap-2">
-                    <div class="p-2 rounded-md bg-primary/10 text-primary">
-                      <mat-icon class="text-base">track_changes</mat-icon>
-                    </div>
-                    <div class="min-w-0 space-y-0.5">
-                      <mat-card-title class="text-sm font-semibold truncate" [title]="record.goal.goal_title">
-                        {{ record.goal.goal_title }}
-                      </mat-card-title>
-                      <mat-card-subtitle *ngIf="record.goal.goal_description" 
-                        class="text-xs text-muted-foreground line-clamp-5 leading-snug" 
-                        [title]="record.goal.goal_description">
-                        {{ record.goal.goal_description }}
-                      </mat-card-subtitle>
-                    </div>
-                  </div>
+                        <!-- Enhanced Header with icon and text -->
+                        <div class="flex items-start gap-3 mb-4">
+                          <div class="p-3 rounded-xl shadow-sm" [ngClass]="{
+                            'bg-gradient-to-br from-green-100 to-emerald-100 text-green-700': record.goal.goal_importance === 'High',
+                            'bg-gradient-to-br from-amber-100 to-orange-100 text-amber-700': record.goal.goal_importance === 'Medium',
+                            'bg-gradient-to-br from-blue-100 to-cyan-100 text-blue-700': record.goal.goal_importance === 'Low'
+                          }">
+                            <mat-icon class="text-lg">{{ getGoalIcon(record.goal.goal_importance) }}</mat-icon>
+                          </div>
+                          <div class="min-w-0 flex-1">
+                            <mat-card-title class="text-base font-bold text-slate-800 mb-2 line-clamp-2" [title]="record.goal.goal_title">
+                              {{ record.goal.goal_title }}
+                            </mat-card-title>
+                            <mat-card-subtitle *ngIf="record.goal.goal_description" 
+                              class="text-sm text-slate-600 line-clamp-3 leading-relaxed" 
+                              [title]="record.goal.goal_description">
+                              {{ record.goal.goal_description }}
+                            </mat-card-subtitle>
+                          </div>
+                        </div>
 
-                  <!-- Spacer to push meta to bottom -->
-                  <div class="flex-1"></div>
+                        <!-- Spacer to push meta to bottom -->
+                        <div class="flex-1"></div>
 
-                  <!-- Meta row at bottom -->
-                  <div class="pt-2 mt-auto flex flex-wrap items-center gap-2 text-xs">
-                    <mat-chip-set *ngIf="record.goal.category?.name">
-                      <mat-chip>{{ record.goal.category?.name }}</mat-chip>
-                    </mat-chip-set>
-                    <mat-chip-set>
-                      <mat-chip [ngClass]="getImportanceChipClass(record.goal.goal_importance)">
-                        {{ record.goal.goal_importance }}
-                      </mat-chip>
-                    </mat-chip-set>
-                  </div>
+                        <!-- Enhanced Meta row at bottom -->
+                        <div class="mt-auto space-y-3">
+                          <div class="flex flex-wrap gap-2">
+                            <div *ngIf="record.goal.category?.name" 
+                                 class="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
+                              <mat-icon class="text-xs mr-1">category</mat-icon>
+                              {{ record.goal.category?.name }}
+                            </div>
+                            <div class="px-3 py-1 rounded-full text-xs font-bold" 
+                                 [ngClass]="{
+                                   'bg-gradient-to-r from-red-100 to-pink-100 text-red-700': record.goal.goal_importance === 'High',
+                                   'bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700': record.goal.goal_importance === 'Medium',
+                                   'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700': record.goal.goal_importance === 'Low'
+                                 }">
+                              {{ record.goal.goal_importance }} Priority
+                            </div>
+                          </div>
+                        </div>
 
-                  <!-- Action buttons bottom-right -->
-                  <div class="absolute bottom-2 right-2 flex items-center gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                    <button mat-icon-button [disabled]="isLocked()" (click)="editGoal(record)">
-                      <mat-icon>edit</mat-icon>
-                    </button>
-                    <button mat-icon-button color="warn" [disabled]="isLocked()" (click)="removeGoal(record.goal.goal_id)">
-                      <mat-icon>delete</mat-icon>
-                    </button>
-                  </div>
-                </mat-card-header>
-              </mat-card>
-            </div>
-          </div>
-
-          <!-- No Goals State -->
-          <ng-template #noGoals>
-            <div class="py-10 text-muted-foreground border border-dashed border-border rounded-lg">
-              <div class="flex flex-col items-center">
-                <div class="text-center">No goals added yet.</div>
-                <div class="mt-4 space-y-1 text-sm">
-                  <div class="flex items-center gap-2">
-                    <mat-icon [class]="appraiseeSelected() ? 'text-green-600' : 'text-orange-600'" class="text-base">
-                      {{ appraiseeSelected() ? 'check_circle' : 'warning' }}
-                    </mat-icon>
-                    <span>Employee selected</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <mat-icon [class]="reviewerSelected() ? 'text-green-600' : 'text-orange-600'" class="text-base">
-                      {{ reviewerSelected() ? 'check_circle' : 'warning' }}
-                    </mat-icon>
-                    <span>Reviewer selected</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <mat-icon [class]="typeAndPeriodSelected() ? 'text-green-600' : 'text-orange-600'" class="text-base">
-                      {{ typeAndPeriodSelected() ? 'check_circle' : 'warning' }}
-                    </mat-icon>
-                    <span>Appraisal type and period set</span>
+                        <!-- Enhanced Action buttons -->
+                        <div class="absolute top-3 left-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                          <button mat-mini-fab color="primary" [disabled]="isLocked()" (click)="editGoal(record)"
+                                  class="!w-8 !h-8 shadow-lg hover:shadow-xl transition-shadow">
+                            <mat-icon class="text-sm">edit</mat-icon>
+                          </button>
+                          <button mat-mini-fab color="warn" [disabled]="isLocked()" (click)="removeGoal(record.goal.goal_id)"
+                                  class="!w-8 !h-8 shadow-lg hover:shadow-xl transition-shadow">
+                            <mat-icon class="text-sm">delete</mat-icon>
+                          </button>
+                        </div>
+                      </mat-card-header>
+                    </mat-card>
                   </div>
                 </div>
               </div>
-              <div class="mt-4 flex items-center gap-2 flex-wrap justify-center">
-                <button mat-raised-button color="primary" (click)="openAddGoalModal()" [disabled]="!canAddGoals()">
-                  <mat-icon>add</mat-icon>
-                  <span class="hidden sm:inline ml-2">Add Goal</span>
-                </button>
-                <button mat-stroked-button (click)="openImportFromTemplateModal()" [disabled]="!canAddGoals()">
-                  <mat-icon>folder_open</mat-icon>
-                  <span class="hidden sm:inline ml-2">Import from Templates</span>
-                </button>
-              </div>
-            </div>
-          </ng-template>
-        </mat-card-content>
-      </mat-card>
 
-      <!-- Footer Actions -->
-      <div class="mt-6 grid grid-cols-2 gap-3 items-center sm:flex sm:flex-row sm:items-center sm:justify-between">
-        <div class="flex gap-3">
-          <button mat-button (click)="handleCancel()" [disabled]="loading()">
-            <mat-icon>close</mat-icon>
-            <span class="hidden sm:inline ml-2">Cancel</span>
-          </button>
-          <button *ngIf="!createdAppraisalId()" mat-raised-button (click)="handleSubmit()" [disabled]="!canSaveDraft() || loading()">
-            <mat-icon>save</mat-icon>
-            <span class="hidden sm:inline ml-2">{{ loading() ? 'Saving...' : 'Save as Draft' }}</span>
-          </button>
-          <button *ngIf="createdAppraisalId() && createdAppraisalStatus() === 'Draft'" mat-raised-button (click)="handleSubmit()" [disabled]="!canSaveDraft() || loading()">
-            <mat-icon>save</mat-icon>
-            <span class="hidden sm:inline ml-2">{{ loading() ? 'Saving...' : 'Save Changes' }}</span>
-          </button>
+              <!-- Enhanced No Goals State -->
+              <ng-template #noGoals>
+                <div class="py-16 text-center">
+                  <div class="relative">
+                    <div class="absolute inset-0 bg-gradient-to-r from-slate-100 to-slate-200 rounded-2xl opacity-50"></div>
+                    <div class="relative p-8 border-2 border-dashed border-slate-300 rounded-2xl bg-white/80 backdrop-blur-sm">
+                      <div class="w-16 h-16 bg-gradient-to-r from-slate-400 to-slate-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <mat-icon class="text-white text-2xl">track_changes</mat-icon>
+                      </div>
+                      <h3 class="text-lg font-semibold text-slate-800 mb-2">No goals added yet</h3>
+                      <p class="text-slate-600 mb-6">Add goals to start building the appraisal</p>
+                      <!-- Enhanced Checklist -->
+                      <div class="space-y-3 mb-6">
+                        <div class="flex items-center justify-center gap-3 p-3 rounded-lg" [ngClass]="{
+                          'bg-green-50 border border-green-200': appraiseeSelected(),
+                          'bg-amber-50 border border-amber-200': !appraiseeSelected()
+                        }">
+                          <mat-icon [class]="appraiseeSelected() ? 'text-green-600' : 'text-amber-600'" class="text-lg">
+                            {{ appraiseeSelected() ? 'check_circle' : 'warning' }}
+                          </mat-icon>
+                          <span class="font-medium" [class]="appraiseeSelected() ? 'text-green-800' : 'text-amber-800'">Employee selected</span>
+                        </div>
+                        <div class="flex items-center justify-center gap-3 p-3 rounded-lg" [ngClass]="{
+                          'bg-green-50 border border-green-200': reviewerSelected(),
+                          'bg-amber-50 border border-amber-200': !reviewerSelected()
+                        }">
+                          <mat-icon [class]="reviewerSelected() ? 'text-green-600' : 'text-amber-600'" class="text-lg">
+                            {{ reviewerSelected() ? 'check_circle' : 'warning' }}
+                          </mat-icon>
+                          <span class="font-medium" [class]="reviewerSelected() ? 'text-green-800' : 'text-amber-800'">Reviewer selected</span>
+                        </div>
+                        <div class="flex items-center justify-center gap-3 p-3 rounded-lg" [ngClass]="{
+                          'bg-green-50 border border-green-200': typeAndPeriodSelected(),
+                          'bg-amber-50 border border-amber-200': !typeAndPeriodSelected()
+                        }">
+                          <mat-icon [class]="typeAndPeriodSelected() ? 'text-green-600' : 'text-amber-600'" class="text-lg">
+                            {{ typeAndPeriodSelected() ? 'check_circle' : 'warning' }}
+                          </mat-icon>
+                          <span class="font-medium" [class]="typeAndPeriodSelected() ? 'text-green-800' : 'text-amber-800'">Appraisal type and period set</span>
+                        </div>
+                      </div>
+                      
+                      <!-- Enhanced Action Buttons -->
+                      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                        <button mat-raised-button color="primary" (click)="openAddGoalModal()" [disabled]="!canAddGoals()"
+                                class="px-6 py-2 shadow-lg hover:shadow-xl transition-shadow">
+                          <mat-icon>add</mat-icon>
+                          Add Goal
+                        </button>
+                        <button mat-stroked-button (click)="openImportFromTemplateModal()" [disabled]="!canAddGoals()"
+                                class="px-6 py-2 hover:shadow-lg transition-shadow">
+                          <mat-icon>folder_open</mat-icon>
+                          Import from Templates
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </ng-template>
+            </mat-card-content>
+          </mat-card>
         </div>
-        <div class="justify-self-end sm:self-auto">
-          <button mat-raised-button color="primary" (click)="handleFinish()" [disabled]="!canSubmitForAck() || loading()">
-            <mat-icon>send</mat-icon>
-            <span class="hidden sm:inline ml-2">Submit for Acknowledgement</span>
-          </button>
+
+        <!-- Enhanced Action Buttons -->
+        <div class="relative">
+          <div class="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl opacity-5"></div>
+          <div class="relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+              <button mat-raised-button color="primary" [disabled]="!canSubmitForAck()" (click)="handleFinish()"
+                      class="px-8 py-3 text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                <mat-icon class="mr-2">{{ createdAppraisalId() ? 'update' : 'send' }}</mat-icon>
+                {{ createdAppraisalId() ? 'Update Appraisal' : 'Submit for Acknowledgement' }}
+              </button>
+              <button mat-stroked-button routerLink="/appraisals"
+                      class="px-8 py-3 text-base font-medium hover:shadow-lg transition-all duration-300">
+                <mat-icon class="mr-2">arrow_back</mat-icon>
+                Back to Appraisals
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -426,8 +550,8 @@ export class CreateAppraisalComponent implements OnInit {
     try {
       this.loading.set(true);
       const [employeesRes, appraisalTypesRes] = await Promise.all([
-        this.http.get<Employee[]>(`${environment.apiUrl}/employees`).toPromise(),
-        this.http.get<AppraisalType[]>(`${environment.apiUrl}/appraisal-types`).toPromise()
+        this.http.get<Employee[]>(`${environment.apiUrl}/api/employees`).toPromise(),
+        this.http.get<AppraisalType[]>(`${environment.apiUrl}/api/appraisal-types`).toPromise()
       ]);
 
       this.employees.set(employeesRes || []);
@@ -456,7 +580,7 @@ export class CreateAppraisalComponent implements OnInit {
   private async loadExistingAppraisal(id: number) {
     try {
       this.loading.set(true);
-      const appraisal = await this.http.get<any>(`${environment.apiUrl}/appraisals/${id}`).toPromise();
+      const appraisal = await this.http.get<any>(`${environment.apiUrl}/api/appraisals/${id}`).toPromise();
       
       if (appraisal) {
         this.createdAppraisalId.set(appraisal.appraisal_id);
@@ -485,7 +609,7 @@ export class CreateAppraisalComponent implements OnInit {
 
   private async loadGoals(appraisalId: number) {
     try {
-      const goals = await this.http.get<GoalRecord[]>(`${environment.apiUrl}/appraisals/${appraisalId}/goals`).toPromise();
+      const goals = await this.http.get<GoalRecord[]>(`${environment.apiUrl}/api/appraisals/${appraisalId}/goals`).toPromise();
       this.goals.set(goals || []);
     } catch (error) {
       console.error('Error loading goals:', error);
@@ -520,7 +644,7 @@ export class CreateAppraisalComponent implements OnInit {
 
   private async loadRangesForType(typeId: number) {
     try {
-      const ranges = await this.http.get<AppraisalTypeRange[]>(`${environment.apiUrl}/appraisal-types/${typeId}/ranges`).toPromise();
+      const ranges = await this.http.get<AppraisalTypeRange[]>(`${environment.apiUrl}/api/appraisal-types/ranges?appraisal_type_id=${typeId}`).toPromise();
       this.ranges.set(ranges || []);
     } catch (error) {
       console.error('Error loading ranges:', error);
@@ -547,10 +671,79 @@ export class CreateAppraisalComponent implements OnInit {
     switch (importance) {
       case 'High': return 'bg-red-100 text-red-800';
       case 'Medium': return 'bg-yellow-100 text-yellow-800';
-      case 'Low': return 'bg-green-100 text-green-800';
-      default: return '';
+      case 'Low': return 'bg-blue-100 text-blue-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   }
+
+  async removeGoal(goalId: number) {
+    if (this.isLocked()) {
+      return;
+    }
+
+    if (!confirm('Are you sure you want to remove this goal?')) {
+      return;
+    }
+
+    try {
+      await this.http.delete(`${environment.apiUrl}/api/goals/${goalId}`).toPromise();
+      this.snackBar.open('Goal removed successfully', 'Close', { duration: 3000 });
+      
+      // Reload goals
+      if (this.createdAppraisalId()) {
+        await this.loadGoals(this.createdAppraisalId()!);
+      }
+    } catch (error) {
+      console.error('Error removing goal:', error);
+      this.snackBar.open('Error removing goal', 'Close', { duration: 3000 });
+    }
+  }
+
+  getStatusIcon(): string {
+    const status = this.createdAppraisalStatus();
+    switch (status) {
+      case 'Draft': return 'edit';
+      case 'Submitted': return 'send';
+      case 'Complete': return 'check_circle';
+      default: return 'fiber_new';
+    }
+  }
+
+  getCompletionPercentage(): number {
+    let percentage = 0;
+    
+    // Basic info completion (40%)
+    if (this.appraiseeSelected()) percentage += 15;
+    if (this.reviewerSelected()) percentage += 15;
+    if (this.typeAndPeriodSelected()) percentage += 10;
+    
+    // Goals completion (60%)
+    const goalCount = this.goals().length;
+    if (goalCount > 0) percentage += 30;
+    if (this.totalWeightage() === 100) percentage += 30;
+    
+    return Math.min(percentage, 100);
+  }
+
+  getWeightageIcon(): string {
+    const total = this.totalWeightage();
+    if (total === 100) return 'check_circle';
+    if (total > 100) return 'error';
+    if (total > 0) return 'warning';
+    return 'radio_button_unchecked';
+  }
+
+  getGoalIcon(importance: string): string {
+    switch (importance) {
+      case 'High': return 'priority_high';
+      case 'Medium': return 'remove';
+      case 'Low': return 'keyboard_arrow_down';
+      default: return 'track_changes';
+    }
+  }
+
+  // Expose Math for template
+  Math = Math;
 
   async openAddGoalModal() {
     if (!this.canAddGoals()) {
@@ -625,24 +818,6 @@ export class CreateAppraisalComponent implements OnInit {
     });
   }
 
-  async removeGoal(goalId: number) {
-    if (!confirm('Are you sure you want to remove this goal?')) {
-      return;
-    }
-
-    try {
-      await this.http.delete(`${environment.apiUrl}/goals/${goalId}`).toPromise();
-      this.snackBar.open('Goal removed successfully', 'Close', { duration: 3000 });
-      
-      // Reload goals
-      if (this.createdAppraisalId()) {
-        await this.loadGoals(this.createdAppraisalId()!);
-      }
-    } catch (error) {
-      console.error('Error removing goal:', error);
-      this.snackBar.open('Error removing goal', 'Close', { duration: 3000 });
-    }
-  }
 
   async handleSubmit() {
     if (!this.appraisalForm.valid || !this.canSaveDraft()) {
@@ -666,10 +841,10 @@ export class CreateAppraisalComponent implements OnInit {
       let response;
       if (this.createdAppraisalId()) {
         // Update existing appraisal
-        response = await this.http.put<any>(`${environment.apiUrl}/appraisals/${this.createdAppraisalId()}`, request).toPromise();
+        response = await this.http.put<any>(`${environment.apiUrl}/api/appraisals/${this.createdAppraisalId()}`, request).toPromise();
       } else {
         // Create new appraisal
-        response = await this.http.post<any>(`${environment.apiUrl}/appraisals`, request).toPromise();
+        response = await this.http.post<any>(`${environment.apiUrl}/api/appraisals`, request).toPromise();
         if (response?.appraisal_id) {
           this.createdAppraisalId.set(response.appraisal_id);
           this.createdAppraisalStatus.set('Draft');
@@ -701,7 +876,7 @@ export class CreateAppraisalComponent implements OnInit {
 
       // Then submit for acknowledgement
       if (this.createdAppraisalId()) {
-        await this.http.put<any>(`${environment.apiUrl}/appraisals/${this.createdAppraisalId()}/status`, {
+        await this.http.put<any>(`${environment.apiUrl}/api/appraisals/${this.createdAppraisalId()}/status`, {
           status: 'Submitted'
         }).toPromise();
 

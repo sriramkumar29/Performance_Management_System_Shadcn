@@ -131,7 +131,7 @@ export class AppraisalService {
   // Get appraisals for current user
   async getMyAppraisals(): Promise<AppraisalWithGoals[]> {
     const response = await firstValueFrom(
-      this.http.get<AppraisalWithGoals[]>(`${this.baseUrl}/api/appraisals/my`)
+      this.http.get<AppraisalWithGoals[]>(`${this.baseUrl}/api/appraisals`)
     );
     return response;
   }
@@ -139,7 +139,7 @@ export class AppraisalService {
   // Get team appraisals (for managers)
   async getTeamAppraisals(): Promise<AppraisalWithGoals[]> {
     const response = await firstValueFrom(
-      this.http.get<AppraisalWithGoals[]>(`${this.baseUrl}/api/appraisals/team`)
+      this.http.get<AppraisalWithGoals[]>(`${this.baseUrl}/api/appraisals`)
     );
     return response;
   }
@@ -232,7 +232,7 @@ export class AppraisalService {
   // Get appraisal ranges for a type
   async getAppraisalRanges(typeId: number): Promise<AppraisalRange[]> {
     const response = await firstValueFrom(
-      this.http.get<AppraisalRange[]>(`${this.baseUrl}/api/appraisal-types/${typeId}/ranges`)
+      this.http.get<AppraisalRange[]>(`${this.baseUrl}/api/appraisal-types/ranges?appraisal_type_id=${typeId}`)
     );
     return response;
   }
@@ -240,7 +240,7 @@ export class AppraisalService {
   // Get goal templates
   async getGoalTemplates(): Promise<GoalTemplate[]> {
     const response = await firstValueFrom(
-      this.http.get<GoalTemplate[]>(`${this.baseUrl}/api/goal-templates`)
+      this.http.get<GoalTemplate[]>(`${this.baseUrl}/api/goals/templates`)
     );
     return response;
   }
@@ -248,7 +248,7 @@ export class AppraisalService {
   // Get goal categories
   async getGoalCategories(): Promise<GoalCategory[]> {
     const response = await firstValueFrom(
-      this.http.get<GoalCategory[]>(`${this.baseUrl}/api/goal-categories`)
+      this.http.get<GoalCategory[]>(`${this.baseUrl}/api/goals/categories`)
     );
     return response;
   }

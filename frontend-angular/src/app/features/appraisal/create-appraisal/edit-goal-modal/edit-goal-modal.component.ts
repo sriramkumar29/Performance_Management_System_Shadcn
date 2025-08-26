@@ -160,7 +160,7 @@ export class EditGoalModalComponent implements OnInit {
 
   private async loadCategories() {
     try {
-      const categories = await this.http.get<GoalCategory[]>(`${environment.apiUrl}/goal-categories`).toPromise();
+      const categories = await this.http.get<GoalCategory[]>(`${environment.apiUrl}/api/goals/categories`).toPromise();
       this.categories.set(categories || []);
     } catch (error) {
       console.error('Error loading categories:', error);
@@ -185,7 +185,7 @@ export class EditGoalModalComponent implements OnInit {
       };
 
       const response = await this.http.put<any>(
-        `${environment.apiUrl}/goals/${this.data.goalData.goal.goal_id}`,
+        `${environment.apiUrl}/api/goals/${this.data.goalData.goal.goal_id}`,
         request
       ).toPromise();
 
