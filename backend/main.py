@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.db.database import engine, Base
-from app.routers import employees, appraisals, goals, appraisal_types, appraisal_goals
+from app.routers import employees, appraisals, goals, appraisal_types, appraisal_goals, auth
 from app.core.config import settings
 
 @asynccontextmanager
@@ -34,6 +34,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(employees.router, prefix="/api/employees", tags=["Employees"])
 app.include_router(appraisals.router, prefix="/api/appraisals", tags=["Appraisals"])
 app.include_router(appraisal_goals.router, prefix="/api/appraisals", tags=["Appraisal Goals"])
