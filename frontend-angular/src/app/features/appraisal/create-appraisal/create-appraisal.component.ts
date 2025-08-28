@@ -14,6 +14,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { MatBadgeModule } from '@angular/material/badge';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { AddGoalModalComponent } from './add-goal-modal/add-goal-modal.component';
@@ -28,7 +29,7 @@ interface Employee {
   emp_roles: string;
   emp_roles_level: number;
   emp_reporting_manager: number | null;
-  emp_status: string;
+  emp_status: boolean;
 }
 
 interface AppraisalType {
@@ -45,8 +46,8 @@ interface AppraisalTypeRange {
   id: number;
   appraisal_type_id: number;
   name: string;
-  start_date: string;
-  end_date: string;
+  start_month_offset: number;
+  end_month_offset: number;
   created_at: string;
   updated_at: string;
 }
@@ -90,7 +91,8 @@ interface CreateAppraisalRequest {
     MatFormFieldModule,
     MatProgressBarModule,
     MatChipsModule,
-    MatBadgeModule
+    MatBadgeModule,
+    MatTooltipModule
   ],
   template: `
     <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 sm:p-6">
@@ -100,18 +102,28 @@ interface CreateAppraisalRequest {
           <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl opacity-10"></div>
           <div class="relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-lg border border-white/20">
             <div class="flex items-center justify-between">
-              <div>
-                <div class="flex items-center gap-3 mb-2">
-                  <div class="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                    <mat-icon class="text-white">{{ createdAppraisalId() ? 'edit' : 'add_circle' }}</mat-icon>
+              <div class="flex items-center gap-4">
+                <!-- Back Button -->
+                <button mat-icon-button 
+                        (click)="goBack()" 
+                        class="bg-white/50 hover:bg-white/80 transition-all duration-200 shadow-sm"
+                        matTooltip="Go back to dashboard">
+                  <mat-icon class="text-slate-600">arrow_back</mat-icon>
+                </button>
+                
+                <div>
+                  <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                      <mat-icon class="text-white">{{ createdAppraisalId() ? 'edit' : 'add_circle' }}</mat-icon>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                      {{ createdAppraisalId() ? 'Edit Appraisal' : 'Create Appraisal' }}
+                    </h1>
                   </div>
-                  <h1 class="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    {{ createdAppraisalId() ? 'Edit Appraisal' : 'Create Appraisal' }}
-                  </h1>
+                  <p class="text-slate-600 text-sm sm:text-base">
+                    {{ createdAppraisalId() ? 'Modify appraisal details and goals' : 'Create a new performance appraisal for your team member' }}
+                  </p>
                 </div>
-                <p class="text-slate-600 text-sm sm:text-base">
-                  {{ createdAppraisalId() ? 'Modify appraisal details and goals' : 'Create a new performance appraisal for your team member' }}
-                </p>
               </div>
               
               <!-- Status Badge -->
@@ -167,11 +179,11 @@ interface CreateAppraisalRequest {
                 <mat-label>Employee</mat-label>
                 <mat-select formControlName="appraisee_id" [disabled]="isLocked()">
                   <mat-option value="">Select employee</mat-option>
-                  <mat-option *ngFor="let employee of employees()" [value]="employee.emp_id">
-                    {{ employee.emp_name }} ({{ employee.emp_email }})
+                  <mat-option *ngFor="let employee of getValidAppraisees()" [value]="employee.emp_id">
+                    {{ employee.emp_name }} ({{ employee.emp_email }}) - {{ employee.emp_roles }}
                   </mat-option>
                 </mat-select>
-                <mat-hint>The employee being appraised</mat-hint>
+                <mat-hint>Employee must be lower level than you</mat-hint>
               </mat-form-field>
 
               <!-- Reviewer Selection -->
@@ -186,45 +198,57 @@ interface CreateAppraisalRequest {
                 <mat-hint>Manager or higher level employee for final review</mat-hint>
               </mat-form-field>
 
-              <!-- Appraisal Type -->
-              <mat-form-field appearance="outline" class="w-full">
-                <mat-label>Appraisal Type</mat-label>
-                <mat-select formControlName="appraisal_type_id" [disabled]="isLocked()" (selectionChange)="onAppraisalTypeChange($event.value)">
-                  <mat-option value="">Select appraisal type</mat-option>
-                  <mat-option *ngFor="let type of appraisalTypes()" [value]="type.id">
-                    {{ type.name }}
-                  </mat-option>
-                </mat-select>
-                <mat-hint>Type determines the evaluation framework</mat-hint>
-              </mat-form-field>
-
-              <!-- Range Selection (conditional) -->
-              <mat-form-field appearance="outline" class="w-full" *ngIf="selectedAppraisalType()?.has_range">
-                <mat-label>Range</mat-label>
-                <mat-select formControlName="appraisal_type_range_id" [disabled]="isLocked()" (selectionChange)="onRangeChange($event.value)">
-                  <mat-option value="">Select range</mat-option>
-                  <mat-option *ngFor="let range of ranges()" [value]="range.id">
-                    {{ range.name }}
-                  </mat-option>
-                </mat-select>
-                <mat-hint>Range sets the exact start and end dates</mat-hint>
-              </mat-form-field>
-
-              <!-- Period Dates -->
+              <!-- Appraisal Type and Range Section -->
               <div class="md:col-span-2">
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <!-- Appraisal Type -->
+                  <div>
+                    <mat-form-field appearance="outline" class="w-full">
+                      <mat-label>Appraisal Type</mat-label>
+                      <mat-select formControlName="appraisal_type_id" [disabled]="isLocked()" (selectionChange)="onAppraisalTypeChange($event.value)">
+                        <mat-option value="">Select appraisal type</mat-option>
+                        <mat-option *ngFor="let type of appraisalTypes()" [value]="type.id">
+                          {{ type.name }}
+                        </mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                    <p class="text-xs text-slate-500 mt-1">
+                      Type determines the period automatically. If the type has ranges, choose one next.
+                    </p>
+                  </div>
+
+                  <!-- Range Selection (conditional) -->
+                  <div *ngIf="showRangeField()">
+                    <mat-form-field appearance="outline" class="w-full">
+                      <mat-label>Range</mat-label>
+                      <mat-select formControlName="appraisal_type_range_id" [disabled]="isLocked()" (selectionChange)="onRangeChange($event.value)">
+                        <mat-option value="">Select range</mat-option>
+                        <mat-option *ngFor="let range of ranges()" [value]="range.id">
+                          {{ range.name }}
+                        </mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                    <p class="text-xs text-slate-500 mt-1">
+                      Range sets the exact start and end dates.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Appraisal Period -->
+              <div class="md:col-span-2">
+                <h4 class="text-sm font-medium text-slate-700 mb-3">Appraisal Period</h4>
+                <div class="grid grid-cols-2 gap-4">
                   <mat-form-field appearance="outline">
                     <mat-label>Start Date</mat-label>
                     <input matInput type="date" formControlName="period_start_date" [disabled]="isLocked()">
-                    <mat-hint>Appraisal period start</mat-hint>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>End Date</mat-label>
                     <input matInput type="date" formControlName="period_end_date" [disabled]="isLocked()">
-                    <mat-hint>Appraisal period end</mat-hint>
                   </mat-form-field>
                 </div>
-                <p class="text-xs text-muted-foreground mt-2">
+                <p class="text-xs text-slate-500 mt-1">
                   Automatically calculated from appraisal type and range. Click on dates to manually adjust if needed.
                 </p>
               </div>
@@ -453,7 +477,7 @@ interface CreateAppraisalRequest {
                 <mat-icon class="mr-2">{{ createdAppraisalId() ? 'update' : 'send' }}</mat-icon>
                 {{ createdAppraisalId() ? 'Update Appraisal' : 'Submit for Acknowledgement' }}
               </button>
-              <button mat-stroked-button routerLink="/appraisals"
+              <button mat-stroked-button (click)="goBackToAppraisals()"
                       class="px-8 py-3 text-base font-medium hover:shadow-lg transition-all duration-300">
                 <mat-icon class="mr-2">arrow_back</mat-icon>
                 Back to Appraisals
@@ -484,6 +508,7 @@ export class CreateAppraisalComponent implements OnInit {
   loading = signal(false);
   createdAppraisalId = signal<number | null>(null);
   createdAppraisalStatus = signal<string | null>(null);
+  showRangeField = signal<boolean>(false);
 
   // Form
   appraisalForm: FormGroup;
@@ -491,7 +516,9 @@ export class CreateAppraisalComponent implements OnInit {
   // Computed values
   selectedAppraisalType = computed(() => {
     const typeId = this.appraisalForm?.get('appraisal_type_id')?.value;
-    return this.appraisalTypes().find(t => t.id === typeId) || null;
+    const selectedType = this.appraisalTypes().find(t => t.id === typeId) || null;
+    console.log('Selected appraisal type computed:', selectedType);
+    return selectedType;
   });
 
   totalWeightage = computed(() => {
@@ -549,19 +576,31 @@ export class CreateAppraisalComponent implements OnInit {
   private async loadInitialData() {
     try {
       this.loading.set(true);
+      console.log('Loading initial data...');
+      
       const [employeesRes, appraisalTypesRes] = await Promise.all([
         this.http.get<Employee[]>(`${environment.apiUrl}/api/employees`).toPromise(),
         this.http.get<AppraisalType[]>(`${environment.apiUrl}/api/appraisal-types`).toPromise()
       ]);
 
+      console.log('Employees loaded:', employeesRes);
+      console.log('Appraisal types loaded:', appraisalTypesRes);
+
       this.employees.set(employeesRes || []);
       this.appraisalTypes.set(appraisalTypesRes || []);
       
-      // Filter reviewers (managers and above)
+      // Filter reviewers (managers and above, excluding current user)
+      const currentUser = this.authService.getCurrentUser();
       const reviewerList = (employeesRes || []).filter(emp => 
-        emp.emp_roles_level >= 2 // Manager level or above
+        emp.emp_roles_level >= 4 && // Manager level or above
+        emp.emp_id !== currentUser?.emp_id // Exclude current user (appraiser)
       );
       this.reviewers.set(reviewerList);
+      
+      console.log('Reviewers filtered:', reviewerList);
+      
+      // Setup form change listeners for hierarchy validation
+      this.setupFormValidation();
     } catch (error) {
       console.error('Error loading initial data:', error);
       this.snackBar.open('Error loading data', 'Close', { duration: 3000 });
@@ -616,11 +655,92 @@ export class CreateAppraisalComponent implements OnInit {
     }
   }
 
+  private setupFormValidation() {
+    // Listen for appraisee changes to filter valid reviewers
+    this.appraisalForm.get('appraisee_id')?.valueChanges.subscribe(appraiseeId => {
+      if (appraiseeId) {
+        this.filterReviewersForAppraisee(appraiseeId);
+      }
+    });
+  }
+
+  private filterReviewersForAppraisee(appraiseeId: number) {
+    const appraisee = this.employees().find(emp => emp.emp_id === appraiseeId);
+    const currentUser = this.authService.getCurrentUser();
+    
+    if (!appraisee || !currentUser) return;
+
+    // Reviewer must be higher level than both appraisee and appraiser (current user)
+    const minReviewerLevel = Math.max(appraisee.emp_roles_level, currentUser.emp_roles_level) + 1;
+    
+    const validReviewers = this.employees().filter(emp => 
+      emp.emp_roles_level >= minReviewerLevel && 
+      emp.emp_id !== appraiseeId && 
+      emp.emp_id !== currentUser.emp_id
+    );
+    
+    this.reviewers.set(validReviewers);
+    
+    // Clear reviewer selection if current selection is no longer valid
+    const currentReviewerId = this.appraisalForm.get('reviewer_id')?.value;
+    if (currentReviewerId && !validReviewers.find(r => r.emp_id === currentReviewerId)) {
+      this.appraisalForm.patchValue({ reviewer_id: '' });
+    }
+  }
+
+  // Filter employees for appraisee selection (must be lower level than current user)
+  getValidAppraisees(): Employee[] {
+    const currentUser = this.authService.getCurrentUser();
+    console.log('Current user:', currentUser);
+    console.log('All employees:', this.employees());
+    
+    if (!currentUser) {
+      console.log('No current user found');
+      return [];
+    }
+    
+    const validEmployees = this.employees().filter(emp => {
+      const isLowerLevel = emp.emp_roles_level < currentUser.emp_roles_level;
+      const isDifferentUser = emp.emp_id !== currentUser.emp_id;
+      const isActive = emp.emp_status === true;
+      
+      console.log(`Employee ${emp.emp_name}: level=${emp.emp_roles_level}, currentLevel=${currentUser.emp_roles_level}, isLower=${isLowerLevel}, isDifferent=${isDifferentUser}, isActive=${isActive}`);
+      
+      return isLowerLevel && isDifferentUser && isActive;
+    });
+    
+    console.log('Valid appraisees:', validEmployees);
+    return validEmployees;
+  }
+
   onAppraisalTypeChange(typeId: number) {
+    console.log('Appraisal type changed to:', typeId);
     if (typeId) {
       this.loadRangesForType(typeId);
-      this.calculatePeriodFromType(typeId);
+      // Reset range selection when type changes
+      this.appraisalForm.patchValue({
+        appraisal_type_range_id: ''
+      });
+      
+      // Only calculate period if type doesn't have ranges
+      const type = this.appraisalTypes().find(t => t.id === typeId);
+      console.log('Selected type:', type);
+      
+      if (type && !type.has_range) {
+        console.log('Type has no ranges, calculating period directly');
+        this.showRangeField.set(false);
+        this.calculatePeriodFromType(typeId);
+      } else if (type && type.has_range) {
+        console.log('Type has ranges, showing range field and clearing dates');
+        this.showRangeField.set(true);
+        // Clear dates if type has ranges - wait for range selection
+        this.appraisalForm.patchValue({
+          period_start_date: '',
+          period_end_date: ''
+        });
+      }
     } else {
+      this.showRangeField.set(false);
       this.ranges.set([]);
       this.appraisalForm.patchValue({
         appraisal_type_range_id: '',
@@ -631,20 +751,42 @@ export class CreateAppraisalComponent implements OnInit {
   }
 
   onRangeChange(rangeId: number) {
+    console.log('Range changed to:', rangeId);
     if (rangeId) {
       const range = this.ranges().find(r => r.id === rangeId);
+      console.log('Selected range:', range);
       if (range) {
-        this.appraisalForm.patchValue({
-          period_start_date: range.start_date,
-          period_end_date: range.end_date
-        });
+        this.calculatePeriodFromRange(range);
       }
     }
   }
 
+  private calculatePeriodFromRange(range: AppraisalTypeRange) {
+    const currentYear = new Date().getFullYear();
+    
+    // Calculate start date from month offset
+    const startDate = new Date(currentYear, range.start_month_offset, 1);
+    
+    // Calculate end date from month offset (last day of the month)
+    const endDate = new Date(currentYear, range.end_month_offset + 1, 0);
+    
+    console.log('Calculating period from range:', range);
+    console.log('Start date:', startDate.toISOString().split('T')[0]);
+    console.log('End date:', endDate.toISOString().split('T')[0]);
+    
+    this.appraisalForm.patchValue({
+      period_start_date: startDate.toISOString().split('T')[0],
+      period_end_date: endDate.toISOString().split('T')[0]
+    });
+    
+    console.log('Form values after update:', this.appraisalForm.value);
+  }
+
   private async loadRangesForType(typeId: number) {
     try {
+      console.log('Loading ranges for type:', typeId);
       const ranges = await this.http.get<AppraisalTypeRange[]>(`${environment.apiUrl}/api/appraisal-types/ranges?appraisal_type_id=${typeId}`).toPromise();
+      console.log('Ranges loaded:', ranges);
       this.ranges.set(ranges || []);
     } catch (error) {
       console.error('Error loading ranges:', error);
@@ -895,6 +1037,25 @@ export class CreateAppraisalComponent implements OnInit {
   }
 
   handleCancel() {
-    this.router.navigate(['/appraisals/team-appraisals']);
+    this.router.navigate(['/dashboard']);
+  }
+
+  goBack() {
+    this.router.navigate(['/dashboard']);
+  }
+
+  goBackToAppraisals() {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) {
+      this.router.navigate(['/dashboard']);
+      return;
+    }
+
+    // Navigate based on user role - managers go to team appraisals, others to my appraisals
+    if (currentUser.emp_roles_level >= 4) { // Manager level or above
+      this.router.navigate(['/appraisals/team-appraisals']);
+    } else {
+      this.router.navigate(['/appraisals/my-appraisals']);
+    }
   }
 }

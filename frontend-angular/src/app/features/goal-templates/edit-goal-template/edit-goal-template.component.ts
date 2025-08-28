@@ -10,11 +10,23 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { AppraisalService, GoalTemplate, GoalCategory } from '../../../core/services/appraisal.service';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 
-interface ExtendedGoalTemplate extends GoalTemplate {
-  categories?: GoalCategory[];
+interface Category {
+  id: number;
+  name: string;
+}
+
+interface GoalTemplate {
+  temp_id: number;
+  temp_title: string;
+  temp_description: string;
+  temp_performance_factor: string;
+  temp_importance: string;
+  temp_weightage: number;
+  categories: Category[];
 }
 
 @Component({
@@ -33,44 +45,38 @@ interface ExtendedGoalTemplate extends GoalTemplate {
     MatChipsModule
   ],
   template: `
-    <div class="mx-auto max-w-4xl p-4 sm:p-6">
-      <!-- Header -->
-      <div class="flex items-center justify-between gap-3 mb-6">
-        <div class="flex items-center gap-3 sm:gap-4">
-          <button
-            mat-stroked-button
-            (click)="goBack()"
-            class="flex items-center gap-2"
-            aria-label="Back"
-            title="Back"
-          >
-            <mat-icon>arrow_back</mat-icon>
-            <span class="hidden sm:inline">Back</span>
-          </button>
-          <h1 class="text-2xl font-bold">{{ isEdit() ? 'Edit Goal Template' : 'Create Template' }}</h1>
-        </div>
-        <div class="flex items-center">
-          <button
-            mat-stroked-button
-            (click)="goHome()"
-            class="hidden sm:inline-flex items-center gap-2"
-            aria-label="Home"
-            title="Home"
-          >
+    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 sm:p-6">
+      <div class="mx-auto max-w-4xl space-y-6">
+        <!-- Header -->
+        <div class="flex items-center justify-between gap-3 mb-6">
+          <div class="flex items-center gap-3 sm:gap-4">
+            <button mat-icon-button (click)="goBack()" class="bg-white shadow-sm">
+              <mat-icon>arrow_back</mat-icon>
+            </button>
+            <div>
+              <h1 class="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                {{ isEdit() ? 'Edit Goal Template' : 'Create Template' }}
+              </h1>
+              <p class="text-muted-foreground">{{ isEdit() ? 'Update template details' : 'Create a new performance goal template' }}</p>
+            </div>
+          </div>
+          <button mat-icon-button (click)="goHome()" class="bg-white shadow-sm">
             <mat-icon>home</mat-icon>
-            <span class="hidden sm:inline">Home</span>
           </button>
         </div>
-      </div>
 
-      <!-- Form Card -->
-      <mat-card class="shadow-lg">
-        <mat-card-header>
-          <mat-card-title class="text-lg">
-            {{ isEdit() ? 'Update Template Details' : 'Template Information' }}
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content class="space-y-6">
+        <!-- Form Card -->
+        <div class="relative">
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl opacity-10"></div>
+          <div class="relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-lg border border-white/20">
+            <div class="mb-6">
+              <h2 class="text-lg font-semibold text-foreground">
+                {{ isEdit() ? 'Update Template Details' : 'Template Information' }}
+              </h2>
+              <p class="text-sm text-muted-foreground mt-1">
+                {{ isEdit() ? 'Modify the template fields below' : 'Fill in the details for your new goal template' }}
+              </p>
+            </div>
           <form [formGroup]="templateForm" (ngSubmit)="save()" class="space-y-6">
             <!-- Title -->
             <mat-form-field appearance="outline" class="w-full">
@@ -201,40 +207,31 @@ interface ExtendedGoalTemplate extends GoalTemplate {
             </div>
 
             <!-- Action buttons -->
-            <div class="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 pt-4 border-t">
+            <div class="flex flex-col sm:flex-row gap-3 pt-6 border-t border-border/50">
               <button
-                mat-stroked-button
+                type="submit"
+                mat-raised-button
+                color="primary"
+                [disabled]="templateForm.invalid || loading() || saving() || !isManagerOrAbove()"
+                class="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
+              >
+                <mat-icon *ngIf="saving()">hourglass_empty</mat-icon>
+                <span>{{ saving() ? 'Saving...' : (isEdit() ? 'Update Template' : 'Create Template') }}</span>
+              </button>
+              <button
                 type="button"
+                mat-stroked-button
                 (click)="goBack()"
                 [disabled]="saving()"
-                class="w-full sm:w-auto"
+                class="flex-1 sm:flex-none border-border/30 text-muted-foreground hover:bg-muted/50"
               >
                 Cancel
               </button>
-              <button
-                mat-raised-button
-                color="primary"
-                type="submit"
-                [disabled]="saving() || loading() || templateForm.invalid"
-                class="w-full sm:w-auto px-6"
-              >
-                {{ saving() ? 'Saving...' : (isEdit() ? 'Save Changes' : 'Create Template') }}
-              </button>
             </div>
           </form>
-        </mat-card-content>
-      </mat-card>
-
-      <!-- Mobile-only floating Home button -->
-      <button
-        mat-fab
-        (click)="goHome()"
-        title="Home"
-        aria-label="Home"
-        class="sm:hidden fixed bottom-20 right-4 z-50"
-      >
-        <mat-icon>home</mat-icon>
-      </button>
+          </div>
+        </div>
+      </div>
     </div>
   `,
   styles: [`
@@ -251,14 +248,14 @@ export class EditGoalTemplateComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
-  private appraisalService = inject(AppraisalService);
+  private http = inject(HttpClient);
   private authService = inject(AuthService);
   private snackBar = inject(MatSnackBar);
 
   loading = signal(false);
   saving = signal(false);
   isEdit = signal(false);
-  allCategories = signal<GoalCategory[]>([]);
+  allCategories = signal<Category[]>([]);
   selectedCategories = signal<string[]>([]);
   newCategory = '';
 
@@ -293,14 +290,19 @@ export class EditGoalTemplateComponent implements OnInit {
   private async loadData() {
     this.loading.set(true);
     try {
-      // Load categories
-      const categories = await this.appraisalService.getGoalCategories();
+      // Load categories - for now we'll use a mock list
+      const categories: Category[] = [
+        { id: 1, name: 'Technical Skills' },
+        { id: 2, name: 'Communication' },
+        { id: 3, name: 'Leadership' },
+        { id: 4, name: 'Project Management' },
+        { id: 5, name: 'Quality' },
+        { id: 6, name: 'Innovation' }
+      ];
       this.allCategories.set(categories);
 
       // Load template data if editing
       if (this.isEdit() && this.templateId) {
-        // Note: This would need to be implemented in AppraisalService
-        // For now, we'll handle it gracefully
         try {
           const template = await this.getTemplate(this.templateId);
           this.populateForm(template);
@@ -315,21 +317,24 @@ export class EditGoalTemplateComponent implements OnInit {
     }
   }
 
-  private async getTemplate(id: number): Promise<ExtendedGoalTemplate> {
-    // This would need to be implemented in AppraisalService
-    // For now, return a mock template
-    return {
-      temp_id: id,
-      temp_title: 'Sample Template',
-      temp_description: 'Sample description',
-      temp_performance_factor: 'Quality',
-      temp_importance: 'High',
-      temp_weightage: 25,
-      categories: []
-    };
+  private async getTemplate(id: number): Promise<GoalTemplate> {
+    try {
+      const template = await this.http.get<GoalTemplate>(`${environment.apiUrl}/api/goals/templates/${id}`).toPromise();
+      return template || {
+        temp_id: id,
+        temp_title: '',
+        temp_description: '',
+        temp_performance_factor: '',
+        temp_importance: '',
+        temp_weightage: 0,
+        categories: []
+      };
+    } catch (error) {
+      throw new Error('Failed to load template');
+    }
   }
 
-  private populateForm(template: ExtendedGoalTemplate) {
+  private populateForm(template: GoalTemplate) {
     this.templateForm.patchValue({
       title: template.temp_title,
       description: template.temp_description,
@@ -339,11 +344,11 @@ export class EditGoalTemplateComponent implements OnInit {
     });
 
     if (template.categories) {
-      this.selectedCategories.set(template.categories.map(c => c.name));
+      this.selectedCategories.set(template.categories.map((c: Category) => c.name));
     }
   }
 
-  private isManagerOrAbove(): boolean {
+  isManagerOrAbove(): boolean {
     const user = this.authService.getCurrentUser();
     if (!user) return false;
     
@@ -351,11 +356,7 @@ export class EditGoalTemplateComponent implements OnInit {
       return true;
     }
     
-    if (typeof user.emp_roles_level === 'number') {
-      return user.emp_roles_level > 2;
-    }
-    
-    return false;
+    return user.emp_roles_level >= 4;
   }
 
   addCategory() {
@@ -414,15 +415,19 @@ export class EditGoalTemplateComponent implements OnInit {
   }
 
   private async createTemplate(payload: any): Promise<void> {
-    // This would need to be implemented in AppraisalService
-    // For now, simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      await this.http.post(`${environment.apiUrl}/api/goals/templates`, payload).toPromise();
+    } catch (error) {
+      throw new Error('Failed to create template');
+    }
   }
 
   private async updateTemplate(id: number, payload: any): Promise<void> {
-    // This would need to be implemented in AppraisalService
-    // For now, simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      await this.http.put(`${environment.apiUrl}/api/goals/templates/${id}`, payload).toPromise();
+    } catch (error) {
+      throw new Error('Failed to update template');
+    }
   }
 
   goBack() {
