@@ -13,23 +13,16 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { environment } from '../../../../../environments/environment';
 
 interface GoalTemplate {
-  id: number;
-  name: string;
-  description: string;
-  created_at: string;
-  goals: TemplateGoal[];
-}
-
-interface TemplateGoal {
-  goal_id: number;
-  goal_title: string;
-  goal_description: string;
-  goal_weightage: number;
-  goal_importance: 'High' | 'Medium' | 'Low';
-  category?: {
+  temp_id: number;
+  temp_title: string;
+  temp_description: string;
+  temp_performance_factor: string;
+  temp_importance: 'High' | 'Medium' | 'Low';
+  temp_weightage: number;
+  categories: {
     id: number;
     name: string;
-  };
+  }[];
 }
 
 interface ImportTemplateData {
@@ -37,9 +30,13 @@ interface ImportTemplateData {
   remainingWeightage: number;
 }
 
-interface ImportGoalsRequest {
-  template_id: number;
-  goal_ids: number[];
+interface CreateGoalFromTemplateRequest {
+  goal_title: string;
+  goal_description: string;
+  goal_performance_factor: string;
+  goal_weightage: number;
+  goal_importance: 'High' | 'Medium' | 'Low';
+  category_id?: number;
 }
 
 @Component({
@@ -66,74 +63,73 @@ interface ImportGoalsRequest {
           <mat-label>Select Template</mat-label>
           <mat-select formControlName="template_id" (selectionChange)="onTemplateChange($event.value)">
             <mat-option value="">Choose a template</mat-option>
-            <mat-option *ngFor="let template of templates()" [value]="template.id">
-              {{ template.name }}
+            <mat-option *ngFor="let template of templates()" [value]="template.temp_id">
+              {{ template.temp_title }}
             </mat-option>
           </mat-select>
         </mat-form-field>
 
+        <!-- Category Selection (shown after template selection) -->
+        <mat-form-field appearance="outline" class="w-full" *ngIf="selectedTemplate() && hasCategories()">
+          <mat-label>Select Category</mat-label>
+          <mat-select formControlName="category_id" (selectionChange)="onCategoryChange($event.value)">
+            <mat-option value="">No Category</mat-option>
+            <mat-option *ngFor="let category of getTemplateCategories()" [value]="category.id">
+              {{ category.name }}
+            </mat-option>
+          </mat-select>
+          <mat-hint>Choose a category for this goal (optional)</mat-hint>
+        </mat-form-field>
+
         <!-- Template Description -->
         <div *ngIf="selectedTemplate()" class="p-3 bg-blue-50 rounded-md border border-blue-200">
-          <p class="text-sm text-blue-800">{{ selectedTemplate()?.description }}</p>
+          <p class="text-sm text-blue-800">{{ selectedTemplate()?.temp_description }}</p>
         </div>
 
-        <!-- Goals Selection -->
-        <div *ngIf="selectedTemplate()?.goals?.length" class="space-y-3">
-          <div class="flex items-center justify-between">
-            <h3 class="font-medium">Select Goals to Import</h3>
-            <div class="text-sm text-muted-foreground">
-              Selected: {{ selectedWeightage() }}% / Available: {{ data.remainingWeightage }}%
+        <!-- Template Preview -->
+        <div *ngIf="selectedTemplate()" class="mt-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+          <h4 class="font-medium text-gray-900 mb-3">Template Preview</h4>
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-medium text-gray-700">{{ selectedTemplate()!.temp_title }}</span>
+              <span class="text-sm text-gray-500">{{ selectedTemplate()!.temp_weightage }}%</span>
+            </div>
+            <p class="text-sm text-gray-600">{{ selectedTemplate()!.temp_description }}</p>
+            <div class="flex items-center gap-2">
+              <span class="text-xs px-2 py-1 rounded-full" 
+                    [class]="getImportanceChipClass(selectedTemplate()!.temp_importance)">
+                {{ selectedTemplate()!.temp_importance }}
+              </span>
+              <span class="text-xs text-gray-500">
+                Categories: {{ getCategoriesText() }}
+              </span>
+            </div>
+            
+            <!-- Selected Category Display -->
+            <div *ngIf="selectedCategoryId()" class="mt-2">
+              <span class="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                Category: {{ getSelectedCategoryName() }}
+              </span>
+            </div>
+            
+            <!-- Template Selection Checkbox -->
+            <div class="mt-3 pt-3 border-t border-gray-200">
+              <label class="flex items-center">
+                <input 
+                  type="checkbox" 
+                  [checked]="isTemplateSelected()" 
+                  [disabled]="!canSelectTemplate()"
+                  (change)="toggleTemplateSelection($any($event.target).checked)"
+                  class="mr-2">
+                <span class="text-sm text-gray-700">
+                  Import this template as a goal 
+                  <span *ngIf="!canSelectTemplate()" class="text-red-500">
+                    (Exceeds remaining weightage: {{ data.remainingWeightage }}%)
+                  </span>
+                </span>
+              </label>
             </div>
           </div>
-
-          <div class="max-h-96 overflow-y-auto space-y-2">
-            <mat-card *ngFor="let goal of selectedTemplate()?.goals" class="p-4">
-              <div class="flex items-start gap-3">
-                <mat-checkbox 
-                  [checked]="isGoalSelected(goal.goal_id)"
-                  [disabled]="!canSelectGoal(goal)"
-                  (change)="toggleGoalSelection(goal, $event.checked)">
-                </mat-checkbox>
-                
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 mb-1">
-                    <h4 class="font-medium text-sm">{{ goal.goal_title }}</h4>
-                    <span class="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                      {{ goal.goal_weightage }}%
-                    </span>
-                    <span class="text-xs px-2 py-0.5 rounded-full" 
-                          [ngClass]="getImportanceChipClass(goal.goal_importance)">
-                      {{ goal.goal_importance }}
-                    </span>
-                  </div>
-                  
-                  <p *ngIf="goal.goal_description" class="text-xs text-muted-foreground mb-2">
-                    {{ goal.goal_description }}
-                  </p>
-                  
-                  <div *ngIf="goal.category" class="text-xs text-muted-foreground">
-                    Category: {{ goal.category.name }}
-                  </div>
-                </div>
-              </div>
-            </mat-card>
-          </div>
-
-          <!-- Weightage Warning -->
-          <div *ngIf="selectedWeightage() > data.remainingWeightage" 
-               class="p-3 bg-red-50 rounded-md border border-red-200">
-            <div class="flex items-center gap-2 text-red-800 text-sm">
-              <mat-icon class="text-base">warning</mat-icon>
-              <span>Selected goals exceed available weightage ({{ data.remainingWeightage }}%)</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- No Goals Message -->
-        <div *ngIf="selectedTemplate() && !selectedTemplate()?.goals?.length" 
-             class="text-center py-8 text-muted-foreground">
-          <mat-icon class="text-4xl mb-2">inbox</mat-icon>
-          <p>This template has no goals to import</p>
         </div>
       </form>
 
@@ -143,7 +139,7 @@ interface ImportGoalsRequest {
         <button mat-raised-button color="primary" 
                 (click)="onImport()" 
                 [disabled]="!canImport() || loading()">
-          {{ loading() ? 'Importing...' : 'Import Selected Goals' }}
+          {{ loading() ? 'Importing...' : 'Import Template as Goal' }}
         </button>
       </div>
     </div>
@@ -153,7 +149,8 @@ export class ImportFromTemplateModalComponent implements OnInit {
   templateForm: FormGroup;
   templates = signal<GoalTemplate[]>([]);
   selectedTemplate = signal<GoalTemplate | null>(null);
-  selectedGoalIds = signal<Set<number>>(new Set());
+  selectedCategoryId = signal<number | null>(null);
+  templateSelected = signal<boolean>(false);
   loading = signal(false);
 
   constructor(
@@ -164,7 +161,8 @@ export class ImportFromTemplateModalComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: ImportTemplateData
   ) {
     this.templateForm = this.fb.group({
-      template_id: ['']
+      template_id: [''],
+      category_id: ['']
     });
   }
 
@@ -186,53 +184,60 @@ export class ImportFromTemplateModalComponent implements OnInit {
   }
 
   onTemplateChange(templateId: number) {
-    const template = this.templates().find(t => t.id === templateId);
+    const template = this.templates().find(t => t.temp_id === templateId);
     this.selectedTemplate.set(template || null);
-    this.selectedGoalIds.set(new Set()); // Clear selections when template changes
+    this.selectedCategoryId.set(null); // Clear category selection when template changes
+    this.templateSelected.set(false); // Clear selection when template changes
+    
+    // Reset category form control
+    this.templateForm.patchValue({ category_id: '' });
   }
 
-  isGoalSelected(goalId: number): boolean {
-    return this.selectedGoalIds().has(goalId);
-  }
-
-  canSelectGoal(goal: TemplateGoal): boolean {
-    const currentSelection = this.selectedGoalIds();
-    const currentWeightage = this.selectedWeightage();
-    
-    if (currentSelection.has(goal.goal_id)) {
-      return true; // Already selected, can deselect
-    }
-    
-    return (currentWeightage + goal.goal_weightage) <= this.data.remainingWeightage;
-  }
-
-  toggleGoalSelection(goal: TemplateGoal, selected: boolean) {
-    const currentSelection = new Set(this.selectedGoalIds());
-    
-    if (selected) {
-      if (this.canSelectGoal(goal)) {
-        currentSelection.add(goal.goal_id);
-      }
-    } else {
-      currentSelection.delete(goal.goal_id);
-    }
-    
-    this.selectedGoalIds.set(currentSelection);
-  }
-
-  selectedWeightage(): number {
+  hasCategories(): boolean {
     const template = this.selectedTemplate();
-    if (!template) return 0;
+    return !!(template?.categories?.length && template.categories.length > 0);
+  }
+
+  getTemplateCategories(): {id: number, name: string}[] {
+    const template = this.selectedTemplate();
+    return template?.categories || [];
+  }
+
+  onCategoryChange(categoryId: number | null) {
+    this.selectedCategoryId.set(categoryId);
+  }
+
+  getSelectedCategoryName(): string {
+    const template = this.selectedTemplate();
+    const categoryId = this.selectedCategoryId();
+    if (!template || !categoryId) return '';
     
-    const selectedIds = this.selectedGoalIds();
-    return template.goals
-      .filter(goal => selectedIds.has(goal.goal_id))
-      .reduce((sum, goal) => sum + goal.goal_weightage, 0);
+    const category = template.categories?.find(c => c.id === categoryId);
+    return category?.name || '';
+  }
+
+  isTemplateSelected(): boolean {
+    return this.templateSelected();
+  }
+
+  canSelectTemplate(): boolean {
+    const template = this.selectedTemplate();
+    if (!template) return false;
+    
+    return template.temp_weightage <= this.data.remainingWeightage;
+  }
+
+  toggleTemplateSelection(selected: boolean) {
+    if (selected && this.canSelectTemplate()) {
+      this.templateSelected.set(true);
+    } else {
+      this.templateSelected.set(false);
+    }
   }
 
   canImport(): boolean {
-    return this.selectedGoalIds().size > 0 && 
-           this.selectedWeightage() <= this.data.remainingWeightage &&
+    return this.templateSelected() && 
+           this.canSelectTemplate() &&
            !!this.data.appraisalId;
   }
 
@@ -245,6 +250,14 @@ export class ImportFromTemplateModalComponent implements OnInit {
     }
   }
 
+  getCategoriesText(): string {
+    const template = this.selectedTemplate();
+    if (!template?.categories?.length) {
+      return 'None';
+    }
+    return template.categories.map(c => c.name).join(', ');
+  }
+
   async onImport() {
     if (!this.canImport() || !this.selectedTemplate()) {
       return;
@@ -253,21 +266,33 @@ export class ImportFromTemplateModalComponent implements OnInit {
     try {
       this.loading.set(true);
       
-      const request: ImportGoalsRequest = {
-        template_id: this.selectedTemplate()!.id,
-        goal_ids: Array.from(this.selectedGoalIds())
+      const template = this.selectedTemplate()!;
+      const request: CreateGoalFromTemplateRequest = {
+        goal_title: template.temp_title,
+        goal_description: template.temp_description,
+        goal_performance_factor: template.temp_performance_factor,
+        goal_weightage: template.temp_weightage,
+        goal_importance: template.temp_importance,
+        category_id: this.selectedCategoryId() || undefined
       };
 
-      const response = await this.http.post<any>(
-        `${environment.apiUrl}/api/appraisals/${this.data.appraisalId}/goals/import`,
+      // First create a goal from the template
+      const goalResponse = await this.http.post<any>(
+        `${environment.apiUrl}/api/goals`,
         request
       ).toPromise();
 
-      this.snackBar.open(`${this.selectedGoalIds().size} goals imported successfully`, 'Close', { duration: 3000 });
+      // Then add the goal to the appraisal
+      const response = await this.http.post<any>(
+        `${environment.apiUrl}/api/appraisals/${this.data.appraisalId}/goals/${goalResponse.goal_id}`,
+        {}
+      ).toPromise();
+
+      this.snackBar.open('Goal imported from template successfully', 'Close', { duration: 3000 });
       this.dialogRef.close(response);
     } catch (error) {
-      console.error('Error importing goals:', error);
-      this.snackBar.open('Error importing goals', 'Close', { duration: 3000 });
+      console.error('Error importing goal from template:', error);
+      this.snackBar.open('Error importing goal from template', 'Close', { duration: 3000 });
     } finally {
       this.loading.set(false);
     }

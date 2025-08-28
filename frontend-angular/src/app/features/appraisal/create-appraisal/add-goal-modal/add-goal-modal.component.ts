@@ -23,9 +23,10 @@ interface AddGoalData {
 interface CreateGoalRequest {
   goal_title: string;
   goal_description: string;
+  goal_performance_factor: string;
   goal_weightage: number;
   goal_importance: 'High' | 'Medium' | 'Low';
-  goal_category_id?: number;
+  category_id?: number;
 }
 
 @Component({
@@ -160,14 +161,22 @@ export class AddGoalModalComponent implements OnInit {
       const request: CreateGoalRequest = {
         goal_title: formValue.goal_title,
         goal_description: formValue.goal_description,
+        goal_performance_factor: formValue.goal_description, // Use description as performance factor
         goal_weightage: Number(formValue.goal_weightage),
         goal_importance: formValue.goal_importance,
-        goal_category_id: formValue.goal_category_id || undefined
+        category_id: formValue.goal_category_id || undefined
       };
 
-      const response = await this.http.post<any>(
-        `${environment.apiUrl}/api/appraisals/${this.data.appraisalId}/goals`,
+      // First create the goal
+      const goalResponse = await this.http.post<any>(
+        `${environment.apiUrl}/api/goals`,
         request
+      ).toPromise();
+
+      // Then add the goal to the appraisal
+      const response = await this.http.post<any>(
+        `${environment.apiUrl}/api/appraisals/${this.data.appraisalId}/goals/${goalResponse.goal_id}`,
+        {}
       ).toPromise();
 
       this.snackBar.open('Goal added successfully', 'Close', { duration: 3000 });

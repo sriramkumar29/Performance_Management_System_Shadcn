@@ -28,7 +28,12 @@ interface Goal {
 }
 
 interface GoalRecord {
-  goal: Goal;
+  goal_id: number;
+  goal_title: string;
+  goal_description: string;
+  goal_weightage: number;
+  goal_importance: 'High' | 'Medium' | 'Low';
+  goal_category: string;
 }
 
 interface EditGoalData {
@@ -81,7 +86,7 @@ interface UpdateGoalRequest {
           <mat-label>Weightage (%)</mat-label>
           <input matInput type="number" formControlName="goal_weightage" 
                  [max]="maxWeightage" min="1" placeholder="Enter weightage">
-          <mat-hint>Available: {{ data.remainingWeightage }}% (+ current {{ data.goalData.goal.goal_weightage }}%)</mat-hint>
+          <mat-hint>Available: {{ data.remainingWeightage }}% (+ current {{ data.goalData.goal_weightage }}%)</mat-hint>
           <mat-error *ngIf="goalForm.get('goal_weightage')?.hasError('required')">
             Weightage is required
           </mat-error>
@@ -143,14 +148,14 @@ export class EditGoalModalComponent implements OnInit {
     private dialogRef: MatDialogRef<EditGoalModalComponent>,
     @Inject(MAT_DIALOG_DATA) public data: EditGoalData
   ) {
-    this.maxWeightage = data.remainingWeightage + data.goalData.goal.goal_weightage;
+    this.maxWeightage = data.remainingWeightage + data.goalData.goal_weightage;
     
     this.goalForm = this.fb.group({
-      goal_title: [data.goalData.goal.goal_title, Validators.required],
-      goal_description: [data.goalData.goal.goal_description],
-      goal_weightage: [data.goalData.goal.goal_weightage, [Validators.required, Validators.min(1), Validators.max(this.maxWeightage)]],
-      goal_importance: [data.goalData.goal.goal_importance, Validators.required],
-      goal_category_id: [data.goalData.goal.category?.id || '']
+      goal_title: [data.goalData.goal_title, Validators.required],
+      goal_description: [data.goalData.goal_description],
+      goal_weightage: [data.goalData.goal_weightage, [Validators.required, Validators.min(1), Validators.max(this.maxWeightage)]],
+      goal_importance: [data.goalData.goal_importance, Validators.required],
+      goal_category_id: ['']
     });
   }
 
@@ -185,7 +190,7 @@ export class EditGoalModalComponent implements OnInit {
       };
 
       const response = await this.http.put<any>(
-        `${environment.apiUrl}/api/goals/${this.data.goalData.goal.goal_id}`,
+        `${environment.apiUrl}/api/goals/${this.data.goalData.goal_id}`,
         request
       ).toPromise();
 

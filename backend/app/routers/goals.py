@@ -154,7 +154,10 @@ async def update_goal_template(
 ):
     """Update a goal template."""
     
-    result = await db.execute(select(GoalTemplate).where(GoalTemplate.temp_id == template_id))
+    result = await db.execute(
+        select(GoalTemplate).options(selectinload(GoalTemplate.categories))
+        .where(GoalTemplate.temp_id == template_id)
+    )
     db_goal_template = result.scalars().first()
     
     if not db_goal_template:
@@ -170,8 +173,8 @@ async def update_goal_template(
     
     # Update categories if provided
     if goal_template.categories is not None:
-        # Clear existing categories
-        db_goal_template.categories = []
+        # Clear existing categories (now safe since we eagerly loaded them)
+        db_goal_template.categories.clear()
         
         # Add new categories
         for category_name in goal_template.categories:

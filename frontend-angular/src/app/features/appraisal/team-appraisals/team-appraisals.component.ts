@@ -523,7 +523,7 @@ export class TeamAppraisalsComponent implements OnInit {
 
   // Navigation methods
   editDraft(appraisalId: number): void {
-    this.router.navigate(['/appraisal/edit', appraisalId]);
+    this.router.navigate(['/appraisals/create'], { queryParams: { id: appraisalId } });
   }
 
   evaluateAppraisal(appraisalId: number): void {

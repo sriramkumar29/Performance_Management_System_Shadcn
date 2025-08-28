@@ -12,7 +12,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { environment } from '../../../../environments/environment';
@@ -20,6 +20,8 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AddGoalModalComponent } from './add-goal-modal/add-goal-modal.component';
 import { EditGoalModalComponent } from './edit-goal-modal/edit-goal-modal.component';
 import { ImportFromTemplateModalComponent } from './import-from-template-modal/import-from-template-modal.component';
+import { firstValueFrom } from 'rxjs';
+import { ConfirmDialogComponent } from './confirm-dialog.component';
 
 interface Employee {
   emp_id: number;
@@ -65,16 +67,22 @@ interface Goal {
 }
 
 interface GoalRecord {
-  goal: Goal;
+  goal_id: number;
+  goal_title: string;
+  goal_description: string;
+  goal_weightage: number;
+  goal_importance: 'High' | 'Medium' | 'Low';
+  goal_category: string;
 }
 
 interface CreateAppraisalRequest {
   appraisee_id: number;
+  appraiser_id: number;
   reviewer_id: number;
   appraisal_type_id: number;
   appraisal_type_range_id?: number;
-  period_start_date: string;
-  period_end_date: string;
+  start_date: string;
+  end_date: string;
 }
 
 @Component({
@@ -92,7 +100,9 @@ interface CreateAppraisalRequest {
     MatProgressBarModule,
     MatChipsModule,
     MatBadgeModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatDialogModule,
+    ConfirmDialogComponent
   ],
   template: `
     <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 sm:p-6">
@@ -337,30 +347,30 @@ interface CreateAppraisalRequest {
                         <!-- Enhanced Weightage badge -->
                         <div class="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold shadow-sm" 
                              [ngClass]="{
-                               'bg-gradient-to-r from-green-500 to-emerald-500 text-white': record.goal.goal_importance === 'High',
-                               'bg-gradient-to-r from-amber-500 to-orange-500 text-white': record.goal.goal_importance === 'Medium',
-                               'bg-gradient-to-r from-blue-500 to-cyan-500 text-white': record.goal.goal_importance === 'Low'
+                               'bg-gradient-to-r from-green-500 to-emerald-500 text-white': record.goal_importance === 'High',
+                               'bg-gradient-to-r from-amber-500 to-orange-500 text-white': record.goal_importance === 'Medium',
+                               'bg-gradient-to-r from-blue-500 to-cyan-500 text-white': record.goal_importance === 'Low'
                              }">
-                          {{ record.goal.goal_weightage }}%
+                          {{ record.goal_weightage }}%
                         </div>
 
                         <!-- Enhanced Header with icon and text -->
                         <div class="flex items-start gap-3 mb-4">
                           <div class="p-3 rounded-xl shadow-sm" [ngClass]="{
-                            'bg-gradient-to-br from-green-100 to-emerald-100 text-green-700': record.goal.goal_importance === 'High',
-                            'bg-gradient-to-br from-amber-100 to-orange-100 text-amber-700': record.goal.goal_importance === 'Medium',
-                            'bg-gradient-to-br from-blue-100 to-cyan-100 text-blue-700': record.goal.goal_importance === 'Low'
+                            'bg-gradient-to-br from-green-100 to-emerald-100 text-green-700': record.goal_importance === 'High',
+                            'bg-gradient-to-br from-amber-100 to-orange-100 text-amber-700': record.goal_importance === 'Medium',
+                            'bg-gradient-to-br from-blue-100 to-cyan-100 text-blue-700': record.goal_importance === 'Low'
                           }">
-                            <mat-icon class="text-lg">{{ getGoalIcon(record.goal.goal_importance) }}</mat-icon>
+                            <mat-icon class="text-lg">{{ getGoalIcon(record.goal_importance) }}</mat-icon>
                           </div>
                           <div class="min-w-0 flex-1">
-                            <mat-card-title class="text-base font-bold text-slate-800 mb-2 line-clamp-2" [title]="record.goal.goal_title">
-                              {{ record.goal.goal_title }}
+                            <mat-card-title class="text-base font-bold text-slate-800 mb-2 line-clamp-2" [title]="record.goal_title">
+                              {{ record.goal_title }}
                             </mat-card-title>
-                            <mat-card-subtitle *ngIf="record.goal.goal_description" 
+                            <mat-card-subtitle *ngIf="record.goal_description" 
                               class="text-sm text-slate-600 line-clamp-3 leading-relaxed" 
-                              [title]="record.goal.goal_description">
-                              {{ record.goal.goal_description }}
+                              [title]="record.goal_description">
+                              {{ record.goal_description }}
                             </mat-card-subtitle>
                           </div>
                         </div>
@@ -371,32 +381,40 @@ interface CreateAppraisalRequest {
                         <!-- Enhanced Meta row at bottom -->
                         <div class="mt-auto space-y-3">
                           <div class="flex flex-wrap gap-2">
-                            <div *ngIf="record.goal.category?.name" 
+                            <div *ngIf="record.goal_category" 
                                  class="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
                               <mat-icon class="text-xs mr-1">category</mat-icon>
-                              {{ record.goal.category?.name }}
+                              {{ record.goal_category }}
                             </div>
                             <div class="px-3 py-1 rounded-full text-xs font-bold" 
                                  [ngClass]="{
-                                   'bg-gradient-to-r from-red-100 to-pink-100 text-red-700': record.goal.goal_importance === 'High',
-                                   'bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700': record.goal.goal_importance === 'Medium',
-                                   'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700': record.goal.goal_importance === 'Low'
+                                   'bg-gradient-to-r from-red-100 to-pink-100 text-red-700': record.goal_importance === 'High',
+                                   'bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700': record.goal_importance === 'Medium',
+                                   'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700': record.goal_importance === 'Low'
                                  }">
-                              {{ record.goal.goal_importance }} Priority
+                              {{ record.goal_importance }} Priority
                             </div>
                           </div>
-                        </div>
 
-                        <!-- Enhanced Action buttons -->
-                        <div class="absolute top-3 left-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                          <button mat-mini-fab color="primary" [disabled]="isLocked()" (click)="editGoal(record)"
-                                  class="!w-8 !h-8 shadow-lg hover:shadow-xl transition-shadow">
-                            <mat-icon class="text-sm">edit</mat-icon>
-                          </button>
-                          <button mat-mini-fab color="warn" [disabled]="isLocked()" (click)="removeGoal(record.goal.goal_id)"
-                                  class="!w-8 !h-8 shadow-lg hover:shadow-xl transition-shadow">
-                            <mat-icon class="text-sm">delete</mat-icon>
-                          </button>
+                          <!-- Enhanced Action buttons -->
+                          <div class="flex gap-2 pt-3 border-t border-slate-100">
+                            <button mat-icon-button 
+                                    class="text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-colors" 
+                                    (click)="$event.stopPropagation(); editGoal(record)" 
+                                    [disabled]="isLocked()"
+                                    [title]="isLocked() ? 'Cannot edit goals when appraisal is ' + createdAppraisalStatus() : 'Edit goal'"
+                                    type="button">
+                              <mat-icon class="text-base">edit</mat-icon>
+                            </button>
+                            <button mat-icon-button 
+                                    class="text-slate-600 hover:text-red-600 hover:bg-red-50 transition-colors" 
+                                    (click)="$event.stopPropagation(); removeGoal(record.goal_id)" 
+                                    [disabled]="isLocked() || !createdAppraisalId()"
+                                    [title]="getRemoveButtonTitle()"
+                                    type="button">
+                              <mat-icon class="text-base">delete</mat-icon>
+                            </button>
+                          </div>
                         </div>
                       </mat-card-header>
                     </mat-card>
@@ -492,9 +510,9 @@ interface CreateAppraisalRequest {
 })
 export class CreateAppraisalComponent implements OnInit {
   private fb = inject(FormBuilder);
+  private http = inject(HttpClient);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
-  private http = inject(HttpClient);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
   private authService = inject(AuthService);
@@ -509,35 +527,35 @@ export class CreateAppraisalComponent implements OnInit {
   createdAppraisalId = signal<number | null>(null);
   createdAppraisalStatus = signal<string | null>(null);
   showRangeField = signal<boolean>(false);
+  // Mirror of reactive form as a signal so computed() re-evaluates on form updates
+  formState = signal<any>({});
 
   // Form
   appraisalForm: FormGroup;
 
   // Computed values
   selectedAppraisalType = computed(() => {
-    const typeId = this.appraisalForm?.get('appraisal_type_id')?.value;
+    const typeId = this.formState()?.appraisal_type_id;
     const selectedType = this.appraisalTypes().find(t => t.id === typeId) || null;
     console.log('Selected appraisal type computed:', selectedType);
     return selectedType;
   });
 
   totalWeightage = computed(() => {
-    return this.goals().reduce((sum, record) => sum + record.goal.goal_weightage, 0);
+    return this.goals().reduce((sum, record) => sum + record.goal_weightage, 0);
   });
 
   appraiseeSelected = computed(() => {
-    return !!this.appraisalForm?.get('appraisee_id')?.value;
+    return !!this.formState()?.appraisee_id;
   });
 
   reviewerSelected = computed(() => {
-    return !!this.appraisalForm?.get('reviewer_id')?.value;
+    return !!this.formState()?.reviewer_id;
   });
 
   typeAndPeriodSelected = computed(() => {
-    const form = this.appraisalForm;
-    return !!(form?.get('appraisal_type_id')?.value && 
-             form?.get('period_start_date')?.value && 
-             form?.get('period_end_date')?.value);
+    const form = this.formState();
+    return !!(form?.appraisal_type_id && form?.period_start_date && form?.period_end_date);
   });
 
   canAddGoals = computed(() => {
@@ -566,11 +584,15 @@ export class CreateAppraisalComponent implements OnInit {
       period_start_date: ['', Validators.required],
       period_end_date: ['', Validators.required]
     });
+    // Initialize formState with current form values
+    this.formState.set(this.appraisalForm.value);
   }
 
   ngOnInit() {
     this.loadInitialData();
     this.checkForExistingAppraisal();
+    // Keep formState in sync with form so computed signals re-evaluate
+    this.appraisalForm.valueChanges.subscribe(v => this.formState.set(v));
   }
 
   private async loadInitialData() {
@@ -625,14 +647,25 @@ export class CreateAppraisalComponent implements OnInit {
         this.createdAppraisalId.set(appraisal.appraisal_id);
         this.createdAppraisalStatus.set(appraisal.status);
         
+        // Load ranges for the appraisal type if it has ranges
+        if (appraisal.appraisal_type_id) {
+          const type = this.appraisalTypes().find(t => t.id === appraisal.appraisal_type_id);
+          if (type?.has_range) {
+            await this.loadRangesForType(appraisal.appraisal_type_id);
+            this.showRangeField.set(true);
+          } else {
+            this.showRangeField.set(false);
+          }
+        }
+        
         // Populate form
         this.appraisalForm.patchValue({
           appraisee_id: appraisal.appraisee_id,
           reviewer_id: appraisal.reviewer_id,
           appraisal_type_id: appraisal.appraisal_type_id,
-          appraisal_type_range_id: appraisal.appraisal_type_range_id,
-          period_start_date: appraisal.period_start_date,
-          period_end_date: appraisal.period_end_date
+          appraisal_type_range_id: appraisal.appraisal_type_range_id || '',
+          period_start_date: appraisal.start_date,
+          period_end_date: appraisal.end_date
         });
         
         // Load goals
@@ -648,8 +681,17 @@ export class CreateAppraisalComponent implements OnInit {
 
   private async loadGoals(appraisalId: number) {
     try {
-      const goals = await this.http.get<GoalRecord[]>(`${environment.apiUrl}/api/appraisals/${appraisalId}/goals`).toPromise();
-      this.goals.set(goals || []);
+      const appraisal = await this.http.get<any>(`${environment.apiUrl}/api/appraisals/${appraisalId}`).toPromise();
+      // Extract goals from the appraisal response
+      const goals = appraisal?.appraisal_goals?.map((ag: any) => ({
+        goal_id: ag.goal.goal_id,
+        goal_title: ag.goal.goal_title,
+        goal_description: ag.goal.goal_description,
+        goal_weightage: ag.goal.goal_weightage,
+        goal_importance: ag.goal.goal_importance,
+        goal_category: ag.goal.category?.name || 'No Category'
+      })) || [];
+      this.goals.set(goals);
     } catch (error) {
       console.error('Error loading goals:', error);
     }
@@ -795,12 +837,47 @@ export class CreateAppraisalComponent implements OnInit {
 
   private calculatePeriodFromType(typeId: number) {
     const type = this.appraisalTypes().find(t => t.id === typeId);
+    console.log('Calculating period for type:', type);
+    
     if (type && !type.has_range) {
       const now = new Date();
-      const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endDate = new Date(startDate);
-      endDate.setMonth(endDate.getMonth() + type.frequency_months);
-      endDate.setDate(endDate.getDate() - 1);
+      let startDate: Date;
+      let endDate: Date;
+      
+      // Calculate dates based on appraisal type
+      switch (type.name.toLowerCase()) {
+        case 'annual':
+        case 'annual-probation':
+          // Annual: January 1 to December 31 of current year
+          startDate = new Date(now.getFullYear(), 0, 1); // January 1
+          endDate = new Date(now.getFullYear(), 11, 31); // December 31
+          break;
+          
+        case 'project-end':
+          // Project-end: Current month start to 3 months later
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date(startDate);
+          endDate.setMonth(endDate.getMonth() + 3);
+          endDate.setDate(endDate.getDate() - 1);
+          break;
+          
+        default:
+          // Default behavior for other types
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date(startDate);
+          if (type.frequency_months) {
+            endDate.setMonth(endDate.getMonth() + type.frequency_months);
+          } else {
+            endDate.setMonth(endDate.getMonth() + 12); // Default to 12 months
+          }
+          endDate.setDate(endDate.getDate() - 1);
+          break;
+      }
+
+      console.log('Calculated dates:', {
+        start: startDate.toISOString().split('T')[0],
+        end: endDate.toISOString().split('T')[0]
+      });
 
       this.appraisalForm.patchValue({
         period_start_date: startDate.toISOString().split('T')[0],
@@ -818,23 +895,46 @@ export class CreateAppraisalComponent implements OnInit {
     }
   }
 
+  getRemoveButtonTitle(): string {
+    if (this.isLocked()) {
+      return `Cannot remove goals when appraisal is ${this.createdAppraisalStatus()}`;
+    }
+    if (!this.createdAppraisalId()) {
+      return 'Save appraisal first to remove goals';
+    }
+    return 'Remove goal';
+  }
+
   async removeGoal(goalId: number) {
     if (this.isLocked()) {
+      this.snackBar.open(`Cannot remove goals when appraisal is ${this.createdAppraisalStatus()}`, 'Close', { duration: 3000 });
       return;
     }
 
-    if (!confirm('Are you sure you want to remove this goal?')) {
+    if (!this.createdAppraisalId()) {
+      this.snackBar.open('Please save the appraisal first before removing goals', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Remove Goal',
+        message: 'Are you sure you want to remove this goal from this appraisal?',
+        confirmText: 'Remove',
+        cancelText: 'Cancel',
+        color: 'warn'
+      }
+    });
+    const confirmed = await firstValueFrom(dialogRef.afterClosed());
+    if (!confirmed) {
       return;
     }
 
     try {
-      await this.http.delete(`${environment.apiUrl}/api/goals/${goalId}`).toPromise();
+      await firstValueFrom(this.http.delete(`${environment.apiUrl}/api/appraisals/${this.createdAppraisalId()}/goals/${goalId}`));
       this.snackBar.open('Goal removed successfully', 'Close', { duration: 3000 });
       
-      // Reload goals
-      if (this.createdAppraisalId()) {
-        await this.loadGoals(this.createdAppraisalId()!);
-      }
+      await this.loadGoals(this.createdAppraisalId()!);
     } catch (error) {
       console.error('Error removing goal:', error);
       this.snackBar.open('Error removing goal', 'Close', { duration: 3000 });
@@ -949,7 +1049,7 @@ export class CreateAppraisalComponent implements OnInit {
       width: '500px',
       data: {
         goalData: record,
-        remainingWeightage: Math.max(0, 100 - (this.totalWeightage() - record.goal.goal_weightage))
+        remainingWeightage: Math.max(0, 100 - (this.totalWeightage() - record.goal_weightage))
       }
     });
 
@@ -971,13 +1071,19 @@ export class CreateAppraisalComponent implements OnInit {
       this.loading.set(true);
       const formValue = this.appraisalForm.value;
       
+      const currentUser = this.authService.getCurrentUser();
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
       const request: CreateAppraisalRequest = {
         appraisee_id: formValue.appraisee_id,
+        appraiser_id: currentUser.emp_id,
         reviewer_id: formValue.reviewer_id,
         appraisal_type_id: formValue.appraisal_type_id,
         appraisal_type_range_id: formValue.appraisal_type_range_id || undefined,
-        period_start_date: formValue.period_start_date,
-        period_end_date: formValue.period_end_date
+        start_date: formValue.period_start_date,
+        end_date: formValue.period_end_date
       };
 
       let response;
