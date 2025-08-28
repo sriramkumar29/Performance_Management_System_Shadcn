@@ -286,26 +286,33 @@ import { AuthService } from '@core/services/auth.service';
                 </div>
 
                 <!-- Reviewer Overall - inputs -->
-                <div class="rounded-xl border border-border p-5 bg-muted/40">
-                  <div class="flex items-center gap-2 mb-4">
+                <form [formGroup]="reviewerForm" class="rounded-xl border border-border p-5 bg-muted/40 space-y-4">
+                  <div class="flex items-center gap-2">
                     <mat-icon class="h-5 w-5 text-primary">visibility</mat-icon>
-                    <span class="text-lg font-semibold text-foreground">Your Reviewer Assessment</span>
+                    <span class="text-lg font-semibold text-foreground">Reviewer Overall Assessment</span>
                   </div>
-                  <form [formGroup]="reviewerForm" class="space-y-4">
-                    <div>
-                      <label class="text-sm font-medium text-foreground mb-3 block">
-                        Overall Rating (1-5): {{ reviewerForm.get('rating')?.value || 'Please select' }}
-                      </label>
+
+                  <!-- Overall Rating -->
+                  <div class="space-y-3">
+                    <div class="flex items-center gap-2">
+                      <mat-icon class="h-4 w-4 text-primary">star</mat-icon>
+                      <label class="text-sm font-medium text-foreground">Overall Rating (1-5)</label>
+                      @if (reviewerForm.get('rating')?.value) {
+                        <span class="ml-auto px-2 py-1 text-xs border rounded">
+                          {{ reviewerForm.get('rating')?.value }}/5
+                        </span>
+                      }
+                    </div>
+                    <div class="px-3">
                       <mat-slider 
                         min="1" 
                         max="5" 
                         step="1" 
                         discrete
-                        formControlName="rating"
-                        class="mb-2">
-                        <input matSliderThumb>
+                        class="w-full">
+                        <input matSliderThumb formControlName="rating">
                       </mat-slider>
-                      <div class="flex justify-between text-xs text-muted-foreground">
+                      <div class="flex justify-between text-xs text-muted-foreground mt-1">
                         <span>Poor</span>
                         <span>Below Average</span>
                         <span>Average</span>
@@ -313,26 +320,28 @@ import { AuthService } from '@core/services/auth.service';
                         <span>Excellent</span>
                       </div>
                     </div>
-                    <div>
-                      <label class="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-                        <mat-icon class="h-4 w-4">chat_bubble_outline</mat-icon>
-                        Overall Comments
-                      </label>
-                      <mat-form-field appearance="outline" class="w-full">
-                        <textarea 
-                          matInput 
-                          formControlName="comment"
-                          rows="6"
-                          placeholder="Provide your comprehensive review of the employee's performance, highlighting key strengths, areas for improvement, and overall assessment..."
-                          class="resize-none">
-                        </textarea>
-                      </mat-form-field>
-                      <div class="text-xs text-muted-foreground mt-2">
-                        {{ reviewerForm.get('comment')?.value?.length || 0 }} characters
-                      </div>
+                  </div>
+
+                  <!-- Overall Comments -->
+                  <div>
+                    <label class="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                      <mat-icon class="h-4 w-4">chat_bubble_outline</mat-icon>
+                      Overall Comments
+                    </label>
+                    <mat-form-field appearance="outline" class="w-full">
+                      <textarea 
+                        matInput 
+                        formControlName="comment"
+                        rows="6"
+                        placeholder="Provide your comprehensive review of the employee's performance, highlighting key strengths, areas for improvement, and overall assessment..."
+                        class="resize-none">
+                      </textarea>
+                    </mat-form-field>
+                    <div class="text-xs text-muted-foreground mt-2">
+                      {{ reviewerForm.get('comment')?.value?.length || 0 }} characters
                     </div>
-                  </form>
-                </div>
+                  </div>
+                </form>
 
                 <!-- Navigation -->
                 <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-border/50">

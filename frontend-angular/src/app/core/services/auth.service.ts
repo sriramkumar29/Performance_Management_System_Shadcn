@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { BehaviorSubject, Observable, throwError } from 'rxjs';
+import { tap, filter, take, map, catchError, finalize } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 
 export interface User {
@@ -24,6 +25,7 @@ export interface AuthResponse {
   access_token: string;
   token_type: string;
   user: User;
+  refresh_token?: string; // optional if backend supports refresh tokens
 }
 
 @Injectable({
@@ -32,6 +34,8 @@ export interface AuthResponse {
 export class AuthService {
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
+  private refreshInProgress = false;
+  private refreshSubject = new BehaviorSubject<string | null>(null);
 
   public currentUser$ = this.currentUserSubject.asObservable();
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
@@ -44,9 +48,14 @@ export class AuthService {
   }
 
   login(credentials: LoginCredentials): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${environment.apiUrl}/api/auth/login`, credentials).pipe(
+    const headers = new HttpHeaders({ 'X-Skip-Auth': 'true' });
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/api/auth/login`, credentials, { headers }).pipe(
       tap((response) => {
         localStorage.setItem('token', response.access_token);
+        // Store refresh token only if provided by backend
+        if (response.refresh_token) {
+          localStorage.setItem('refresh_token', response.refresh_token);
+        }
         localStorage.setItem('user', JSON.stringify(response.user));
         this.currentUserSubject.next(response.user);
         this.isAuthenticatedSubject.next(true);
@@ -56,6 +65,7 @@ export class AuthService {
 
   logout(): void {
     localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
     this.currentUserSubject.next(null);
     this.isAuthenticatedSubject.next(false);
@@ -72,6 +82,63 @@ export class AuthService {
 
   getToken(): string | null {
     return localStorage.getItem('token');
+  }
+
+  getRefreshToken(): string | null {
+    return localStorage.getItem('refresh_token');
+  }
+
+  /**
+   * Attempts to refresh the access token using the stored refresh token.
+   * Queues concurrent requests to wait for a single refresh operation.
+   */
+  refreshAccessToken(): Observable<string> {
+    if (this.refreshInProgress) {
+      return this.refreshSubject.pipe(
+        filter((t): t is string => !!t),
+        take(1)
+      );
+    }
+
+    const refreshToken = this.getRefreshToken();
+    if (!refreshToken) {
+      // No refresh token available; force logout
+      this.logout();
+      return throwError(() => new Error('No refresh token available'));
+    }
+
+    this.refreshInProgress = true;
+    this.refreshSubject.next(null);
+
+    const headers = new HttpHeaders({ 'X-Skip-Auth': 'true' });
+    return this.http
+      .post<{ access_token: string; token_type: string }>(
+        `${environment.apiUrl}/api/auth/refresh`,
+        { refresh_token: refreshToken },
+        { headers }
+      )
+      .pipe(
+        tap((resp) => {
+          localStorage.setItem('token', resp.access_token);
+          this.refreshSubject.next(resp.access_token);
+        }),
+        map((resp) => resp.access_token),
+        catchError((err) => {
+          // Refresh failed; notify queued requests and logout to clear invalid credentials
+          try {
+            this.refreshSubject.error(err);
+          } catch {
+            // ignore if subject already closed
+          }
+          this.logout();
+          return throwError(() => err);
+        }),
+        finalize(() => {
+          this.refreshInProgress = false;
+          // Reset subject so future refresh cycles can subscribe safely
+          this.refreshSubject = new BehaviorSubject<string | null>(null);
+        })
+      );
   }
 
   private loadStoredUser(): void {

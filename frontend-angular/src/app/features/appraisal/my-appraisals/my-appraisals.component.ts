@@ -397,7 +397,9 @@ export class MyAppraisalsComponent implements OnInit {
         `${environment.apiUrl}/api/appraisals?appraisee_id=${user.emp_id}`
       ).toPromise();
       
-      this.appraisals.set(appraisals || []);
+      // Hide Draft appraisals from employees (appraisees)
+      const filtered = (appraisals || []).filter(a => a.status !== 'Draft');
+      this.appraisals.set(filtered);
       
       // Load details for selected appraisal
       const selected = this.selectedAppraisal();

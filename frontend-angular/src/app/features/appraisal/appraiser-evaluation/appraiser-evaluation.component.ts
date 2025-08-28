@@ -192,9 +192,8 @@ import { AuthService } from '@core/services/auth.service';
                           max="5" 
                           step="1" 
                           discrete
-                          formControlName="rating"
                           class="w-full">
-                          <input matSliderThumb>
+                          <input matSliderThumb formControlName="rating">
                         </mat-slider>
                         <div class="flex justify-between text-xs text-muted-foreground mt-1">
                           <span>Poor</span>

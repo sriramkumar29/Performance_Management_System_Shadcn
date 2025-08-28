@@ -441,6 +441,10 @@ export class AppraisalViewComponent implements OnInit {
       }
 
       if (!allowed) {
+        const message = isAppraisee && status === 'Draft'
+          ? 'Draft appraisals are hidden from employees.'
+          : 'You do not have permission to view this appraisal at its current status.';
+        this.snackBar.open(message, 'Close', { duration: 3000 });
         this.router.navigate(['/'], { replaceUrl: true });
       }
     } catch (error) {

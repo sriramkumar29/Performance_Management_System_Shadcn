@@ -342,6 +342,11 @@ export class TeamAppraisalsComponent implements OnInit {
   searchNameControl = new FormControl('');
   typeFilterControl = new FormControl('all');
   statusFilterControl = new FormControl('Active');
+  
+  // Signals for form control values to trigger reactivity
+  searchNameValue = signal('');
+  typeFilterValue = signal('all');
+  statusFilterValue = signal('Active');
 
   private readonly ITEMS_PER_PAGE = 5;
 
@@ -387,9 +392,9 @@ export class TeamAppraisalsComponent implements OnInit {
   );
 
   filteredTeamAppraisals = computed(() => {
-    const statusFilter = this.statusFilterControl.value || 'Active';
-    const searchName = this.searchNameControl.value?.toLowerCase() || '';
-    const typeFilter = this.typeFilterControl.value || 'all';
+    const statusFilter = this.statusFilterValue();
+    const searchName = this.searchNameValue().toLowerCase();
+    const typeFilter = this.typeFilterValue();
 
     let baseList: Appraisal[];
     switch (statusFilter) {
@@ -436,10 +441,21 @@ export class TeamAppraisalsComponent implements OnInit {
   ngOnInit(): void {
     this.loadData();
     
-    // Reset pages when filters change
-    this.searchNameControl.valueChanges.subscribe(() => this.teamPage.set(1));
-    this.typeFilterControl.valueChanges.subscribe(() => this.teamPage.set(1));
-    this.statusFilterControl.valueChanges.subscribe(() => this.teamPage.set(1));
+    // Subscribe to form control changes and update signals
+    this.searchNameControl.valueChanges.subscribe(value => {
+      this.searchNameValue.set(value || '');
+      this.teamPage.set(1);
+    });
+    
+    this.typeFilterControl.valueChanges.subscribe(value => {
+      this.typeFilterValue.set(value || 'all');
+      this.teamPage.set(1);
+    });
+    
+    this.statusFilterControl.valueChanges.subscribe(value => {
+      this.statusFilterValue.set(value || 'Active');
+      this.teamPage.set(1);
+    });
   }
 
   private async loadData(): Promise<void> {
@@ -448,10 +464,11 @@ export class TeamAppraisalsComponent implements OnInit {
     this.loading.set(true);
 
     try {
-      const [appraiserAppraisals, reviewerActiveAppraisals, reviewerCompletedAppraisals, employees, types] = await Promise.all([
+      const [appraiserAppraisals, appraiserCompletedAppraisals, reviewerActiveAppraisals, reviewerCompletedAppraisals, employees, types] = await Promise.all([
         this.http.get<Appraisal[]>(`${environment.apiUrl}/api/appraisals?appraiser_id=${this.currentUser.emp_id}`).toPromise(),
-        this.http.get<Appraisal[]>(`${environment.apiUrl}/api/appraisals?reviewer_id=${this.currentUser.emp_id}&status=Reviewer Evaluation`).toPromise(),
-        this.http.get<Appraisal[]>(`${environment.apiUrl}/api/appraisals?reviewer_id=${this.currentUser.emp_id}&status=Complete`).toPromise(),
+        this.http.get<Appraisal[]>(`${environment.apiUrl}/api/appraisals?appraiser_id=${this.currentUser.emp_id}&status=${encodeURIComponent('Complete')}`).toPromise(),
+        this.http.get<Appraisal[]>(`${environment.apiUrl}/api/appraisals?reviewer_id=${this.currentUser.emp_id}&status=${encodeURIComponent('Reviewer Evaluation')}`).toPromise(),
+        this.http.get<Appraisal[]>(`${environment.apiUrl}/api/appraisals?reviewer_id=${this.currentUser.emp_id}&status=${encodeURIComponent('Complete')}`).toPromise(),
         this.http.get<Employee[]>(`${environment.apiUrl}/api/employees`).toPromise(),
         this.http.get<AppraisalType[]>(`${environment.apiUrl}/api/appraisal-types`).toPromise()
       ]);
@@ -459,6 +476,7 @@ export class TeamAppraisalsComponent implements OnInit {
       // Combine and deduplicate appraisals
       const allAppraisals = [
         ...(appraiserAppraisals || []),
+        ...(appraiserCompletedAppraisals || []),
         ...(reviewerActiveAppraisals || []),
         ...(reviewerCompletedAppraisals || [])
       ];
