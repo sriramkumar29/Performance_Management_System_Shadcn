@@ -1,0 +1,70 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - generic [ref=e8]: PM
+          - heading "Performance Management" [level=1] [ref=e9]
+        - generic [ref=e10]:
+          - button "Switch to dark mode" [ref=e11]:
+            - img [ref=e13]
+          - button "TU Test Manager" [ref=e15]:
+            - generic [ref=e17]: TU
+            - generic [ref=e18]:
+              - paragraph [ref=e19]: Test
+              - paragraph [ref=e20]: Manager
+    - main [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]:
+          - heading "Performance Management" [level=1] [ref=e24]
+          - generic [ref=e25]:
+            - button "Create appraisal" [ref=e26]:
+              - generic [ref=e27]:
+                - img [ref=e28]
+                - generic [ref=e29]: Create Appraisal
+            - button "Manage goal templates" [ref=e30]:
+              - generic [ref=e31]:
+                - img [ref=e32]
+                - generic [ref=e37]: Manage Templates
+        - generic [ref=e39]:
+          - tablist [ref=e41]:
+            - tab "My Appraisal" [selected] [ref=e42]
+            - tab "Team Appraisal" [ref=e43]
+          - tabpanel "My Appraisal" [ref=e44]:
+            - generic [ref=e45]:
+              - generic [ref=e46]:
+                - generic [ref=e47]:
+                  - heading "Appraisal Type" [level=3] [ref=e49]:
+                    - img [ref=e50]
+                    - text: Appraisal Type
+                  - generic [ref=e53]: —
+                - generic [ref=e54]:
+                  - heading "Due Date" [level=3] [ref=e56]:
+                    - img [ref=e57]
+                    - text: Due Date
+                  - generic [ref=e61]: —
+                - generic [ref=e62]:
+                  - heading "Overall Progress" [level=3] [ref=e64]:
+                    - img [ref=e65]
+                    - text: Overall Progress
+                  - generic [ref=e69]: —
+              - generic [ref=e73]:
+                - heading "My Appraisals" [level=3] [ref=e74]:
+                  - img [ref=e75]
+                  - text: My Appraisals
+                - button "Filters" [ref=e79]:
+                  - generic [ref=e80]:
+                    - img [ref=e81]
+                    - generic [ref=e83]: Filters
+                    - img [ref=e84]
+    - region "Notifications (F8)":
+      - list
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e94]:
+        - img [ref=e96]
+        - generic [ref=e99]: Welcome back!
+```

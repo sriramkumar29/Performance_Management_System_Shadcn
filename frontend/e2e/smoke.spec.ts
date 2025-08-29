@@ -198,8 +198,8 @@ test.describe('Performance Management System - Smoke Tests', () => {
     await page.getByRole('option', { name: /annual/i }).click()
 
     // Wait for period to be auto-calculated
-    await expect(page.getByDisplayValue('2024-01-01')).toBeVisible()
-    await expect(page.getByDisplayValue('2024-12-31')).toBeVisible()
+    await expect(page.locator('input[value="2024-01-01"]')).toBeVisible()
+    await expect(page.locator('input[value="2024-12-31"]')).toBeVisible()
 
     // Save draft
     await page.getByRole('button', { name: /save draft/i }).click()

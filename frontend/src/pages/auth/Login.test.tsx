@@ -113,7 +113,7 @@ describe('Login Component', () => {
       render(<Login />, { withRouter: false })
 
       const emailInput = screen.getByLabelText(/work email address/i)
-      const submitButton = screen.getRole('button', { name: /sign in/i })
+      const submitButton = screen.getByRole('button', { name: /sign in/i })
 
       await user.type(emailInput, 'test@company.com')
       await user.click(submitButton)

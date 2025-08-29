@@ -561,7 +561,9 @@ const MyAppraisal = () => {
                           </div>
                           <div className="flex items-center gap-3">
                             {a.status === "Complete" ? (
-                              <Badge className="bg-green-100 text-green-800 border-green-200">Completed</Badge>
+                              <Badge className="bg-green-100 text-green-800 border-green-200">
+                                Completed
+                              </Badge>
                             ) : (
                               <Badge
                                 variant="secondary"

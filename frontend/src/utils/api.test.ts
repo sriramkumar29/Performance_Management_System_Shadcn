@@ -8,7 +8,7 @@ vi.mock('./auth-events', () => ({
 }))
 
 // Mock environment variables
-vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:8000')
+vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:7000')
 vi.stubEnv('VITE_API_TIMEOUT', '5000')
 vi.stubEnv('VITE_API_RETRIES', '2')
 
@@ -45,7 +45,7 @@ describe('apiFetch', () => {
       await apiFetch('employees')
 
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8000/api/employees',
+        'http://localhost:7000/api/employees',
         expect.any(Object)
       )
     })
@@ -57,7 +57,7 @@ describe('apiFetch', () => {
       await apiFetch('api/employees')
 
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8000/api/employees',
+        'http://localhost:7000/api/employees',
         expect.any(Object)
       )
     })

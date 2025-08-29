@@ -38,12 +38,16 @@ vi.mock('dayjs', () => {
       toISOString: () => actualDate.toISOString(),
       valueOf: () => actualDate.getTime()
     }
-  })
+  }) as any // Cast to any to allow extend property
   
   // Add static methods
   mockDayjs.extend = vi.fn()
+  mockDayjs.isDayjs = vi.fn(() => false)
   
-  return { default: mockDayjs }
+  return { 
+    default: mockDayjs,
+    __esModule: true
+  }
 })
 
 describe('CreateAppraisal Integration Tests', () => {

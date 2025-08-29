@@ -46,7 +46,18 @@ const mockRanges = [
   { id: 6, name: '4th', appraisal_type_id: 3 }
 ]
 
+// Mock data for categories
+const mockCategories = [
+  { id: 1, name: 'Category 1' },
+  { id: 2, name: 'Category 2' },
+]
+
 export const handlers = [
+  // Categories endpoint
+  http.get(`${API_BASE}/goals/categories`, () => {
+    return HttpResponse.json(mockCategories)
+  }),
+
   // Auth endpoints
   http.post(`${API_BASE}/employees/login`, async ({ request }) => {
     const body = await request.json() as { email: string; password: string }

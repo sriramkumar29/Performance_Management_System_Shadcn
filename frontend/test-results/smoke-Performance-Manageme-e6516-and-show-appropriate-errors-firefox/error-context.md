@@ -1,0 +1,97 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - generic [ref=e6]:
+      - button "Go back" [ref=e7]:
+        - generic [ref=e8]:
+          - img [ref=e9]
+          - generic [ref=e12]: Back
+      - heading "Create New Appraisal" [level=1] [ref=e13]
+      - generic [ref=e14]: New Draft
+    - generic [ref=e15]:
+      - button "Appraisal Details Configure the basic information for this appraisal." [expanded] [ref=e16] [cursor=pointer]:
+        - generic [ref=e17] [cursor=pointer]:
+          - generic [ref=e18] [cursor=pointer]:
+            - heading "Appraisal Details" [level=3] [ref=e19] [cursor=pointer]
+            - paragraph [ref=e20] [cursor=pointer]: Configure the basic information for this appraisal.
+          - img [ref=e21] [cursor=pointer]
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - generic [ref=e28]: Employee
+          - combobox [ref=e29]:
+            - generic: Select employee to appraise
+            - img [ref=e30]
+          - paragraph [ref=e32]: Must be same level or lower than you.
+        - generic [ref=e33]:
+          - generic [ref=e34]: Reviewer
+          - combobox [disabled] [ref=e35]:
+            - generic: Select reviewer
+            - img [ref=e36]
+          - paragraph [ref=e38]: Must be same level or higher than you.
+        - generic [ref=e39]:
+          - generic [ref=e40]: Appraisal Type
+          - combobox [disabled] [ref=e41]:
+            - generic: Select appraisal type
+            - img [ref=e42]
+          - paragraph [ref=e44]: Type determines the period automatically. If the type has ranges, choose one next.
+        - generic [ref=e46]:
+          - generic [ref=e47]: Appraisal Period
+          - generic [ref=e48]:
+            - textbox [ref=e49]
+            - textbox [ref=e50]
+          - paragraph [ref=e51]: Automatically calculated from appraisal type and range. Click on dates to manually adjust if needed.
+    - generic [ref=e52]:
+      - generic [ref=e54]:
+        - generic [ref=e55]:
+          - heading "Goals" [level=3] [ref=e56]
+          - paragraph [ref=e57]: Add goals, set importance and weightage. Total must be 100%.
+        - generic [ref=e58]:
+          - button "Add goal" [disabled]:
+            - generic:
+              - img
+              - generic: Add Goal
+          - button "Import from templates" [disabled]:
+            - generic:
+              - img
+              - generic: Import from Templates
+      - generic [ref=e60]:
+        - generic [ref=e61]:
+          - generic [ref=e62]: No goals added yet.
+          - generic [ref=e63]:
+            - generic [ref=e64]:
+              - img [ref=e65]
+              - generic [ref=e69]: Employee selected
+            - generic [ref=e70]:
+              - img [ref=e71]
+              - generic [ref=e75]: Reviewer selected
+            - generic [ref=e76]:
+              - img [ref=e77]
+              - generic [ref=e81]: Appraisal type and period set
+        - generic [ref=e82]:
+          - button "Add goal" [disabled]:
+            - generic:
+              - img
+              - generic: Add Goal
+          - button "Import from templates" [disabled]:
+            - generic:
+              - img
+              - generic: Import from Templates
+    - generic [ref=e83]:
+      - generic [ref=e84]:
+        - button "Cancel" [ref=e85]:
+          - generic [ref=e86]:
+            - img [ref=e87]
+            - generic [ref=e90]: Cancel
+        - button "Save as draft" [disabled]:
+          - generic:
+            - img
+            - generic: Save as Draft
+      - generic [ref=e91]:
+        - button "Submit for acknowledgement" [disabled]:
+          - generic:
+            - img
+            - generic: Submit for Acknowledgement
+  - region "Notifications alt+T"
+```
