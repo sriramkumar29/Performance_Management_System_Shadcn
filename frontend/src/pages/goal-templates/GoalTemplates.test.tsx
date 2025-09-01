@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
-import { BrowserRouter } from 'react-router-dom'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import GoalTemplates from './GoalTemplates'
 import * as api from '../../utils/api'
 
@@ -26,9 +26,14 @@ const mockManagerUser = {
 
 const renderGoalTemplates = () => {
   return render(
-    <BrowserRouter>
-      <GoalTemplates />
-    </BrowserRouter>
+    <MemoryRouter initialEntries={["/goal-templates"]}>
+      <Routes>
+        <Route path="/" element={<div>Home</div>} />
+        <Route path="/goal-templates" element={<GoalTemplates />} />
+        <Route path="/goal-templates/new" element={<div>New Template</div>} />
+        <Route path="/goal-templates/:id/edit" element={<div>Edit Template</div>} />
+      </Routes>
+    </MemoryRouter>
   )
 }
 
@@ -44,19 +49,19 @@ describe('GoalTemplates', () => {
   })
 
   it('should render page title', () => {
-    vi.mocked(api.apiFetch).mockResolvedValue({ ok: true, data: [] })
+    vi.mocked(api.apiFetch).mockResolvedValue({ ok: true, data: [] } as any)
 
     renderGoalTemplates()
 
-    expect(screen.getByText('Goal Templates')).toBeInTheDocument()
+    expect(screen.getByText('Manage Goal Templates')).toBeInTheDocument()
   })
 
   it('should show create template button', () => {
-    vi.mocked(api.apiFetch).mockResolvedValue({ ok: true, data: [] })
+    vi.mocked(api.apiFetch).mockResolvedValue({ ok: true, data: [] } as any)
 
     renderGoalTemplates()
 
-    expect(screen.getByText('Create New Template')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /create template/i })).toBeInTheDocument()
   })
 
   it('should display goal templates when loaded', async () => {
@@ -71,15 +76,15 @@ describe('GoalTemplates', () => {
       },
     ]
 
-    vi.mocked(api.apiFetch).mockResolvedValue({ ok: true, data: mockTemplates })
+    vi.mocked(api.apiFetch).mockResolvedValue({ ok: true, data: mockTemplates } as any)
 
     renderGoalTemplates()
 
     await waitFor(() => {
       expect(screen.getByText('Technical Skills')).toBeInTheDocument()
       expect(screen.getByText('Improve technical capabilities')).toBeInTheDocument()
-      expect(screen.getByText('High')).toBeInTheDocument()
-      expect(screen.getByText('30%')).toBeInTheDocument()
+      expect(screen.getByText(/Importance:\s*High/i)).toBeInTheDocument()
+      expect(screen.getByText('30% Weight')).toBeInTheDocument()
     })
   })
 
@@ -95,17 +100,25 @@ describe('GoalTemplates', () => {
       },
     ]
 
-    vi.mocked(api.apiFetch).mockResolvedValue({ ok: true, data: mockTemplates })
-    vi.mocked(api.apiFetch).mockResolvedValueOnce({ ok: true, data: {} })
+    // First call: list
+    vi.mocked(api.apiFetch).mockResolvedValueOnce({ ok: true, data: mockTemplates } as any)
+    // Second call: delete
+    vi.mocked(api.apiFetch).mockResolvedValueOnce({ ok: true, status: 204 } as any)
+    // Third call: reload list after delete
+    vi.mocked(api.apiFetch).mockResolvedValueOnce({ ok: true, data: [] } as any)
 
     renderGoalTemplates()
 
     await waitFor(() => {
-      const deleteButton = screen.getByRole('button', { name: /delete/i })
+      const deleteButton = screen.getByRole('button', { name: /delete template/i })
       fireEvent.click(deleteButton)
     })
 
-    expect(api.apiFetch).toHaveBeenCalledWith('/goals/templates/1', { method: 'DELETE' })
+    // Confirm deletion in dialog
+    const confirm = await screen.findByRole('button', { name: /confirm delete/i })
+    fireEvent.click(confirm)
+
+    expect(api.apiFetch).toHaveBeenCalledWith('/api/goals/templates/1', { method: 'DELETE' })
   })
 
   it('should handle template editing', async () => {
@@ -148,8 +161,8 @@ describe('GoalTemplates', () => {
     renderGoalTemplates()
 
     await waitFor(() => {
-      const categoryFilter = screen.getByRole('combobox', { name: /category/i })
-      expect(categoryFilter).toBeInTheDocument()
+      const searchInput = screen.getByPlaceholderText(/search by title or category/i)
+      expect(searchInput).toBeInTheDocument()
     })
   })
 
@@ -159,7 +172,7 @@ describe('GoalTemplates', () => {
     renderGoalTemplates()
 
     await waitFor(() => {
-      expect(screen.getByText('No goal templates found')).toBeInTheDocument()
+      expect(screen.getByText('No templates found')).toBeInTheDocument()
     })
   })
 })

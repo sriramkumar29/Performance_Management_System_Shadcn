@@ -768,7 +768,11 @@ const CreateAppraisal = () => {
           <h1 className="text-xl sm:text-2xl font-semibold">
             {createdAppraisalId ? "Edit Appraisal" : "Create New Appraisal"}
           </h1>
-          <Badge variant="outline" className="px-2 py-0.5 text-xs">
+          <Badge
+            variant="outline"
+            className="px-2 py-0.5 text-xs"
+            data-testid="appraisal-status-badge"
+          >
             {statusLabel}
           </Badge>
         </div>
@@ -835,7 +839,7 @@ const CreateAppraisal = () => {
                     }
                     disabled={isLocked}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger aria-label="Employee" role="combobox">
                       <SelectValue placeholder="Select employee to appraise" />
                     </SelectTrigger>
                     <SelectContent>
@@ -866,7 +870,7 @@ const CreateAppraisal = () => {
                     }
                     disabled={!appraiseeSelected || isLocked}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger aria-label="Reviewer" role="combobox">
                       <SelectValue placeholder="Select reviewer" />
                     </SelectTrigger>
                     <SelectContent>
@@ -917,7 +921,7 @@ const CreateAppraisal = () => {
                     }}
                     disabled={!reviewerSelected || isLocked}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger aria-label="Appraisal Type" role="combobox">
                       <SelectValue placeholder="Select appraisal type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -964,7 +968,7 @@ const CreateAppraisal = () => {
                         }}
                         disabled={isLocked}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger aria-label="Range" role="combobox">
                           <SelectValue placeholder="Select range" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1053,6 +1057,7 @@ const CreateAppraisal = () => {
                 size="sm"
                 onClick={() => setAddGoalModalOpen(true)}
                 disabled={!canAddGoals}
+                data-testid="add-goal-toolbar"
                 aria-label="Add goal"
                 title={addGoalDisabledReason}
               >
@@ -1207,6 +1212,7 @@ const CreateAppraisal = () => {
                   onClick={() => setAddGoalModalOpen(true)}
                   disabled={!canAddGoals}
                   className="gap-2"
+                  data-testid="add-goal-empty"
                   aria-label="Add goal"
                   title={addGoalDisabledReason}
                 >
@@ -1227,6 +1233,11 @@ const CreateAppraisal = () => {
                   </span>
                 </Button>
               </div>
+              {(!canAddGoals && addGoalDisabledReason) ? (
+                <p className="mt-2 text-xs text-muted-foreground text-center">
+                  {addGoalDisabledReason}
+                </p>
+              ) : null}
             </div>
           )}
         </CardContent>
@@ -1248,12 +1259,13 @@ const CreateAppraisal = () => {
             <Button
               onClick={handleSubmit}
               disabled={!canSaveDraft || loading}
-              aria-label={loading ? "Saving" : "Save as draft"}
-              title={loading ? "Saving" : "Save as draft"}
+              data-testid="save-draft"
+              aria-label={loading ? "Saving" : "Save Draft"}
+              title={loading ? "Saving" : "Save Draft"}
             >
               <Save className="h-4 w-4" />
               <span className="hidden sm:inline sm:ml-2">
-                {loading ? "Saving..." : "Save as Draft"}
+                {loading ? "Saving..." : "Save Draft"}
               </span>
             </Button>
           )}

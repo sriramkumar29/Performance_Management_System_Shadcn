@@ -1,266 +1,290 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import AddGoalModal from './AddGoalModal'
-import * as api from '../../utils/api'
+import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
+import {
+  render,
+  screen,
+  waitFor,
+  within,
+  fireEvent,
+} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { toast } from "sonner";
+import AddGoalModal from "./AddGoalModal";
+import * as api from "../../utils/api";
 
 // Mock the API module
-vi.mock('../../utils/api', () => ({
-  apiFetch: vi.fn()
-}))
+vi.mock("../../utils/api", () => ({
+  apiFetch: vi.fn(),
+}));
 
-const mockOnClose = vi.fn()
-const mockOnGoalAdded = vi.fn()
+// Mock toast notifications from sonner
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+const mockOnClose = vi.fn();
+const mockOnGoalAdded = vi.fn();
+
+// Radix Select uses Pointer Events APIs not implemented in JSDOM
+beforeAll(() => {
+  const proto = Element.prototype as any;
+  if (!proto.hasPointerCapture) proto.hasPointerCapture = vi.fn();
+  if (!proto.setPointerCapture) proto.setPointerCapture = vi.fn();
+  if (!proto.scrollIntoView) proto.scrollIntoView = vi.fn();
+});
 
 const mockCategories = [
-  { id: 1, name: 'Category 1' },
-  { id: 2, name: 'Category 2' },
-]
+  { id: 1, name: "Category 1" },
+  { id: 2, name: "Category 2" },
+];
 
 const defaultProps = {
   open: true,
   onClose: mockOnClose,
   onGoalAdded: mockOnGoalAdded,
-  appraisalId: 1
-}
+  appraisalId: 1,
+};
 
 // Type assertion for the mocked apiFetch
-const mockApiFetch = vi.mocked(api.apiFetch)
+const mockApiFetch = vi.mocked(api.apiFetch);
 
-describe('AddGoalModal', () => {
+describe("AddGoalModal", () => {
   beforeEach(() => {
     // Clear all mocks before each test
-    vi.clearAllMocks()
-    
+    vi.clearAllMocks();
+
     // Set up the default mock implementation
     mockApiFetch.mockImplementation((url: string) => {
-      if (url === '/api/goals/categories') {
+      if (url === "/api/goals/categories") {
         return Promise.resolve({
           ok: true,
-          data: [...mockCategories] // Return a new array to avoid reference issues
-        }) as any
+          data: [...mockCategories], // Return a new array to avoid reference issues
+        }) as any;
       }
-      return Promise.resolve({ ok: false, data: null }) as any
-    })
-  })
+      return Promise.resolve({ ok: false, data: null }) as any;
+    });
+  });
 
+  it("should render modal when open", async () => {
+    render(<AddGoalModal {...defaultProps} />);
 
-  it('should render modal when open', async () => {
-    render(<AddGoalModal {...defaultProps} />)
-    
     // Wait for categories to load
     await waitFor(() => {
-      expect(screen.getByText('Add New Goal')).toBeInTheDocument()
-    })
-  })
+      expect(screen.getByText("Add New Goal")).toBeInTheDocument();
+    });
+  });
 
-  it('should not render when closed', async () => {
-    const { container } = render(<AddGoalModal {...defaultProps} open={false} />)
-    
+  it("should not render when closed", async () => {
+    const { container } = render(
+      <AddGoalModal {...defaultProps} open={false} />
+    );
+
     // The modal should not be in the document at all when closed
-    expect(container.firstChild).toBeNull()
-  })
+    expect(container.firstChild).toBeNull();
+  });
 
-  it('should render goal form fields', async () => {
-    render(<AddGoalModal {...defaultProps} />)
-    
+  it("should render goal form fields", async () => {
+    render(<AddGoalModal {...defaultProps} />);
+
     // Wait for categories to load
     await waitFor(() => {
-      expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
-    })
-    
+      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+    });
+
     // Now check for form fields
-    expect(screen.getByLabelText(/goal title/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/description/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/performance factor/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/category/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/importance/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/weightage/i)).toBeInTheDocument()
-  })
+    expect(screen.getByLabelText(/goal title/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/performance factor/i)).toBeInTheDocument();
+    // Category label and trigger
+    const categoryLabel = screen.getByText(/category/i, { selector: "label" });
+    expect(categoryLabel).toBeInTheDocument();
+    const categorySection = categoryLabel.closest("div") as HTMLElement;
+    expect(within(categorySection).getByRole("combobox")).toBeInTheDocument();
+    // Importance label and trigger
+    const importanceLabel = screen.getByText(/importance level/i, {
+      selector: "label",
+    });
+    expect(importanceLabel).toBeInTheDocument();
+    const importanceSection = importanceLabel.closest("div") as HTMLElement;
+    expect(within(importanceSection).getByRole("combobox")).toBeInTheDocument();
+    expect(screen.getByLabelText(/weightage/i)).toBeInTheDocument();
+  });
 
-  it('should handle form submission', async () => {
-    // Mock the form submission response
-    const mockResponse = {
-      ok: true,
-      data: { 
-        id: 1,
-        goal_id: 123,
-        goal: {
-          goal_id: 123,
-          goal_title: 'New Goal',
-          goal_description: '',
-          goal_performance_factor: '',
-          goal_importance: '',
-          goal_weightage: 25,
-          category_id: 1,
-          category: { id: 1, name: 'Category 1' }
-        }
-      }
-    }
-    
-    // Mock the API call for form submission
-    mockApiFetch.mockImplementationOnce(async (url: string) => {
-      if (url.includes('/api/appraisals/1/goals')) {
-        return Promise.resolve(mockResponse) as any
-      }
-      return Promise.resolve({ ok: false, data: null }) as any
-    })
-    
-    render(<AddGoalModal {...defaultProps} />)
-    
+  it("should handle form submission (staged pseudo goal) and show success toast", async () => {
+    const user = userEvent.setup();
+    render(<AddGoalModal {...defaultProps} />);
+
     // Wait for categories to load
     await waitFor(() => {
-      expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
-    })
-    
+      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+    });
+
     // Fill in required fields
-    const titleInput = screen.getByLabelText(/goal title/i) as HTMLInputElement
-    fireEvent.change(titleInput, {
-      target: { value: 'New Goal' }
-    })
-    
-    const weightageInput = screen.getByLabelText(/weightage/i) as HTMLInputElement
-    fireEvent.change(weightageInput, {
-      target: { value: '25' }
-    })
-    
-    // Select a category from the dropdown
-    const categorySelect = screen.getByLabelText(/category/i)
-    fireEvent.mouseDown(categorySelect)
-    
-    const categoryOption = await screen.findByText('Category 1')
-    fireEvent.click(categoryOption)
-    
+    await user.type(screen.getByLabelText(/goal title/i), "New Goal");
+    await user.type(screen.getByLabelText(/goal description/i), "Desc");
+    await user.type(screen.getByLabelText(/performance factors/i), "Factor");
+
+    // Importance select
+    const importanceLabel = screen.getByText(/importance level/i, {
+      selector: "label",
+    });
+    const importanceSection = importanceLabel.closest("div") as HTMLElement;
+    const importanceTrigger = within(importanceSection).getByRole("combobox");
+    await user.click(importanceTrigger);
+    const listbox1 = await screen.findByRole("listbox");
+    await user.click(
+      within(listbox1).getByRole("option", { name: /high priority/i })
+    );
+
+    // Category select
+    const categoryLabel = screen.getByText(/category/i, { selector: "label" });
+    const categorySection = categoryLabel.closest("div") as HTMLElement;
+    const categoryTrigger = within(categorySection).getByRole("combobox");
+    await user.click(categoryTrigger);
+    const listbox2 = await screen.findByRole("listbox");
+    await user.click(
+      within(listbox2).getByRole("option", { name: /category 1/i })
+    );
+
+    // Weightage
+    await user.type(screen.getByLabelText(/weightage/i), "25");
+
     // Submit the form
-    const submitButton = screen.getByText('Add Goal')
-    fireEvent.click(submitButton)
-    
-    // Verify the API was called with the correct data
-    await waitFor(() => {
-      expect(mockApiFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/appraisals/1/goals'),
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({
-            goal_title: 'New Goal',
-            goal_description: '',
-            goal_performance_factor: '',
-            goal_importance: '',
-            goal_weightage: 25,
-            category_id: 1
-          })
-        })
-      )
-      expect(mockOnGoalAdded).toHaveBeenCalled()
-      expect(mockOnClose).toHaveBeenCalled()
-    })
-  })
+    await user.click(screen.getByRole("button", { name: /add goal/i }));
 
-  it('should validate required fields', async () => {
-    render(<AddGoalModal {...defaultProps} />)
-    
-    // Wait for categories to load
     await waitFor(() => {
-      expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
-    })
-    
-    // Try to submit without filling required fields
-    const submitButton = screen.getByText('Add Goal')
-    fireEvent.click(submitButton)
-    
-    // Check for validation errors
-    await waitFor(() => {
-      expect(screen.getByText(/title is required/i)).toBeInTheDocument()
-      expect(screen.getByText(/weightage is required/i)).toBeInTheDocument()
-      expect(screen.getByText(/category is required/i)).toBeInTheDocument()
-    })
-  })
+      expect(mockOnGoalAdded).toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalled();
+      expect(toast.success).toHaveBeenCalledWith(
+        "Goal added to appraisal",
+        expect.objectContaining({ description: expect.any(String) })
+      );
+    });
+  });
 
-  it('should validate weightage range', async () => {
-    render(<AddGoalModal {...defaultProps} />)
-    
-    // Wait for categories to load
-    await waitFor(() => {
-      expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
-    })
-    
-    // Fill in required fields first
-    fireEvent.change(screen.getByLabelText(/goal title/i), {
-      target: { value: 'Test Goal' }
-    })
-    
-    // Test invalid weightage (above max)
-    fireEvent.change(screen.getByLabelText(/weightage/i), {
-      target: { value: '150' }
-    })
-    
-    // Select a category
-    fireEvent.mouseDown(screen.getByLabelText(/category/i))
-    const categoryOption = await screen.findByText('Category 1')
-    fireEvent.click(categoryOption)
-    
-    const submitButton = screen.getByText('Add Goal')
-    fireEvent.click(submitButton)
-    
-    await waitFor(() => {
-      expect(screen.getByText(/weightage must be between 1 and 100/i)).toBeInTheDocument()
-    })
-    
-    // Test invalid weightage (below min)
-    fireEvent.change(screen.getByLabelText(/weightage/i), {
-      target: { value: '0' }
-    })
-    
-    fireEvent.click(submitButton)
-    
-    await waitFor(() => {
-      expect(screen.getByText(/weightage must be between 1 and 100/i)).toBeInTheDocument()
-    })
-    
-    // Test valid weightage
-    fireEvent.change(screen.getByLabelText(/weightage/i), {
-      target: { value: '50' }
-    })
-    
-    // Mock the form submission
-    mockApiFetch.mockImplementationOnce(async (url: string) => {
-      if (url.includes('/api/appraisals/1/goals')) {
-        return Promise.resolve({ 
-          ok: true, 
-          data: { 
-            id: 1, 
-            goal_id: 123,
-            goal: {
-              goal_id: 123,
-              goal_title: 'Test Goal',
-              goal_weightage: 50,
-              category_id: 1,
-              category: { id: 1, name: 'Category 1' }
-            }
-          } 
-        }) as any
-      }
-      return Promise.resolve({ ok: false, data: null }) as any
-    })
-    
-    fireEvent.click(submitButton)
-    
-    await waitFor(() => {
-      expect(mockOnGoalAdded).toHaveBeenCalled()
-      expect(mockOnClose).toHaveBeenCalled()
-    })
-  })
+  it("should validate required fields and show error toast", async () => {
+    render(<AddGoalModal {...defaultProps} />);
 
-  it('should close modal when cancel is clicked', async () => {
-    render(<AddGoalModal {...defaultProps} />)
-    
-    // Wait for categories to load
+    // Submit without filling anything
+    fireEvent.submit(
+      screen.getByRole("button", { name: /add goal/i }).closest("form")!
+    );
+    // or: fireEvent.click(screen.getByRole("button", { name: /add goal/i }))
+
     await waitFor(() => {
-      expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
-    })
+      expect(toast.error).toHaveBeenCalledWith(
+        "Please complete all fields before submitting"
+      );
+      expect(mockOnGoalAdded).not.toHaveBeenCalled();
+    });
+  });
+
+  it("should error when weightage exceeds remaining weightage", async () => {
+    const user = userEvent.setup();
+    render(<AddGoalModal {...defaultProps} />);
+
+    // fill required fields first
+    await user.type(screen.getByLabelText(/goal title/i), "Weightage Goal");
+    await user.type(
+      screen.getByLabelText(/goal description/i),
+      "Some description"
+    );
+    await user.type(screen.getByLabelText(/performance factors/i), "Factor");
+    await user.click(
+      screen.getByRole("combobox", { name: /importance level/i })
+    );
+
+    // select option
+    await user.click(screen.getByRole("option", { name: /High Priority/i }));
+
+    await user.click(screen.getByLabelText(/category/i));
+    await user.click(
+      await screen.findByRole("option", { name: /Business/i })
+    );
     
-    const cancelButton = screen.getByText('Cancel')
-    fireEvent.click(cancelButton)
-    
-    expect(mockOnClose).toHaveBeenCalled()
-  })
-})
+
+    // enter weightage > remaining (e.g. 45 when only 10 is left)
+    await user.clear(screen.getByLabelText(/weightage/i));
+    await user.type(screen.getByLabelText(/weightage/i), "45");
+
+    // try to submit
+    await user.click(screen.getByRole("button", { name: /add goal/i }));
+
+    // expect validation error to show
+    expect(
+      await screen.findByText(/value must be less than or equal to 10/i)
+    ).toBeInTheDocument();
+
+    // also ensure onGoalAdded is NOT called
+    expect(mockOnGoalAdded).not.toHaveBeenCalled();
+  });
+
+  it("should allow valid weightage within remaining and succeed", async () => {
+    const user = userEvent.setup();
+    render(<AddGoalModal {...defaultProps} remainingWeightage={60} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+    });
+
+    await user.type(screen.getByLabelText(/goal title/i), "Valid Goal");
+    await user.type(screen.getByLabelText(/goal description/i), "Desc");
+    await user.type(screen.getByLabelText(/performance factors/i), "Factor");
+
+    const importanceLabel = screen.getByText(/importance level/i, {
+      selector: "label",
+    });
+    const importanceSection = importanceLabel.closest("div") as HTMLElement;
+    const importanceTrigger = within(importanceSection).getByRole("combobox");
+    await user.click(importanceTrigger);
+    const listbox5 = await screen.findByRole("listbox");
+    await user.click(
+      within(listbox5).getByRole("option", { name: /medium priority/i })
+    );
+
+    const categoryLabel = screen.getByText(/category/i, { selector: "label" });
+    const categorySection = categoryLabel.closest("div") as HTMLElement;
+    const categoryTrigger = within(categorySection).getByRole("combobox");
+    await user.click(categoryTrigger);
+    const listbox6 = await screen.findByRole("listbox");
+    await user.click(
+      within(listbox6).getByRole("option", { name: /category 2/i })
+    );
+
+    await user.type(screen.getByLabelText(/weightage/i), "50");
+
+    await user.click(screen.getByRole("button", { name: /add goal/i }));
+
+    await waitFor(() => {
+      expect(mockOnGoalAdded).toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalled();
+      expect(toast.success).toHaveBeenCalled();
+    });
+  });
+
+  it("should close modal when cancel is clicked", async () => {
+    const user = userEvent.setup();
+    render(<AddGoalModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+
+    expect(mockOnClose).toHaveBeenCalled();
+  });
+
+  it("should disable submit when no remaining weightage", async () => {
+    render(<AddGoalModal {...defaultProps} remainingWeightage={0} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/no weightage remaining/i)).toBeInTheDocument();
+    });
+
+    const submitBtn = screen.getByRole("button", { name: /add goal/i });
+    expect(submitBtn).toBeDisabled();
+  });
+});

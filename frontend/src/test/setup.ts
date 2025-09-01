@@ -13,13 +13,20 @@ afterEach(() => server.resetHandlers())
 // Clean up after the tests are finished
 afterAll(() => server.close())
 
-// Mock sessionStorage
+// Mock sessionStorage with an in-memory store
+const sessionStore = new Map<string, string>()
 Object.defineProperty(window, 'sessionStorage', {
   value: {
-    getItem: vi.fn(),
-    setItem: vi.fn(),
-    removeItem: vi.fn(),
-    clear: vi.fn(),
+    getItem: vi.fn((key: string) => (sessionStore.has(key) ? sessionStore.get(key)! : null)),
+    setItem: vi.fn((key: string, value: string) => {
+      sessionStore.set(key, String(value))
+    }),
+    removeItem: vi.fn((key: string) => {
+      sessionStore.delete(key)
+    }),
+    clear: vi.fn(() => {
+      sessionStore.clear()
+    }),
   },
   writable: true,
 })

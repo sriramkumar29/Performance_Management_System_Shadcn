@@ -17,12 +17,7 @@ import {
   SelectContent,
   SelectItem,
 } from "../../components/ui/select";
-import {
-  Plus,
-  Target,
-  Weight,
-  X,
-} from "lucide-react";
+import { Plus, Target, Weight, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface AddGoalModalProps {
@@ -81,7 +76,6 @@ const AddGoalModal = ({
     goal_weightage: 0,
     category_id: 0,
   });
-  
 
   // Load categories when modal opens
   useEffect(() => {
@@ -193,180 +187,187 @@ const AddGoalModal = ({
               </p>
             </div>
             <div className="text-xs text-muted-foreground ml-auto">
-              Remaining: <span className="font-medium">{remainingWeightage}%</span>
+              Remaining:{" "}
+              <span className="font-medium">{remainingWeightage}%</span>
             </div>
           </div>
         </DialogHeader>
 
-        
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="rounded-md border p-4 space-y-4">
             <div className="grid gap-4">
-            <div className="space-y-2">
-              <Label
-                htmlFor="goal_title"
-                className="text-sm font-medium text-foreground flex items-center gap-2"
-              >
-                <Target className="h-4 w-4 text-primary" />
-                Goal Title
-              </Label>
-              <Input
-                id="goal_title"
-                placeholder="Enter a clear, specific goal title"
-                value={formValues.goal_title}
-                onChange={(e) =>
-                  setFormValues((v) => ({ ...v, goal_title: e.target.value }))
-                }
-                className="h-11 focus:ring-2 focus:ring-primary/20 border-border/50"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label
-                htmlFor="goal_description"
-                className="text-sm font-medium text-foreground"
-              >
-                Goal Description
-              </Label>
-              <Textarea
-                id="goal_description"
-                rows={4}
-                placeholder="Provide a detailed description of what needs to be achieved..."
-                value={formValues.goal_description}
-                onChange={(e) =>
-                  setFormValues((v) => ({
-                    ...v,
-                    goal_description: e.target.value,
-                  }))
-                }
-                className="resize-none focus:ring-2 focus:ring-primary/20 border-border/50"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label
-                htmlFor="goal_performance_factor"
-                className="text-sm font-medium text-foreground"
-              >
-                Performance Factors
-              </Label>
-              <Textarea
-                id="goal_performance_factor"
-                rows={3}
-                placeholder="Describe how performance will be measured and evaluated..."
-                value={formValues.goal_performance_factor}
-                onChange={(e) =>
-                  setFormValues((v) => ({
-                    ...v,
-                    goal_performance_factor: e.target.value,
-                  }))
-                }
-                className="resize-none focus:ring-2 focus:ring-primary/20 border-border/50"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label
-                  htmlFor="goal_importance"
-                  className="text-sm font-medium text-foreground"
+                  htmlFor="goal_title"
+                  className="text-sm font-medium text-foreground flex items-center gap-2"
                 >
-                  Importance Level
+                  <Target className="h-4 w-4 text-primary" />
+                  Goal Title
                 </Label>
-                <UiSelect
-                  value={formValues.goal_importance}
-                  onValueChange={(value) =>
-                    setFormValues((v) => ({ ...v, goal_importance: value }))
+                <Input
+                  id="goal_title"
+                  placeholder="Enter a clear, specific goal title"
+                  value={formValues.goal_title}
+                  onChange={(e) =>
+                    setFormValues((v) => ({ ...v, goal_title: e.target.value }))
                   }
-                >
-                  <SelectTrigger className="h-11 focus:ring-2 focus:ring-primary/20 border-border/50">
-                    <SelectValue placeholder="Select importance level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="High">🔴 High Priority</SelectItem>
-                    <SelectItem value="Medium">🟡 Medium Priority</SelectItem>
-                    <SelectItem value="Low">🟢 Low Priority</SelectItem>
-                  </SelectContent>
-                </UiSelect>
+                  className="h-11 focus:ring-2 focus:ring-primary/20 border-border/50"
+                  required
+                />
               </div>
 
               <div className="space-y-2">
                 <Label
-                  htmlFor="category_id"
+                  htmlFor="goal_description"
                   className="text-sm font-medium text-foreground"
                 >
-                  Category
+                  Goal Description
                 </Label>
-                <UiSelect
-                  value={
-                    formValues.category_id ? String(formValues.category_id) : ""
-                  }
-                  onValueChange={(value) =>
+                <Textarea
+                  id="goal_description"
+                  rows={4}
+                  placeholder="Provide a detailed description of what needs to be achieved..."
+                  value={formValues.goal_description}
+                  onChange={(e) =>
                     setFormValues((v) => ({
                       ...v,
-                      category_id: parseInt(value) || 0,
+                      goal_description: e.target.value,
                     }))
                   }
-                >
-                  <SelectTrigger className="h-11 focus:ring-2 focus:ring-primary/20 border-border/50">
-                    <SelectValue
-                      placeholder={
-                        loadingCategories ? "Loading..." : "Select category"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={String(cat.id)}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </UiSelect>
+                  className="resize-none focus:ring-2 focus:ring-primary/20 border-border/50"
+                />
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label
-                htmlFor="goal_weightage"
-                className="text-sm font-medium text-foreground flex items-center gap-2"
-              >
-                <Weight className="h-4 w-4 text-amber-500" />
-                Weightage (%)
-              </Label>
-              <Input
-                id="goal_weightage"
-                type="number"
-                min="1"
-                max={remainingWeightage}
-                placeholder="Enter weightage percentage"
-                value={formValues.goal_weightage || ""}
-                onChange={(e) =>
-                  setFormValues((v) => ({
-                    ...v,
-                    goal_weightage: parseInt(e.target.value) || 0,
-                  }))
-                }
-                className="h-11 focus:ring-2 focus:ring-primary/20 border-border/50"
-                required
-              />
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">
-                  Remaining weightage:{" "}
-                  <span className="font-medium text-foreground">
-                    {remainingWeightage}%
-                  </span>
-                </span>
-                {remainingWeightage <= 0 && (
-                  <span className="text-red-600 font-medium">
-                    No weightage remaining
-                  </span>
-                )}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="goal_performance_factor"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Performance Factors
+                </Label>
+                <Textarea
+                  id="goal_performance_factor"
+                  rows={3}
+                  placeholder="Describe how performance will be measured and evaluated..."
+                  value={formValues.goal_performance_factor}
+                  onChange={(e) =>
+                    setFormValues((v) => ({
+                      ...v,
+                      goal_performance_factor: e.target.value,
+                    }))
+                  }
+                  className="resize-none focus:ring-2 focus:ring-primary/20 border-border/50"
+                  required
+                />
               </div>
-            </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="goal_importance"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Importance Level
+                  </Label>
+                  <UiSelect
+                    value={formValues.goal_importance}
+                    onValueChange={(value) =>
+                      setFormValues((v) => ({ ...v, goal_importance: value }))
+                    }
+                  >
+                    <SelectTrigger
+                      id="goal_importance"
+                      className="h-11 focus:ring-2 focus:ring-primary/20 border-border/50"
+                    >
+                      <SelectValue placeholder="Select importance level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="High">🔴 High Priority</SelectItem>
+                      <SelectItem value="Medium">🟡 Medium Priority</SelectItem>
+                      <SelectItem value="Low">🟢 Low Priority</SelectItem>
+                    </SelectContent>
+                  </UiSelect>
+                </div>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="category_id"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Category
+                  </Label>
+                  <UiSelect
+                    value={
+                      formValues.category_id
+                        ? String(formValues.category_id)
+                        : ""
+                    }
+                    onValueChange={(value) =>
+                      setFormValues((v) => ({
+                        ...v,
+                        category_id: parseInt(value) || 0,
+                      }))
+                    }
+                  >
+                    <SelectTrigger
+                      id="category_id"
+                      className="h-11 focus:ring-2 focus:ring-primary/20 border-border/50"
+                    >
+                      <SelectValue
+                        placeholder={
+                          loadingCategories ? "Loading..." : "Select category"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={String(cat.id)}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </UiSelect>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="goal_weightage"
+                  className="text-sm font-medium text-foreground flex items-center gap-2"
+                >
+                  <Weight className="h-4 w-4 text-amber-500" />
+                  Weightage (%)
+                </Label>
+                <Input
+                  id="goal_weightage"
+                  type="number"
+                  min="1"
+                  max={remainingWeightage}
+                  placeholder="Enter weightage percentage"
+                  value={formValues.goal_weightage || ""}
+                  onChange={(e) =>
+                    setFormValues((v) => ({
+                      ...v,
+                      goal_weightage: parseInt(e.target.value) || 0,
+                    }))
+                  }
+                  className="h-11 focus:ring-2 focus:ring-primary/20 border-border/50"
+                  required
+                />
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">
+                    Remaining weightage:{" "}
+                    <span className="font-medium text-foreground">
+                      {remainingWeightage}%
+                    </span>
+                  </span>
+                  {remainingWeightage <= 0 && (
+                    <span className="text-red-600 font-medium">
+                      No weightage remaining
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 

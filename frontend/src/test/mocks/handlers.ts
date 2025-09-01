@@ -61,14 +61,13 @@ export const handlers = [
   // Auth endpoints
   http.post(`${API_BASE}/employees/login`, async ({ request }) => {
     const body = await request.json() as { email: string; password: string }
-    
-    if (body.email === 'test@company.com' && body.password === 'password123') {
+    // Accept common test credentials. Password must be 'password123'.
+    if (body.password === 'password123') {
       return HttpResponse.json({
         access_token: 'mock-access-token',
         refresh_token: 'mock-refresh-token'
       })
     }
-    
     return HttpResponse.json(
       { detail: 'Invalid credentials' },
       { status: 401 }
@@ -110,6 +109,24 @@ export const handlers = [
   // Employees endpoint
   http.get(`${API_BASE}/employees`, () => {
     return HttpResponse.json(mockEmployees)
+  }),
+
+  // Goal Templates endpoints
+  http.get(`${API_BASE}/goals/templates`, () => {
+    return HttpResponse.json([
+      {
+        temp_id: 1,
+        temp_title: 'Technical Skills',
+        temp_description: 'Improve technical capabilities',
+        temp_performance_factor: 'Quality',
+        temp_importance: 'High',
+        temp_weightage: 30,
+        categories: [{ id: 1, name: 'Category 1' }]
+      }
+    ])
+  }),
+  http.delete(`${API_BASE}/goals/templates/:id`, () => {
+    return new HttpResponse(null, { status: 204 })
   }),
 
   // Appraisal types
@@ -174,6 +191,42 @@ export const handlers = [
     return HttpResponse.json({
       appraisal_id: Number(id),
       status: body.status
+    })
+  }),
+
+  // Self Assessment submission
+  http.put(`${API_BASE}/appraisals/:id/self-assessment`, async ({ request, params }) => {
+    const { id } = params
+    // Body shape: { goals: { [goalId]: { self_rating, self_comment } } }
+    const body = await request.json() as any
+    return HttpResponse.json({
+      appraisal_id: Number(id),
+      ...body,
+      result: 'self-assessment saved'
+    })
+  }),
+
+  // Appraiser Evaluation submission
+  http.put(`${API_BASE}/appraisals/:id/appraiser-evaluation`, async ({ request, params }) => {
+    const { id } = params
+    // Body includes per-goal appraiser ratings/comments and overall
+    const body = await request.json() as any
+    return HttpResponse.json({
+      appraisal_id: Number(id),
+      ...body,
+      result: 'appraiser evaluation saved'
+    })
+  }),
+
+  // Reviewer Evaluation submission
+  http.put(`${API_BASE}/appraisals/:id/reviewer-evaluation`, async ({ request, params }) => {
+    const { id } = params
+    // Body includes reviewer_overall_comments and reviewer_overall_rating
+    const body = await request.json() as any
+    return HttpResponse.json({
+      appraisal_id: Number(id),
+      ...body,
+      result: 'reviewer evaluation saved'
     })
   }),
 

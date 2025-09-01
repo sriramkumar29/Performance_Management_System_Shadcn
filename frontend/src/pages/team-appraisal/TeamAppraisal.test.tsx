@@ -136,7 +136,10 @@ describe("TeamAppraisal", () => {
 
     renderTeamAppraisal();
 
-    const createButton = screen.getByText("Create Appraisal");
+    const createButton = screen.getByRole("button", {
+      name: /create appraisal/i,
+    });
+
     fireEvent.click(createButton);
 
     // Should navigate to create appraisal page

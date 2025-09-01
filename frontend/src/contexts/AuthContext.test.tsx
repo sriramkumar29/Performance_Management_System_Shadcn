@@ -9,11 +9,6 @@ vi.mock('../utils/auth-events', () => ({
   onUnauthorized: vi.fn()
 }))
 
-// Mock API
-vi.mock('../utils/api', () => ({
-  apiFetch: vi.fn()
-}))
-
 const TestComponent = () => {
   const { user, status, loginWithCredentials, logout } = useAuth()
   
@@ -25,7 +20,7 @@ const TestComponent = () => {
       <div data-testid="user-name">
         {user?.emp_name || 'no-user'}
       </div>
-      <button onClick={() => loginWithCredentials('test@company.com', 'password')}>
+      <button onClick={() => loginWithCredentials('john.doe@company.com', 'password123')}>
         Login
       </button>
       <button onClick={logout}>Logout</button>
@@ -61,7 +56,7 @@ describe('AuthContext', () => {
       token: 'mock-token'
     }
 
-    sessionStorage.setItem('user', JSON.stringify(mockUser))
+    sessionStorage.setItem('auth_user', JSON.stringify(mockUser))
 
     render(
       <AuthProvider>
@@ -74,19 +69,6 @@ describe('AuthContext', () => {
   })
 
   it('should handle successful login', async () => {
-    const mockUser = {
-      emp_id: 1,
-      emp_name: 'John Doe',
-      emp_email: 'john@company.com',
-      emp_roles: 'Manager',
-      emp_roles_level: 5,
-      emp_department: 'Engineering',
-      token: 'mock-token'
-    }
-
-    const { apiFetch } = await import('../utils/api')
-    vi.mocked(apiFetch).mockResolvedValue({ ok: true, data: mockUser })
-
     render(
       <AuthProvider>
         <TestComponent />
@@ -111,7 +93,7 @@ describe('AuthContext', () => {
       token: 'mock-token'
     }
 
-    sessionStorage.setItem('user', JSON.stringify(mockUser))
+    sessionStorage.setItem('auth_user', JSON.stringify(mockUser))
 
     render(
       <AuthProvider>
@@ -127,7 +109,7 @@ describe('AuthContext', () => {
 
     expect(screen.getByTestId('auth-status')).toHaveTextContent('not-authenticated')
     expect(screen.getByTestId('user-name')).toHaveTextContent('no-user')
-    expect(sessionStorage.getItem('user')).toBeNull()
+    expect(sessionStorage.getItem('auth_user')).toBeNull()
   })
 
   it('should handle unauthorized events', () => {
@@ -137,7 +119,9 @@ describe('AuthContext', () => {
       token: 'mock-token'
     }
 
-    sessionStorage.setItem('user', JSON.stringify(mockUser))
+    sessionStorage.setItem('auth_user', JSON.stringify(mockUser))
+    // Presence of an auth token is required for the unauthorized handler to trigger logout
+    sessionStorage.setItem('auth_token', 'header.payload.signature')
 
     render(
       <AuthProvider>
@@ -153,6 +137,6 @@ describe('AuthContext', () => {
     });
 
     expect(screen.getByTestId('auth-status')).toHaveTextContent('not-authenticated')
-    expect(sessionStorage.getItem('user')).toBeNull()
+    expect(sessionStorage.getItem('auth_user')).toBeNull()
   })
 })
