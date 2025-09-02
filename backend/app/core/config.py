@@ -19,7 +19,7 @@ def get_env_file() -> str:
 class Settings(BaseSettings):
     """Application settings."""
 
-    # Database settings
+    # Database settings - defaults to development, overridden by env files
     DATABASE_URL: str = "postgresql+asyncpg://postgres:sri%40123@localhost:5432/Performance_Management"
 
     # Security settings
@@ -36,9 +36,10 @@ class Settings(BaseSettings):
     # CORS settings
     CORS_ORIGINS: list[str] = ["http://localhost:5173"]
 
-    # Extra env variables
+    # Environment variables
     APP_ENV: str = "development"
     DEBUG: bool = True
+    TEST_MODE: bool = False
 
     class Config:
         env_file = get_env_file()

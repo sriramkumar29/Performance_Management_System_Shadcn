@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, waitFor } from '@testing-library/react'
 import { AuthProvider, useAuth } from './AuthContext'
 import * as authEvents from '../utils/auth-events'
+import type { UnauthorizedListener } from '../utils/auth-events'
 
 // Mock auth-events
 vi.mock('../utils/auth-events', () => ({
@@ -32,6 +33,11 @@ describe('AuthContext', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     sessionStorage.clear()
+    // Ensure onUnauthorized returns an unsubscribe function
+    vi.mocked(authEvents.onUnauthorized).mockImplementation((_cb: UnauthorizedListener) => {
+      // vitest records the callback in mock.calls; return boolean unsubscriber per signature
+      return () => true
+    })
   })
 
   it('should provide initial unauthenticated state', () => {
@@ -112,7 +118,7 @@ describe('AuthContext', () => {
     expect(sessionStorage.getItem('auth_user')).toBeNull()
   })
 
-  it('should handle unauthorized events', () => {
+  it('should handle unauthorized events', async () => {
     const mockUser = {
       emp_id: 1,
       emp_name: 'John Doe',
@@ -131,12 +137,14 @@ describe('AuthContext', () => {
 
     // Simulate unauthorized event
     const onUnauthorizedCallback = vi.mocked(authEvents.onUnauthorized).mock.calls[0][0]
-    
-    act(() => {
-      onUnauthorizedCallback()
-    });
 
-    expect(screen.getByTestId('auth-status')).toHaveTextContent('not-authenticated')
+    await act(async () => {
+      onUnauthorizedCallback()
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-status')).toHaveTextContent('not-authenticated')
+    })
     expect(sessionStorage.getItem('auth_user')).toBeNull()
   })
 })

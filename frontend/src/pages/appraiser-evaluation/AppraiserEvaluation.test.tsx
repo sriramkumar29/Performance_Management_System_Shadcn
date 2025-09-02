@@ -63,7 +63,9 @@ describe("AppraiserEvaluation", () => {
     renderAppraiserEvaluation();
 
     await waitFor(() => {
-      expect(screen.getByText("Appraiser Evaluation")).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: /Appraiser Evaluation/i })
+      ).toBeInTheDocument();
     });
   });
 
@@ -103,7 +105,9 @@ describe("AppraiserEvaluation", () => {
       expect(screen.getByText("Technical Excellence")).toBeInTheDocument();
       expect(screen.getByText("Improve coding skills")).toBeInTheDocument();
       expect(screen.getByText(/Weightage: 40%/i)).toBeInTheDocument();
-      expect(screen.getByText("I have improved significantly")).toBeInTheDocument();
+      expect(
+        screen.getByText("I have improved significantly")
+      ).toBeInTheDocument();
     });
   });
 
@@ -212,8 +216,18 @@ describe("AppraiserEvaluation", () => {
 
     renderAppraiserEvaluation();
 
+    // Navigate to Overall page where the submit button is rendered
     await waitFor(() => {
-      const submitButton = screen.getByText("Submit to Reviewer");
+      const nextButton = screen.getByRole("button", {
+        name: /Overall Evaluation/i,
+      });
+      fireEvent.click(nextButton);
+    });
+
+    await waitFor(() => {
+      const submitButton = screen.getByRole("button", {
+        name: /Submit to Reviewer/i,
+      });
       fireEvent.click(submitButton);
     });
 

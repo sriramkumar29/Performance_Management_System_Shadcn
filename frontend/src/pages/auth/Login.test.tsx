@@ -185,7 +185,7 @@ describe('Login Component', () => {
       
       expect(submitButton).toBeDisabled()
       expect(screen.getByText(/signing in.../i)).toBeInTheDocument()
-      expect(screen.getByTestId('loader-icon') || screen.getByRole('img', { hidden: true })).toBeInTheDocument()
+      expect(screen.getByText(/signing in.../i).querySelector('svg')).toBeInTheDocument()
     })
 
     it('should call loginWithCredentials with correct parameters on valid submission', async () => {

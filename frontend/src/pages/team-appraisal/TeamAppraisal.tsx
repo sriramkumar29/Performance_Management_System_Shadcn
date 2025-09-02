@@ -407,7 +407,12 @@ const TeamAppraisal = () => {
                               {formatDate(a.end_date)}
                             </div>
                             <div className="pt-1">
-                              <Badge variant="outline" className="border-orange-200 text-orange-700 bg-orange-50">Draft</Badge>
+                              <Badge
+                                variant="outline"
+                                className="border-orange-200 text-orange-700 bg-orange-50"
+                              >
+                                Draft
+                              </Badge>
                             </div>
                           </div>
                         </div>
@@ -626,9 +631,17 @@ const TeamAppraisal = () => {
                             </div>
                             <div className="pt-1">
                               {a.status === "Complete" ? (
-                                <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">Completed</Badge>
+                                <Badge
+                                  variant="default"
+                                  className="bg-green-100 text-green-800 border-green-200"
+                                >
+                                  Completed
+                                </Badge>
                               ) : (
-                                <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200">
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-blue-100 text-blue-800 border-blue-200"
+                                >
                                   {displayStatus(a.status)}
                                 </Badge>
                               )}

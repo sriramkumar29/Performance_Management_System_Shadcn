@@ -40,64 +40,66 @@ const MockAppraisalView = ({ appraisalId, userRole, status }: {
       <div data-testid="user-role">Role: {userRole}</div>
       
       {/* Goals Section */}
-      <div data-testid="goals-section">
-        {mockAppraisal.appraisal_goals.map(ag => (
-          <div key={ag.id} data-testid={`goal-${ag.goal.goal_id}`}>
-            <h3>{ag.goal.goal_title}</h3>
-            <p>{ag.goal.goal_description}</p>
-            
-            {/* Self Assessment Section */}
-            {(status !== 'Draft' || userRole === 'appraisee') && (
-              <div data-testid="self-assessment">
-                {userRole === 'appraisee' && status === 'Appraisee Self Assessment' ? (
-                  <>
-                    <textarea 
-                      data-testid="self-comment-input"
-                      placeholder="Enter self assessment comment"
-                      defaultValue={ag.goal.self_comment}
-                    />
-                    <input 
-                      data-testid="self-rating-input"
-                      type="number"
-                      min="1"
-                      max="5"
-                      defaultValue={ag.goal.self_rating || ''}
-                    />
-                  </>
-                ) : ag.goal.self_comment ? (
-                  <div data-testid="self-comment-readonly">{ag.goal.self_comment}</div>
-                ) : null}
-              </div>
-            )}
-            
-            {/* Appraiser Evaluation Section */}
-            {(['Appraiser Evaluation', 'Reviewer Evaluation', 'Complete'].includes(status) || 
-              (userRole === 'appraiser' && status === 'Appraiser Evaluation')) && (
-              <div data-testid="appraiser-evaluation">
-                {userRole === 'appraiser' && status === 'Appraiser Evaluation' ? (
-                  <>
-                    <textarea 
-                      data-testid="appraiser-comment-input"
-                      placeholder="Enter appraiser comment"
-                      defaultValue={ag.goal.appraiser_comment}
-                    />
-                    <input 
-                      data-testid="appraiser-rating-input"
-                      type="number"
-                      min="1"
-                      max="5"
-                      defaultValue={ag.goal.appraiser_rating || ''}
-                    />
-                  </>
-                ) : ag.goal.appraiser_comment && status === 'Complete' ? (
-                  <div data-testid="appraiser-comment-readonly">{ag.goal.appraiser_comment}</div>
-                ) : null}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
+      {!(userRole === 'appraisee' && status === 'Draft') && (
+        <div data-testid="goals-section">
+          {mockAppraisal.appraisal_goals.map(ag => (
+            <div key={ag.id} data-testid={`goal-${ag.goal.goal_id}`}>
+              <h3>{ag.goal.goal_title}</h3>
+              <p>{ag.goal.goal_description}</p>
+              
+              {/* Self Assessment Section */}
+              {(status !== 'Draft' || userRole === 'appraisee') && (
+                <div data-testid="self-assessment">
+                  {userRole === 'appraisee' && status === 'Appraisee Self Assessment' ? (
+                    <>
+                      <textarea 
+                        data-testid="self-comment-input"
+                        placeholder="Enter self assessment comment"
+                        defaultValue={ag.goal.self_comment}
+                      />
+                      <input 
+                        data-testid="self-rating-input"
+                        type="number"
+                        min="1"
+                        max="5"
+                        defaultValue={ag.goal.self_rating || ''}
+                      />
+                    </>
+                  ) : ag.goal.self_comment ? (
+                    <div data-testid="self-comment-readonly">{ag.goal.self_comment}</div>
+                  ) : null}
+                </div>
+              )}
+              
+              {/* Appraiser Evaluation Section */}
+              {(['Appraiser Evaluation', 'Reviewer Evaluation', 'Complete'].includes(status) || 
+                (userRole === 'appraiser' && status === 'Appraiser Evaluation')) && (
+                <div data-testid="appraiser-evaluation">
+                  {userRole === 'appraiser' && status === 'Appraiser Evaluation' ? (
+                    <>
+                      <textarea 
+                        data-testid="appraiser-comment-input"
+                        placeholder="Enter appraiser comment"
+                        defaultValue={ag.goal.appraiser_comment}
+                      />
+                      <input 
+                        data-testid="appraiser-rating-input"
+                        type="number"
+                        min="1"
+                        max="5"
+                        defaultValue={ag.goal.appraiser_rating || ''}
+                      />
+                    </>
+                  ) : ag.goal.appraiser_comment && status === 'Complete' ? (
+                    <div data-testid="appraiser-comment-readonly">{ag.goal.appraiser_comment}</div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      
       {/* Overall Appraiser Section */}
       {(['Appraiser Evaluation', 'Reviewer Evaluation', 'Complete'].includes(status) || 
         (userRole === 'appraiser' && status === 'Appraiser Evaluation')) && (

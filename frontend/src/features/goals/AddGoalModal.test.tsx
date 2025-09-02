@@ -183,7 +183,12 @@ describe("AddGoalModal", () => {
 
   it("should error when weightage exceeds remaining weightage", async () => {
     const user = userEvent.setup();
-    render(<AddGoalModal {...defaultProps} />);
+    render(<AddGoalModal {...defaultProps} remainingWeightage={10} />);
+
+    // Wait for categories to load
+    await waitFor(() => {
+      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+    });
 
     // fill required fields first
     await user.type(screen.getByLabelText(/goal title/i), "Weightage Goal");
@@ -192,32 +197,50 @@ describe("AddGoalModal", () => {
       "Some description"
     );
     await user.type(screen.getByLabelText(/performance factors/i), "Factor");
-    await user.click(
-      screen.getByRole("combobox", { name: /importance level/i })
-    );
 
-    // select option
-    await user.click(screen.getByRole("option", { name: /High Priority/i }));
+    // Importance select (Radix Select)
+    const importanceLabel = screen.getByText(/importance level/i, { selector: "label" });
+    const importanceSection = importanceLabel.closest("div") as HTMLElement;
+    const importanceTrigger = within(importanceSection).getByRole("combobox");
+    await user.click(importanceTrigger);
+    const listboxImp = await screen.findByRole("listbox");
+    await user.click(within(listboxImp).getByRole("option", { name: /high priority/i }));
+    // ensure selection reflected on trigger
+    await waitFor(() => {
+      expect(importanceTrigger).toHaveTextContent(/high priority/i);
+    });
 
-    await user.click(screen.getByLabelText(/category/i));
-    await user.click(
-      await screen.findByRole("option", { name: /Business/i })
-    );
-    
+    // Category select (Radix Select)
+    const categoryLabel = screen.getByText(/category/i, { selector: "label" });
+    const categorySection = categoryLabel.closest("div") as HTMLElement;
+    const categoryTrigger = within(categorySection).getByRole("combobox");
+    await user.click(categoryTrigger);
+    const listboxCat = await screen.findByRole("listbox");
+    await user.click(within(listboxCat).getByRole("option", { name: /category 1/i }));
+    // ensure selection reflected on trigger
+    await waitFor(() => {
+      expect(categoryTrigger).toHaveTextContent(/category 1/i);
+    });
 
     // enter weightage > remaining (e.g. 45 when only 10 is left)
-    await user.clear(screen.getByLabelText(/weightage/i));
-    await user.type(screen.getByLabelText(/weightage/i), "45");
+    const weightInput = screen.getByLabelText(/weightage/i) as HTMLInputElement;
+    await user.clear(weightInput);
+    await user.type(weightInput, "45");
+    // verify value is set
+    expect(weightInput).toHaveValue(45);
+    // remove native max validation to ensure submit triggers onSubmit in jsdom
+    weightInput.removeAttribute("max");
 
-    // try to submit
-    await user.click(screen.getByRole("button", { name: /add goal/i }));
+    // try to submit via form submit to ensure onSubmit is invoked
+    const formEl = screen.getByRole("button", { name: /add goal/i }).closest("form")!;
+    fireEvent.submit(formEl);
 
-    // expect validation error to show
-    expect(
-      await screen.findByText(/value must be less than or equal to 10/i)
-    ).toBeInTheDocument();
-
-    // also ensure onGoalAdded is NOT called
+    // expect toast error with correct message, and no goal added
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalled();
+    });
+    const lastCall = (toast.error as any).mock.calls.at(-1) || [];
+    expect(lastCall[0]).toMatch(/Weightage\s+exceeds\s+remaining\s+10%\.?/i);
     expect(mockOnGoalAdded).not.toHaveBeenCalled();
   });
 

@@ -71,7 +71,7 @@ const Login = () => {
           </CardHeader>
           
           <CardContent className="space-y-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form noValidate onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-3">
                 <Label htmlFor="email" className="text-sm font-medium text-foreground">
                   Work Email Address

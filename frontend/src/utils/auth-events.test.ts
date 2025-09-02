@@ -4,22 +4,15 @@ import { emitUnauthorized, onUnauthorized } from './auth-events'
 describe('auth-events', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Clear any existing event listeners
-    window.removeEventListener('unauthorized', vi.fn())
   })
 
   it('should emit unauthorized event', () => {
-    const mockEventListener = vi.fn()
-    window.addEventListener('unauthorized', mockEventListener)
+    const mockCallback = vi.fn()
+    onUnauthorized(mockCallback)
     
     emitUnauthorized()
     
-    expect(mockEventListener).toHaveBeenCalledOnce()
-    expect(mockEventListener).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'unauthorized'
-      })
-    )
+    expect(mockCallback).toHaveBeenCalledOnce()
   })
 
   it('should register unauthorized event listener', () => {

@@ -1,16 +1,11 @@
 import React, { type ReactElement } from 'react'
 import { render, type RenderOptions } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import type { AuthProvider, Employee } from '../contexts/AuthContext'
+import { AuthContext, type AuthContextValue } from '../contexts/AuthContext'
 import { vi } from 'vitest'
 
 // Mock AuthContext for testing
-interface MockAuthContextValue {
-  user: Employee | null
-  status: 'idle' | 'loading' | 'succeeded' | 'failed'
-  loginWithCredentials: (email: string, password: string) => Promise<void>
-  logout: () => void
-}
+type MockAuthContextValue = AuthContextValue
 
 const createMockAuthContext = (overrides: Partial<MockAuthContextValue> = {}): MockAuthContextValue => ({
   user: null,
@@ -71,20 +66,6 @@ interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   withRouter?: boolean
 }
 
-// Mock AuthProvider component for testing
-const MockAuthProvider: React.FC<{ 
-  children: React.ReactNode
-  value: MockAuthContextValue 
-}> = ({ children, value }) => {
-  const AuthContext = React.createContext<MockAuthContextValue | undefined>(value)
-  
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
-}
-
 // Custom render function
 export const customRender = (
   ui: ReactElement,
@@ -101,9 +82,9 @@ export const customRender = (
 
   const Wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const content = (
-      <MockAuthProvider value={mockAuthValue}>
+      <AuthContext.Provider value={mockAuthValue}>
         {children}
-      </MockAuthProvider>
+      </AuthContext.Provider>
     )
 
     if (withRouter) {

@@ -21,14 +21,14 @@ export interface Employee {
   emp_status?: boolean;
 }
 
-interface AuthContextValue {
+export interface AuthContextValue {
   user: Employee | null;
   status: "idle" | "loading" | "succeeded" | "failed";
   loginWithCredentials: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,

@@ -8,7 +8,11 @@ SELECT * FROM appraisal_ranges;
 
 SELECT * FROM categories;
 
-SELECT * FROM goals;	
+SELECT * FROM goal_template_categories;
+
+SELECT * FROM goals;
+
+SELECT * FROM goals_template;
 
 SELECT * FROM appraisal_goals;
 

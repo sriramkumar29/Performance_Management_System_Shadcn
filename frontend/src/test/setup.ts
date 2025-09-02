@@ -46,6 +46,28 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 })
 
+// Polyfill Pointer Events for Radix UI components in jsdom
+if (!('PointerEvent' in window)) {
+  class PointerEvent extends MouseEvent {}
+  ;(window as any).PointerEvent = PointerEvent
+}
+
+// Polyfill pointer capture APIs used by Radix
+if (!(Element.prototype as any).hasPointerCapture) {
+  ;(Element.prototype as any).hasPointerCapture = () => false
+}
+if (!(Element.prototype as any).setPointerCapture) {
+  ;(Element.prototype as any).setPointerCapture = () => {}
+}
+if (!(Element.prototype as any).releasePointerCapture) {
+  ;(Element.prototype as any).releasePointerCapture = () => {}
+}
+
+// Polyfill scrollIntoView used by Radix Select in jsdom
+if (typeof (Element.prototype as any).scrollIntoView !== 'function') {
+  ;(Element.prototype as any).scrollIntoView = () => {}
+}
+
 // Mock ResizeObserver
 global.ResizeObserver = vi.fn().mockImplementation(() => ({
   observe: vi.fn(),

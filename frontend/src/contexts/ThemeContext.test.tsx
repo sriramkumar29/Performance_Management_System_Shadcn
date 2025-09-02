@@ -84,9 +84,10 @@ describe('ThemeContext', () => {
       </ThemeProvider>
     )
 
-    expect(document.documentElement.classList.contains('light')).toBe(true)
+    // Implementation adds/removes only the 'dark' class; 'light' is implicit
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
 
-    const toggleButton = screen.getByText('Toggle Theme')
+    const toggleButton = screen.getByRole('button', { name: 'Toggle Theme' })
     
     act(() => {
       toggleButton.click()

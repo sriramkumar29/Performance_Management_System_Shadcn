@@ -20,6 +20,7 @@ class Employee(Base):
     
     # Relationships
     reporting_manager = relationship("Employee", remote_side=[emp_id], backref="subordinates")
-    appraisals_as_appraisee = relationship("Appraisal", foreign_keys="Appraisal.appraisee_id", back_populates="appraisee")
-    appraisals_as_appraiser = relationship("Appraisal", foreign_keys="Appraisal.appraiser_id", back_populates="appraiser")
-    appraisals_as_reviewer = relationship("Appraisal", foreign_keys="Appraisal.reviewer_id", back_populates="reviewer")
+    # Note: Appraisal relationships defined with string references to avoid circular imports
+    appraisals_as_appraisee = relationship("Appraisal", foreign_keys="[Appraisal.appraisee_id]", back_populates="appraisee")
+    appraisals_as_appraiser = relationship("Appraisal", foreign_keys="[Appraisal.appraiser_id]", back_populates="appraiser")
+    appraisals_as_reviewer = relationship("Appraisal", foreign_keys="[Appraisal.reviewer_id]", back_populates="reviewer")

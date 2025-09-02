@@ -83,7 +83,9 @@ describe('GoalTemplates', () => {
     await waitFor(() => {
       expect(screen.getByText('Technical Skills')).toBeInTheDocument()
       expect(screen.getByText('Improve technical capabilities')).toBeInTheDocument()
-      expect(screen.getByText(/Importance:\s*High/i)).toBeInTheDocument()
+      expect(screen.getByText((_content, element) => {
+        return element?.textContent === 'Importance: High'
+      })).toBeInTheDocument()
       expect(screen.getByText('30% Weight')).toBeInTheDocument()
     })
   })

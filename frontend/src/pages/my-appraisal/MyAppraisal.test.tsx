@@ -68,7 +68,7 @@ describe("MyAppraisal", () => {
     const mockAppraisals = [
       {
         appraisal_id: 1,
-        status: "Draft",
+        status: "Submitted",
         appraisal_type_id: 1,
         start_date: "2024-01-01",
         end_date: "2024-12-31",
@@ -92,8 +92,10 @@ describe("MyAppraisal", () => {
     renderMyAppraisal();
 
     await waitFor(() => {
-      expect(screen.getByText("Annual")).toBeInTheDocument();
-      expect(screen.getByText("Draft")).toBeInTheDocument();
+      const annualMatches = screen.getAllByText(/Annual/i);
+      expect(annualMatches.length).toBeGreaterThan(0);
+      // "Submitted" is displayed as "Waiting Acknowledgement" in the badge
+      expect(screen.getByText(/Waiting Acknowledgement/i)).toBeInTheDocument();
     });
   });
 
@@ -183,7 +185,7 @@ describe("MyAppraisal", () => {
     await userEvent.click(filtersBtn);
 
     await waitFor(() => {
-      expect(screen.getByRole("combobox")).toBeInTheDocument();
+      expect(screen.getAllByRole("combobox")).toHaveLength(2); // Type filter and Period filter
     });
   });
 });

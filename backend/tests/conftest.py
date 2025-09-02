@@ -6,21 +6,26 @@ import asyncio
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from typing import AsyncGenerator
 
-from app.main import app
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from main import app
 from app.db.database import Base, get_db
 from app.core.config import settings
 from app.models.employee import Employee
 from app.models.appraisal import Appraisal
 from app.models.goal import Goal, GoalTemplate, Category
 from app.models.appraisal_type import AppraisalType, AppraisalRange
-from passlib.context import CryptContext
+import bcrypt
 
-# Password hashing for test users
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def hash_password(password: str) -> str:
+    """Hash password using bcrypt."""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 # Test database engine - uses the test DB from .env.test
 test_engine = create_async_engine(
@@ -28,8 +33,10 @@ test_engine = create_async_engine(
     echo=False
 )
 
-TestSessionLocal = async_sessionmaker(
-    test_engine, class_=AsyncSession, expire_on_commit=False
+TestSessionLocal = sessionmaker(
+    test_engine, 
+    class_=AsyncSession, 
+    expire_on_commit=False
 )
 
 @pytest_asyncio.fixture(scope="session")
@@ -46,6 +53,8 @@ async def setup_test_db():
 async def db_session(setup_test_db) -> AsyncGenerator[AsyncSession, None]:
     """Provide a clean database session for each test."""
     async with TestSessionLocal() as session:
+        # Clean up before each test to ensure fresh state
+        await reset_db_tables(session)
         yield session
         # Clean up after each test
         await reset_db_tables(session)
@@ -61,8 +70,8 @@ async def reset_db_tables(session: AsyncSession):
         await session.rollback()
         raise e
 
-@pytest.fixture
-def override_get_db(db_session: AsyncSession):
+@pytest_asyncio.fixture
+async def override_get_db(db_session: AsyncSession):
     """Override the get_db dependency to use test database."""
     async def _override_get_db():
         yield db_session
@@ -79,7 +88,7 @@ def client(override_get_db):
 @pytest_asyncio.fixture
 async def test_employee(db_session: AsyncSession) -> Employee:
     """Create a test employee for authentication."""
-    hashed_password = pwd_context.hash("password123")
+    hashed_password = hash_password("password123")
     employee = Employee(
         emp_name="John CEO",
         emp_email="john.ceo@example.com",

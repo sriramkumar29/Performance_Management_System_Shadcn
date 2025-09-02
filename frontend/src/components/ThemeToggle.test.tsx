@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import ThemeToggle from './ThemeToggle'
 
-const mockUseTheme = vi.fn()
+// Use hoisted mock to avoid ReferenceError during module mocking
+const { mockUseTheme } = vi.hoisted(() => {
+  return { mockUseTheme: vi.fn() }
+})
+
 vi.mock('../contexts/ThemeContext', () => ({
   useTheme: mockUseTheme
 }))
@@ -29,21 +33,23 @@ describe('ThemeToggle', () => {
     expect(toggleButton).toBeInTheDocument()
   })
 
-  it('should show sun icon for light theme', () => {
+  it('should have correct aria-label for light theme', () => {
     renderThemeToggle()
-    
-    expect(screen.getByTestId('sun-icon')).toBeInTheDocument()
+    const toggleButton = screen.getByRole('button')
+    expect(toggleButton).toHaveAttribute('aria-label', 'Switch to dark mode')
+    expect(toggleButton).toHaveAttribute('title', 'Switch to dark mode')
   })
 
-  it('should show moon icon for dark theme', () => {
+  it('should have correct aria-label for dark theme', () => {
     mockUseTheme.mockReturnValue({
       theme: 'dark',
       toggleTheme: vi.fn()
     })
     
     renderThemeToggle()
-    
-    expect(screen.getByTestId('moon-icon')).toBeInTheDocument()
+    const toggleButton = screen.getByRole('button')
+    expect(toggleButton).toHaveAttribute('aria-label', 'Switch to light mode')
+    expect(toggleButton).toHaveAttribute('title', 'Switch to light mode')
   })
 
   it('should call toggleTheme when clicked', () => {
@@ -59,6 +65,7 @@ describe('ThemeToggle', () => {
     renderThemeToggle()
     
     const toggleButton = screen.getByRole('button')
-    expect(toggleButton).toHaveAttribute('aria-label', 'Toggle theme')
+    expect(toggleButton).toHaveAttribute('aria-label', 'Switch to dark mode')
+    expect(toggleButton).toHaveAttribute('title', 'Switch to dark mode')
   })
 })

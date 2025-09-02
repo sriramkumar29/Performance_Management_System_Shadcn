@@ -6,27 +6,46 @@ import asyncio
 import os
 from datetime import date, timedelta
 from sqlalchemy import select
-from app.db.database import async_session
-from app.models.employee import Employee
-from app.models.appraisal_type import AppraisalType
-from app.models.goal import Category, GoalTemplate
-from passlib.context import CryptContext
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+import bcrypt
 
-# Set test environment
+# Set test environment BEFORE importing any app modules
 os.environ["APP_ENV"] = "test"
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Import config after setting environment
+from app.core.config import settings
+from app.db.database import Base
+
+# Import all models first to ensure they're registered before any relationships are configured
+from app.models.employee import Employee
+from app.models.appraisal import Appraisal  # Import Appraisal to register the class
+from app.models.appraisal_type import AppraisalType
+from app.models.goal import Category, GoalTemplate, Goal, AppraisalGoal
+
+# Create test engine and session
+test_engine = create_async_engine(settings.DATABASE_URL, echo=False)
+TestSessionLocal = sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+
+def hash_password(password: str) -> str:
+    """Hash password using bcrypt."""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 async def seed_test_data():
     """Seed the test database with minimal data for integration tests."""
-    async with async_session() as session:
+    # First ensure schema exists
+    print("Creating database schema if needed...")
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    print("✅ Schema ready")
+    
+    async with TestSessionLocal() as session:
         async with session.begin():
             print("Seeding test database...")
             
             # Create test employee (CEO for full permissions)
             print("Creating test employee...")
-            test_password = pwd_context.hash("password123")
+            test_password = hash_password("password123")
             
             ceo = Employee(
                 emp_name="John CEO",
@@ -96,27 +115,43 @@ async def seed_test_data():
             
             # Create goal templates
             print("Creating goal templates...")
-            templates = [
+            goal_templates = [
                 GoalTemplate(
                     temp_title="Code Quality",
-                    temp_description="Maintain high code quality standards",
+                    temp_description="Write clean, maintainable code with proper documentation",
                     temp_performance_factor="Technical Excellence",
-                    temp_category="Technical Skills",
                     temp_importance="High",
                     temp_weightage=30
                 ),
                 GoalTemplate(
                     temp_title="Team Collaboration",
-                    temp_description="Effective collaboration with team members",
+                    temp_description="Work effectively with team members and contribute to team goals",
                     temp_performance_factor="Teamwork",
-                    temp_category="Communication",
-                    temp_importance="Medium",
+                    temp_importance="High",
                     temp_weightage=25
+                ),
+                GoalTemplate(
+                    temp_title="Project Delivery",
+                    temp_description="Deliver projects on time and within scope",
+                    temp_performance_factor="Delivery Excellence",
+                    temp_importance="High",
+                    temp_weightage=35
+                ),
+                GoalTemplate(
+                    temp_title="Innovation",
+                    temp_description="Propose and implement innovative solutions",
+                    temp_performance_factor="Innovation",
+                    temp_importance="Medium",
+                    temp_weightage=10
                 )
             ]
-            session.add_all(templates)
-            await session.flush()
-            print(f"Created {len(templates)} goal templates")
+            
+            session.add_all(goal_templates)
+            await session.flush()  # Get IDs
+            print(f"Created {len(goal_templates)} goal templates")
+            
+            # Note: Category associations can be added later via API if needed
+            # For now, we have the basic data structure ready for testing
             
             print("✅ Test data seeding completed!")
 

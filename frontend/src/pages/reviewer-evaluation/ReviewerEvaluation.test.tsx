@@ -66,7 +66,7 @@ describe("ReviewerEvaluation", () => {
     renderReviewerEvaluation();
 
     await waitFor(() => {
-      expect(screen.getByText("Reviewer Evaluation")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Reviewer Evaluation" })).toBeInTheDocument();
     });
   });
 

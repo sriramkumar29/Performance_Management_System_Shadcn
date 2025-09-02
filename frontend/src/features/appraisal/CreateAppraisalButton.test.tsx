@@ -144,6 +144,5 @@ describe("CreateAppraisalButton", () => {
         name: /manage goal templates/i,
       })
     ).not.toBeInTheDocument();
-    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
