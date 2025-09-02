@@ -12,6 +12,7 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
+    "test:integration": "vitest --config vitest.integration.config.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {
