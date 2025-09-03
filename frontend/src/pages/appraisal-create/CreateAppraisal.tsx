@@ -797,7 +797,9 @@ const CreateAppraisal = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base sm:text-lg">Appraisal Details</CardTitle>
+              <CardTitle className="text-base sm:text-lg">
+                Appraisal Details
+              </CardTitle>
               <CardDescription className="text-sm sm:text-base">
                 Configure the basic information for this appraisal.
               </CardDescription>
@@ -812,7 +814,9 @@ const CreateAppraisal = () => {
         <div
           id="appraisal-details-content"
           className={`grid transition-all motion-reduce:transition-none duration-300 ease-in-out ${
-            isAppraisalDetailsCollapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100"
+            isAppraisalDetailsCollapsed
+              ? "grid-rows-[0fr] opacity-0"
+              : "grid-rows-[1fr] opacity-100"
           }`}
         >
           <div
@@ -1233,7 +1237,7 @@ const CreateAppraisal = () => {
                   </span>
                 </Button>
               </div>
-              {(!canAddGoals && addGoalDisabledReason) ? (
+              {!canAddGoals && addGoalDisabledReason ? (
                 <p className="mt-2 text-xs text-muted-foreground text-center">
                   {addGoalDisabledReason}
                 </p>
@@ -1285,6 +1289,7 @@ const CreateAppraisal = () => {
         </div>
         <div className="justify-self-end sm:self-auto">
           <Button
+            data-testid="submit-for-acknowledgement-button"
             onClick={handleFinish}
             disabled={!canSubmitForAck || loading}
             aria-label="Submit for acknowledgement"

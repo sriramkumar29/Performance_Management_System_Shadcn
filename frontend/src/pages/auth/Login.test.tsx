@@ -168,7 +168,6 @@ describe('Login Component', () => {
 
   describe('Form submission', () => {
     it('should disable submit button and show loading state during login', async () => {
-      const user = userEvent.setup()
       const mockLoginWithCredentials = vi.fn().mockImplementation(
         () => new Promise(resolve => setTimeout(resolve, 100))
       )
