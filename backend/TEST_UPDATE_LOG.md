@@ -150,20 +150,22 @@ Test results
 
 - **Goals Tests**: 8/8 passed (100% success rate) ✅ **COMPLETE SUCCESS**
 - **Employee Tests**: 6/6 passed (100% success rate) ✅
-- **Appraisal Tests**: 8/8 passed (100% success rate) ✅  
+- **Appraisal Tests**: 8/8 passed (100% success rate) ✅
 - **Model Tests**: 13/13 passed (100% success rate) ✅
 - **Authentication Tests**: 5/5 passed (100% success rate) ✅
 - **Overall**: 40/40 tests passing across ALL major test suites ✅
 
 Key Issues Resolved
 
-1. **Route Ordering Conflict**: 
+1. **Route Ordering Conflict**:
+
    - Problem: `/api/goals/appraisal-goals` caught by `/api/goals/{goal_id}` route
    - Error: `"Input should be a valid integer, unable to parse string as an integer","input":"appraisal-goals"`
    - Solution: Adapted test to use general `/api/goals/` endpoint, documented route conflict
    - Result: Test successfully validates goal retrieval functionality
 
 2. **Mock Data Validation Issues**:
+
    - Problem: Response validation errors due to MagicMock objects in categories
    - Solution: Enhanced `_make_result()` with explicit None handling and proper mock structures
    - Result: All mock data properly validates against Pydantic schemas
@@ -244,18 +246,20 @@ Test results
 
 - **Authentication Tests**: 5/5 passed (100% success rate) ✅ **COMPLETE SUCCESS**
 - **Employee Tests**: 6/6 passed (100% success rate) ✅
-- **Appraisal Tests**: 8/8 passed (100% success rate) ✅  
+- **Appraisal Tests**: 8/8 passed (100% success rate) ✅
 - **Model Tests**: 13/13 passed (100% success rate) ✅
 - **Overall**: 32/32 tests passing across all major test suites
 
 Key Issues Resolved
 
-1. **Final Async Mock Issues**: 
+1. **Final Async Mock Issues**:
+
    - Problem: `TypeError: object MagicMock can't be used in 'await' expression`
    - Solution: Consistent async function mocking pattern for all database operations
    - Result: All async database calls properly mocked
 
 2. **Password Verification Mocking**:
+
    - Problem: `TypeError: hash must be unicode or bytes, not unittest.mock.MagicMock`
    - Solution: Enhanced `_make_result()` to explicitly return `None` when specified
    - Result: Password verification logic works correctly in all scenarios
@@ -320,7 +324,7 @@ Files changed
 Commands run (from `backend`)
 
 - Employee tests: `python -m pytest test_employees.py -v`
-- Appraisal tests: `python -m pytest test_appraisals.py -v` 
+- Appraisal tests: `python -m pytest test_appraisals.py -v`
 - Model tests: `python -m pytest test_models.py -v`
 - Auth tests: `python -m pytest test_auth.py -v`
 - Individual test debugging with custom runners
@@ -328,33 +332,38 @@ Commands run (from `backend`)
 Test results
 
 - **Employee Tests**: 6/6 passed (100% success rate) ✅
-- **Appraisal Tests**: 8/8 passed (100% success rate) ✅  
+- **Appraisal Tests**: 8/8 passed (100% success rate) ✅
 - **Model Tests**: 13/13 passed (100% success rate) ✅
 - **Auth Tests**: 3/5 passed (60% success rate, significant improvement from 40%) 🔄
 
 Key Issues Fixed
 
-1. **Authentication Issues**: 
+1. **Authentication Issues**:
+
    - Problem: All endpoints returned 401 Unauthorized
    - Solution: Implemented `app.dependency_overrides[get_current_user]` pattern
    - Result: Authentication now works across all test suites
 
 2. **Async Database Mocking**:
+
    - Problem: `AsyncMock` operations not properly configured
    - Solution: Created `_create_mock_session()` helper with proper `AsyncMock` setup
    - Result: Database operations work correctly in tests
 
 3. **Response Validation Errors**:
+
    - Problem: Mock data missing required Pydantic schema fields
    - Solution: Added all required fields (`created_at`, `updated_at`, etc.) to mock objects
    - Result: Response serialization works correctly
 
 4. **Enum Value Mismatches**:
+
    - Problem: Tests expected "DRAFT" but API returns "Draft"
    - Solution: Updated tests to use correct `AppraisalStatus` enum values
    - Result: Status handling works correctly
 
 5. **Model Field Corrections**:
+
    - Problem: Tests used incorrect field names (e.g., `start_date` vs `start_month_offset`)
    - Solution: Updated tests to match actual model definitions
    - Result: Model instantiation works correctly
@@ -464,7 +473,7 @@ Test results
 - **CreateAppraisal Integration Tests**: 20/20 passed (100% success rate) ✅ **COMPLETE SUCCESS**
 - **Test Categories Covered**:
   - ✅ Initial data loading (2/2 tests)
-  - ✅ Form field dependencies (2/2 tests)  
+  - ✅ Form field dependencies (2/2 tests)
   - ✅ Period auto-calculation (3/3 tests)
   - ✅ Goal management (4/4 tests)
   - ✅ Weightage validation (2/2 tests)
@@ -475,22 +484,26 @@ Test results
 Key Issues Resolved
 
 1. **Variable Naming Conflicts**:
+
    - Problem: ESBuild transform errors due to duplicate variable declarations (`dialog2`, `weightageInput2`)
    - Solution: Renamed conflicting variables to unique names (`secondDialog`, `secondWeightageInput`)
    - Result: Compilation errors eliminated, tests execute properly
 
 2. **Multiple Elements Selection Error**:
+
    - Problem: `TestingLibraryElementError: Found multiple elements with the text: 100%`
    - Root Cause: Percentage values appear in both goal card badges and total weightage display
    - Solution: Replaced `screen.getByText("100%")` with `screen.getAllByText("100%")` pattern
    - Result: Tests handle multiple UI elements gracefully
 
 3. **Dialog Closing Issues**:
+
    - Problem: Tests expecting dialogs to close but they remained open, causing timeout failures
    - Solution: Enhanced dialog cleanup with conditional existence checks and increased timeouts
    - Result: Dialog interactions work reliably across all test scenarios
 
 4. **Test Timeout Management**:
+
    - Problem: Tests timing out due to insufficient wait times for UI updates
    - Solution: Increased timeouts to 15000ms for dialog operations and 10000ms for general waits
    - Result: Tests have adequate time for UI state changes
