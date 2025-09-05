@@ -5,7 +5,7 @@ Run this after creating the test database schema.
 import asyncio
 import os
 from datetime import date, timedelta
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 import bcrypt
@@ -39,6 +39,36 @@ async def seed_test_data():
         await conn.run_sync(Base.metadata.create_all)
     print("✅ Schema ready")
     
+    # Handle truncation with separate session to avoid transaction issues
+    print("Clearing existing test data...")
+    
+    # List of tables to truncate in correct order (child tables first, then parent tables)
+    tables_to_truncate = [
+        "appraisal_goals",
+        "goals", 
+        "goal_templates",
+        "categories",
+        "appraisals",
+        "appraisal_types",
+        "employees"
+    ]
+    
+    # Only truncate tables that exist - handle errors gracefully
+    for table_name in tables_to_truncate:
+        try:
+            async with TestSessionLocal() as truncate_session:
+                async with truncate_session.begin():
+                    await truncate_session.execute(text(f"TRUNCATE TABLE {table_name} RESTART IDENTITY CASCADE"))
+                    print(f"  ✅ Cleared {table_name}")
+        except Exception as e:
+            if "does not exist" in str(e):
+                print(f"  ⚠️  Table {table_name} does not exist, skipping")
+            else:
+                print(f"  ⚠️  Could not clear {table_name}: {str(e)}")
+    
+    print("✅ Existing data cleared")
+    
+    # Use fresh session for seeding
     async with TestSessionLocal() as session:
         async with session.begin():
             print("Seeding test database...")

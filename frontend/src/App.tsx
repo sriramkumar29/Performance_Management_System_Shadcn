@@ -23,7 +23,7 @@ function App() {
       <main className="px-3 sm:px-6 py-4 sm:py-6">
         <div className="container w-full">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-semibold text-foreground">
+            <h1 data-testid="performance-management-title" className="text-2xl font-semibold text-foreground">
               Performance Management
             </h1>
             <CreateAppraisalButton />

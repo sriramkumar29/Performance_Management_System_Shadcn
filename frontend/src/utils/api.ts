@@ -13,7 +13,13 @@ let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
 
 // Get base URL from environment or use empty string for relative paths
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+function getApiBaseUrl(): string {
+  // Resolve lazily so test setup can mutate import.meta.env at runtime
+  const envUrl = (import.meta as any)?.env?.VITE_API_BASE_URL || '';
+  // Allow tests to override via window.__API_BASE_URL__
+  const win = typeof window !== 'undefined' ? (window as any) : undefined;
+  return (envUrl || (win && win.__API_BASE_URL__) || '') as string;
+}
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT ?? 10000);
 const API_RETRIES = Number(import.meta.env.VITE_API_RETRIES ?? 3);
 
@@ -23,7 +29,7 @@ async function refreshTokens(): Promise<boolean> {
   if (!refreshToken) return false;
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/employees/refresh`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/employees/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -57,7 +63,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
   const isAbsolute = /^https?:\/\//i.test(path);
   const cleanPath = path.replace(/^\/+/, '');
   const apiPath = cleanPath.startsWith('api/') ? `/${cleanPath}` : `/api/${cleanPath}`;
-  const fullUrl = isAbsolute ? path : `${API_BASE_URL}${apiPath}`;
+  const fullUrl = isAbsolute ? path : `${getApiBaseUrl()}${apiPath}`;
 
   // Get JWT token from sessionStorage
   const token = sessionStorage.getItem('auth_token');

@@ -2,7 +2,9 @@
  * Integration test setup for frontend tests that communicate with real backend.
  * Disables MSW mocking and configures API to use live FastAPI server.
  */
+import '@testing-library/jest-dom'
 import { beforeAll } from 'vitest'
+import './ployfill'
 
 // Override API base URL to point to live backend (test server on port 7001)
 const BACKEND_URL = 'http://localhost:7001'

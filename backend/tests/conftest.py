@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from typing import AsyncGenerator
+from httpx import AsyncClient
 
 import sys
 import os
@@ -30,7 +31,9 @@ def hash_password(password: str) -> str:
 # Test database engine - uses the test DB from .env.test
 test_engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=False
+    echo=False,
+    poolclass=StaticPool,
+    connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {}
 )
 
 TestSessionLocal = sessionmaker(
@@ -80,10 +83,17 @@ async def override_get_db(db_session: AsyncSession):
     yield
     app.dependency_overrides.clear()
 
+@pytest_asyncio.fixture
+async def async_client(override_get_db):
+    """Async HTTP client for testing FastAPI endpoints."""
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        yield client
+
 @pytest.fixture
 def client(override_get_db):
-    """FastAPI test client with test database."""
-    return TestClient(app)
+    """Synchronous FastAPI test client with test database."""
+    with TestClient(app) as client:
+        yield client
 
 @pytest_asyncio.fixture
 async def test_employee(db_session: AsyncSession) -> Employee:
@@ -116,14 +126,14 @@ async def test_appraisal_type(db_session: AsyncSession) -> AppraisalType:
     await db_session.refresh(appraisal_type)
     return appraisal_type
 
-@pytest.fixture
-def auth_headers(client: TestClient, test_employee: Employee) -> dict:
+@pytest_asyncio.fixture
+async def auth_headers(async_client: AsyncClient, test_employee: Employee) -> dict:
     """Get authentication headers for API requests."""
     login_data = {
         "email": test_employee.emp_email,
         "password": "password123"
     }
-    response = client.post("/api/employees/login", json=login_data)
+    response = await async_client.post("/api/employees/login", json=login_data)
     assert response.status_code == 200
     token_data = response.json()
     return {"Authorization": f"Bearer {token_data['access_token']}"}
@@ -132,6 +142,7 @@ def auth_headers(client: TestClient, test_employee: Employee) -> dict:
 @pytest.fixture(scope="session")
 def event_loop():
     """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
     yield loop
     loop.close()

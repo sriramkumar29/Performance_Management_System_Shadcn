@@ -8,7 +8,7 @@ Write-Host "=================================================" -ForegroundColor 
 if (-not (Test-Path "backend\.venv\Scripts\Activate.ps1")) {
     Write-Host "❌ Virtual environment not found in backend\.venv\" -ForegroundColor Red
     Write-Host "Please create virtual environment first:" -ForegroundColor Yellow
-    Write-Host "cd backend && python -m venv .venv && .\.venv\Scripts\Activate.ps1 && pip install -r requirements.txt" -ForegroundColor Yellow
+    Write-Host "cd backend; python -m venv .venv; .\.venv\Scripts\Activate.ps1; pip install -r requirements.txt" -ForegroundColor Yellow
     exit 1
 }
 
