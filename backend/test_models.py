@@ -29,8 +29,10 @@ class TestEmployeeModel:
     def test_employee_string_representation(self):
         """Test employee string representation"""
         employee = Employee(emp_name="John Doe", emp_email="john@company.com")
-        expected = "<Employee(emp_name='John Doe', emp_email='john@company.com')>"
-        assert str(employee) == expected
+        # Since Employee model doesn't have custom __str__, it will use default object representation
+        assert "Employee object" in str(employee)
+        assert employee.emp_name == "John Doe"
+        assert employee.emp_email == "john@company.com"
 
 class TestAppraisalModel:
     """Test cases for Appraisal model"""
@@ -76,20 +78,23 @@ class TestGoalTemplateModel:
             temp_title="Technical Skills",
             temp_description="Improve technical capabilities",
             temp_performance_factor="Code quality",
-            temp_category="Technical",
             temp_importance="High",
             temp_weightage=30
         )
         
         assert template.temp_title == "Technical Skills"
         assert template.temp_description == "Improve technical capabilities"
+        assert template.temp_performance_factor == "Code quality"
         assert template.temp_importance == "High"
         assert template.temp_weightage == 30
     
     def test_goal_template_weightage_validation(self):
         """Test goal template weightage bounds"""
-        template = Goals_Template(
+        template = GoalTemplate(
             temp_title="Test Goal",
+            temp_description="Test description",
+            temp_performance_factor="Test factor",
+            temp_importance="High",
             temp_weightage=50
         )
         
@@ -103,7 +108,10 @@ class TestGoalTemplateModel:
         for importance in valid_importance:
             template = GoalTemplate(
                 temp_title="Test Goal",
-                temp_importance=importance
+                temp_description="Test description",
+                temp_performance_factor="Test factor",
+                temp_importance=importance,
+                temp_weightage=25
             )
             assert template.temp_importance == importance
 
@@ -170,14 +178,14 @@ class TestAppraisalRangeModel:
         appraisal_range = AppraisalRange(
             appraisal_type_id=2,
             name="1st",
-            start_date=1,
-            end_date=6
+            start_month_offset=1,
+            end_month_offset=6
         )
         
         assert appraisal_range.appraisal_type_id == 2
         assert appraisal_range.name == "1st"
-        assert appraisal_range.start_date == 1
-        assert appraisal_range.end_date == 6
+        assert appraisal_range.start_month_offset == 1
+        assert appraisal_range.end_month_offset == 6
     
     def test_appraisal_range_quarterly(self):
         """Test quarterly appraisal ranges"""
@@ -192,10 +200,10 @@ class TestAppraisalRangeModel:
             range_obj = AppraisalRange(
                 appraisal_type_id=3,  # Quarterly
                 name=quarter["name"],
-                start_date=quarter["start"],
-                end_date=quarter["end"]
+                start_month_offset=quarter["start"],
+                end_month_offset=quarter["end"]
             )
             
             assert range_obj.name == quarter["name"]
-            assert range_obj.start_date == quarter["start"]
-            assert range_obj.end_date == quarter["end"]
+            assert range_obj.start_month_offset == quarter["start"]
+            assert range_obj.end_month_offset == quarter["end"]

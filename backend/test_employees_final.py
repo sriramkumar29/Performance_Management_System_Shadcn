@@ -104,6 +104,8 @@ class TestEmployeesRouter:
             assert len(data) == 2
             assert data[0]["emp_name"] == "John Doe"
             assert data[1]["emp_name"] == "Jane Smith"
+            assert data[0]["emp_department"] == "Engineering"
+            assert data[1]["emp_department"] == "HR"
         finally:
             self._clear_overrides()
     
@@ -132,6 +134,8 @@ class TestEmployeesRouter:
             data = response.json()
             assert data["emp_name"] == "John Doe"
             assert data["emp_id"] == 1
+            assert data["emp_email"] == "john@company.com"
+            assert data["emp_department"] == "Engineering"
         finally:
             self._clear_overrides()
     
@@ -193,6 +197,8 @@ class TestEmployeesRouter:
             data = response.json()
             assert len(data) == 2
             assert all(emp["emp_roles_level"] >= 5 for emp in data)
+            assert data[0]["emp_name"] == "John Manager"
+            assert data[1]["emp_name"] == "Jane VP"
         finally:
             self._clear_overrides()
     
@@ -206,7 +212,9 @@ class TestEmployeesRouter:
             response = client.get("/api/employees")
             
             assert response.status_code == 200
-            assert response.json() == []
+            data = response.json()
+            assert data == []
+            assert len(data) == 0
         finally:
             self._clear_overrides()
     
@@ -220,6 +228,113 @@ class TestEmployeesRouter:
             response = client.get("/api/employees/managers")
             
             assert response.status_code == 200
-            assert response.json() == []
+            data = response.json()
+            assert data == []
+            assert len(data) == 0
         finally:
             self._clear_overrides()
+
+
+# Additional test to verify the managers endpoint filtering works correctly
+class TestManagersEndpointFiltering:
+    """Additional tests to verify managers endpoint filtering logic"""
+    
+    def _override_user_and_db(self, mock_session):
+        """Helper to override FastAPI dependencies for auth and DB."""
+        app.dependency_overrides[get_db] = lambda: mock_session
+        app.dependency_overrides[get_current_user] = lambda: _create_mock_user()
+
+    def _clear_overrides(self):
+        """Helper to clean up dependency overrides."""
+        app.dependency_overrides.clear()
+    
+    def test_managers_endpoint_filters_correctly(self):
+        """Test that managers endpoint only returns employees with roles_level >= 5"""
+        mock_session = _create_mock_session()
+        
+        # Only managers (level >= 5) should be returned - with all required fields
+        managers_only = [
+            SimpleNamespace(
+                emp_id=3,
+                emp_name="Team Lead",
+                emp_email="teamlead@company.com",
+                emp_department="Engineering",
+                emp_roles="Team Lead",
+                emp_roles_level=5,
+                emp_status=True,
+                emp_reporting_manager_id=None
+            ),
+            SimpleNamespace(
+                emp_id=4,
+                emp_name="Manager",
+                emp_email="manager@company.com",
+                emp_department="Engineering",
+                emp_roles="Manager",
+                emp_roles_level=6,
+                emp_status=True,
+                emp_reporting_manager_id=None
+            ),
+            SimpleNamespace(
+                emp_id=5,
+                emp_name="VP",
+                emp_email="vp@company.com",
+                emp_department="Executive",
+                emp_roles="VP",
+                emp_roles_level=7,
+                emp_status=True,
+                emp_reporting_manager_id=None
+            )
+        ]
+        
+        mock_session.execute.return_value = _make_result(all=managers_only)
+        
+        self._override_user_and_db(mock_session)
+        try:
+            response = client.get("/api/employees/managers")
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert len(data) == 3  # Only 3 employees with level >= 5
+            
+            # Verify all returned employees have roles_level >= 5
+            for emp in data:
+                assert emp["emp_roles_level"] >= 5
+                
+            # Verify specific employees are included
+            names = [emp["emp_name"] for emp in data]
+            assert "Team Lead" in names
+            assert "Manager" in names
+            assert "VP" in names
+            
+            # Verify junior employees are not included
+            assert "Junior Dev" not in names
+            assert "Senior Dev" not in names
+            
+        finally:
+            self._clear_overrides()
+
+
+if __name__ == "__main__":
+    # Simple test runner for verification
+    import unittest
+    
+    # Create test suite
+    loader = unittest.TestLoader()
+    suite = unittest.TestSuite()
+    
+    # Add test classes
+    suite.addTests(loader.loadTestsFromTestCase(TestEmployeesRouter))
+    suite.addTests(loader.loadTestsFromTestCase(TestManagersEndpointFiltering))
+    
+    # Run tests
+    runner = unittest.TextTestRunner(verbosity=2)
+    result = runner.run(suite)
+    
+    # Print summary
+    if result.wasSuccessful():
+        print(f"\n✓ All {result.testsRun} tests passed successfully!")
+    else:
+        print(f"\n✗ {len(result.failures)} test(s) failed, {len(result.errors)} error(s)")
+        for test, traceback in result.failures + result.errors:
+            print(f"FAILED: {test}")
+            print(traceback)

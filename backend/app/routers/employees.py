@@ -227,6 +227,26 @@ async def read_employee_by_email(
     return employee
 
 
+@router.get("/managers", response_model=List[EmployeeResponse])
+async def read_managers(
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """Get all managers (employees with roles level >= 5)."""
+    
+    result = await db.execute(
+        select(Employee)
+        .where(Employee.emp_roles_level >= 5)
+        .offset(skip)
+        .limit(limit)
+    )
+    managers = result.scalars().all()
+    
+    return managers
+
+
 @router.get("/{emp_id}", response_model=EmployeeResponse)
 async def read_employee(
     emp_id: int,
