@@ -35,7 +35,12 @@ async def test_database_connection_and_basic_operations():
         
         # Test basic database operations
         async with TestSessionLocal() as session:
-            # Clear any existing data
+            # Clear any existing data in correct order (handle foreign keys)
+            # Clear dependent tables first, then parent tables
+            from app.models.appraisal import Appraisal
+            from app.models.goal import Goal
+            await session.execute(Appraisal.__table__.delete())
+            await session.execute(Goal.__table__.delete())
             await session.execute(Employee.__table__.delete())
             await session.execute(AppraisalType.__table__.delete())
             await session.commit()
