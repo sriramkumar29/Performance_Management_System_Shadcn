@@ -5,15 +5,34 @@ import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath, URL } from 'node:url'
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
+export default defineConfig(({ mode }) => {
+  // For test mode, use test backend on port 7001
+  // For development mode, use dev backend on port 7000
+  const apiTarget = mode === 'test' ? 'http://localhost:7001' : 'http://localhost:7000';
+  
+  return {
+    plugins: [react(), tailwindcss()],
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+      },
     },
-  },
-  base: process.env.VITE_BASE_PATH || '/',
-  server: {
-    port: 5173,
-  },
+    base: process.env.VITE_BASE_PATH || '/',
+    define: {
+      // Override API base URL for test mode to use relative paths through proxy
+      ...(mode === 'test' && {
+        'import.meta.env.VITE_API_BASE_URL': '""'
+      })
+    },
+    server: {
+      port: 5173,
+      proxy: {
+        '/api': {
+          target: apiTarget,
+          changeOrigin: true,
+          secure: false,
+        },
+      },
+    },
+  };
 })

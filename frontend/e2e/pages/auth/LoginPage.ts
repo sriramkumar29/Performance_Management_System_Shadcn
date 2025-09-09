@@ -10,11 +10,11 @@ export class LoginPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.emailInput = page.locator('[data-testid="email-input"]');
-    this.passwordInput = page.locator('[data-testid="password-input"]');
-    this.loginButton = page.locator('[data-testid="login-button"]');
-    this.errorMessage = page.locator('[data-testid="error-message"]');
-    this.forgotPasswordLink = page.locator('[data-testid="forgot-password-link"]');
+    this.emailInput = page.locator('#email');
+    this.passwordInput = page.locator('#password');
+    this.loginButton = page.getByRole('button', { name: /sign in/i });
+    this.errorMessage = page.locator('.text-destructive');
+    this.forgotPasswordLink = page.locator('a[href="/forgot-password"]');
   }
 
   async goto() {
@@ -29,7 +29,7 @@ export class LoginPage {
     
     // Wait for navigation or error
     await Promise.race([
-      this.page.waitForURL('/dashboard'),
+      this.page.waitForURL('/'),
       this.errorMessage.waitFor({ state: 'visible' })
     ]);
   }
@@ -37,11 +37,11 @@ export class LoginPage {
   async loginSuccessfully(email: string, password: string) {
     await this.login(email, password);
     
-    // Verify successful login by checking dashboard URL
-    await expect(this.page).toHaveURL('/dashboard');
+    // Verify successful login by checking root URL
+    await expect(this.page).toHaveURL('/');
     
-    // Verify user is logged in by checking for logout button or user menu
-    await expect(this.page.locator('[data-testid="user-menu"]')).toBeVisible();
+    // Verify user is logged in by checking for the main app content
+    await expect(this.page.locator('[data-testid="performance-management-title"]')).toBeVisible();
   }
 
   async loginWithInvalidCredentials(email: string, password: string) {
@@ -56,7 +56,7 @@ export class LoginPage {
 
   async isLoggedIn(): Promise<boolean> {
     try {
-      await this.page.locator('[data-testid="user-menu"]').waitFor({ timeout: 2000 });
+      await this.page.locator('[data-testid="performance-management-title"]').waitFor({ timeout: 2000 });
       return true;
     } catch {
       return false;
@@ -64,11 +64,13 @@ export class LoginPage {
   }
 
   async logout() {
-    // Click user menu
-    await this.page.locator('[data-testid="user-menu"]').click();
+    // Click the user menu (DropdownMenuTrigger button)
+    await this.page.locator('button').filter({ hasText: /user/i }).or(
+      this.page.locator('button').filter({ has: this.page.locator('[role="img"]') })
+    ).first().click();
     
     // Click logout option
-    await this.page.locator('[data-testid="logout-button"]').click();
+    await this.page.locator('text=Sign out').click();
     
     // Verify redirected to login page
     await expect(this.page).toHaveURL('/login');

@@ -1,21 +1,21 @@
 {
   "testUsers": {
     "employee": {
-      "email": "test.employee@company.com",
-      "password": "test123",
-      "name": "John Employee",
+      "email": "test.dev@example.com",
+      "password": "password123",
+      "name": "Test Developer",
       "role": "employee"
     },
     "manager": {
-      "email": "test.manager@company.com", 
-      "password": "test123",
-      "name": "Jane Manager",
+      "email": "test.manager@example.com", 
+      "password": "password123",
+      "name": "Test Manager",
       "role": "manager"
     },
     "hr": {
-      "email": "test.hr@company.com",
-      "password": "test123", 
-      "name": "Alice HR",
+      "email": "john.ceo@example.com",
+      "password": "password123", 
+      "name": "John CEO",
       "role": "hr"
     }
   },

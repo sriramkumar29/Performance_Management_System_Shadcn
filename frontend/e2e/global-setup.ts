@@ -28,7 +28,7 @@ async function waitForBackend(url: string, timeoutMs: number) {
 }
 
 export default async function globalSetup(_config: FullConfig) {
-  const backendBase = process.env.BACKEND_URL || 'http://localhost:7000'
+  const backendBase = process.env.BACKEND_URL || 'http://localhost:7001'
   
   console.log('🔍 Checking backend availability...')
   
@@ -37,13 +37,10 @@ export default async function globalSetup(_config: FullConfig) {
   
   console.log('✅ Backend is available')
 
-  // Setup test data for consistent E2E testing
-  console.log('🛠️ Setting up test environment...')
-  try {
-    const testDataManager = new TestDataManager(backendBase)
-    await testDataManager.setupTestEnvironment()
-    console.log('✅ Test environment ready')
-  } catch (error) {
-    console.warn('⚠️ Test data setup failed, continuing with existing data:', error)
-  }
+  // Skip test data setup since backend already has seeded data
+  console.log('🛠️ Using existing backend test data...')
+  console.log('✅ Test environment ready')
+  
+  // Set global API base URL for tests to override frontend config
+  global.__API_BASE_URL__ = ''  // Use empty string for relative paths through proxy
 }

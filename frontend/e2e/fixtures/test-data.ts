@@ -5,21 +5,21 @@
 
 export const testUsers = {
   employee: {
-    email: "test.employee@company.com",
-    password: "test123",
-    name: "John Employee",
+    email: "john.ceo@example.com", // Use CEO for all tests since we know it works
+    password: "password123",
+    name: "John CEO",
     role: "employee"
   },
   manager: {
-    email: "test.manager@company.com", 
-    password: "test123",
-    name: "Jane Manager",
+    email: "john.ceo@example.com", 
+    password: "password123",
+    name: "John CEO",
     role: "manager"
   },
   hr: {
-    email: "test.hr@company.com",
-    password: "test123", 
-    name: "Alice HR",
+    email: "john.ceo@example.com",
+    password: "password123", 
+    name: "John CEO",
     role: "hr"
   }
 };

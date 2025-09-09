@@ -16,8 +16,6 @@ SELECT * FROM goals_template;
 
 SELECT * FROM appraisal_goals;
 
-SELECT * FROM appraisals;
-
 SELECT table_name
     FROM information_schema.tables
     WHERE table_schema = 'public';

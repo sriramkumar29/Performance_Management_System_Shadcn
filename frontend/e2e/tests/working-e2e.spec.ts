@@ -1,5 +1,16 @@
 import { test, expect } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  // Intercept API requests and redirect from port 7000 (dev) to 7001 (test)
+  await page.route('**/api/**', async (route) => {
+    const url = route.request().url();
+    const redirectedUrl = url.replace('localhost:7000', 'localhost:7001');
+    await route.continue({
+      url: redirectedUrl
+    });
+  });
+});
+
 test.describe('Working E2E Tests', () => {
   test('Login page loads and shows form elements', async ({ page }) => {
     await page.goto('/login');

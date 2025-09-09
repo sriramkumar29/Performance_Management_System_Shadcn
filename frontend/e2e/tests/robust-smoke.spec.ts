@@ -1,5 +1,17 @@
 import { test, expect } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  // Intercept API requests and redirect from port 7000 (dev) to 7001 (test)
+  await page.route('**/api/**', async (route) => {
+    const url = route.request().url();
+    const redirectedUrl = url.replace('localhost:7000', 'localhost:7001');
+    await route.continue({
+      url: redirectedUrl
+    });
+  });
+});
+
+
 test.describe('Robust Smoke Tests', () => {
   test('Application loads and basic navigation works', async ({ page }) => {
     // Test basic application loading

@@ -1,121 +1,144 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { Input } from '../../components/ui/input'
-import { Label } from '../../components/ui/label'
-import { Textarea } from '../../components/ui/textarea'
-import { Button } from '../../components/ui/button'
-import { Badge } from '../../components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Textarea } from "../../components/ui/textarea";
+import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../components/ui/select'
-import { apiFetch } from '../../utils/api'
-import { toast } from 'sonner'
-import { useAuth } from '../../contexts/AuthContext'
-import { ArrowLeft, Home } from 'lucide-react'
+} from "../../components/ui/select";
+import { apiFetch } from "../../utils/api";
+import { toast } from "sonner";
+import { useAuth } from "../../contexts/AuthContext";
+import { ArrowLeft, Home } from "lucide-react";
 
-interface CategoryDto { id: number; name: string }
+interface CategoryDto {
+  id: number;
+  name: string;
+}
 
 interface GoalTemplateDto {
-  temp_id: number
-  temp_title: string
-  temp_description: string
-  temp_performance_factor: string
-  temp_importance: string
-  temp_weightage: number
-  categories: CategoryDto[]
+  temp_id: number;
+  temp_title: string;
+  temp_description: string;
+  temp_performance_factor: string;
+  temp_importance: string;
+  temp_weightage: number;
+  categories: CategoryDto[];
 }
 
 const EditGoalTemplate = () => {
-  const navigate = useNavigate()
-  const params = useParams()
-  const templateId = params.id ? Number(params.id) : undefined
-  const { user } = useAuth()
+  const navigate = useNavigate();
+  const params = useParams();
+  const templateId = params.id ? Number(params.id) : undefined;
+  const { user } = useAuth();
 
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const [tempTitle, setTempTitle] = useState('')
-  const [tempDescription, setTempDescription] = useState('')
-  const [tempPerformanceFactor, setTempPerformanceFactor] = useState('')
-  const [tempImportance, setTempImportance] = useState('')
-  const [tempWeightage, setTempWeightage] = useState<number | ''>('')
-  const [categories, setCategories] = useState<string[]>([])
+  const [tempTitle, setTempTitle] = useState("");
+  const [tempDescription, setTempDescription] = useState("");
+  const [tempPerformanceFactor, setTempPerformanceFactor] = useState("");
+  const [tempImportance, setTempImportance] = useState("");
+  const [tempWeightage, setTempWeightage] = useState<number | "">("");
+  const [categories, setCategories] = useState<string[]>([]);
 
-  const [allCategories, setAllCategories] = useState<CategoryDto[]>([])
-  const [newCategory, setNewCategory] = useState('')
+  const [allCategories, setAllCategories] = useState<CategoryDto[]>([]);
+  const [newCategory, setNewCategory] = useState("");
 
-  const isEdit = useMemo(() => typeof templateId === 'number' && !Number.isNaN(templateId), [templateId])
+  const isEdit = useMemo(
+    () => typeof templateId === "number" && !Number.isNaN(templateId),
+    [templateId]
+  );
 
   const isManagerOrAbove = (roles?: string, level?: number | null) => {
-    if (roles && /manager|lead|head|director|vp|chief|cxo|cto|ceo|admin/i.test(roles)) return true
-    if (typeof level === 'number') return level > 2
-    return false
-  }
+    if (
+      roles &&
+      /manager|lead|head|director|vp|chief|cxo|cto|ceo|admin/i.test(roles)
+    )
+      return true;
+    if (typeof level === "number") return level > 2;
+    return false;
+  };
 
   useEffect(() => {
     // Access guard
     if (!isManagerOrAbove(user?.emp_roles, user?.emp_roles_level)) {
-      toast.error('You are not authorized to manage goal templates')
-      navigate('/goal-templates')
-      return
+      toast.error("You are not authorized to manage goal templates");
+      navigate("/goal-templates");
+      return;
     }
 
     const init = async () => {
       try {
-        setLoading(true)
+        setLoading(true);
         // Load available categories (optional)
-        const catRes = await apiFetch<CategoryDto[]>('/api/goals/categories')
-        if (catRes.ok && catRes.data) setAllCategories(catRes.data)
+        const catRes = await apiFetch<CategoryDto[]>("/api/goals/categories");
+        if (catRes.ok && catRes.data) setAllCategories(catRes.data);
 
         if (isEdit && templateId) {
-          const res = await apiFetch<GoalTemplateDto>(`/api/goals/templates/${templateId}`)
-          if (!res.ok || !res.data) throw new Error(res.error || 'Failed to load template')
-          const t = res.data
-          setTempTitle(t.temp_title)
-          setTempDescription(t.temp_description)
-          setTempPerformanceFactor(t.temp_performance_factor)
-          setTempImportance(t.temp_importance)
-          setTempWeightage(t.temp_weightage)
-          setCategories(Array.isArray(t.categories) ? t.categories.map(c => c.name) : [])
+          const res = await apiFetch<GoalTemplateDto>(
+            `/api/goals/templates/${templateId}`
+          );
+          if (!res.ok || !res.data)
+            throw new Error(res.error || "Failed to load template");
+          const t = res.data;
+          setTempTitle(t.temp_title);
+          setTempDescription(t.temp_description);
+          setTempPerformanceFactor(t.temp_performance_factor);
+          setTempImportance(t.temp_importance);
+          setTempWeightage(t.temp_weightage);
+          setCategories(
+            Array.isArray(t.categories) ? t.categories.map((c) => c.name) : []
+          );
         }
       } catch (e: any) {
-        toast.error(e?.message || 'Failed to load data')
+        toast.error(e?.message || "Failed to load data");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    void init()
-  }, [isEdit, templateId, user])
+    };
+    void init();
+  }, [isEdit, templateId, user]);
 
   const addCategory = () => {
-    const name = newCategory.trim()
-    if (!name) return
+    const name = newCategory.trim();
+    if (!name) return;
     if (categories.includes(name)) {
-      setNewCategory('')
-      return
+      setNewCategory("");
+      return;
     }
-    setCategories(prev => [...prev, name])
-    setNewCategory('')
-  }
+    setCategories((prev) => [...prev, name]);
+    setNewCategory("");
+  };
 
   const removeCategory = (name: string) => {
-    setCategories(prev => prev.filter(c => c !== name))
-  }
+    setCategories((prev) => prev.filter((c) => c !== name));
+  };
 
   const save = async () => {
     if (!tempTitle.trim()) {
-      toast.error('Title is required')
-      return
+      toast.error("Title is required");
+      return;
     }
-    const weight = typeof tempWeightage === 'number' ? tempWeightage : parseInt(String(tempWeightage || '0'))
+    const weight =
+      typeof tempWeightage === "number"
+        ? tempWeightage
+        : parseInt(String(tempWeightage || "0"));
     if (!weight || weight < 1 || weight > 100) {
-      toast.error('Weightage must be between 1 and 100')
-      return
+      toast.error("Weightage must be between 1 and 100");
+      return;
     }
 
     const payload = {
@@ -125,32 +148,34 @@ const EditGoalTemplate = () => {
       temp_importance: tempImportance.trim(),
       temp_weightage: weight,
       categories: categories, // array of names per backend contract
-    }
+    };
 
     try {
-      setSaving(true)
+      setSaving(true);
       if (isEdit && templateId) {
         const res = await apiFetch(`/api/goals/templates/${templateId}`, {
-          method: 'PUT',
+          method: "PUT",
           body: JSON.stringify(payload),
-        })
-        if (!res.ok) throw new Error(res.error || 'Failed to update goal template')
-        toast.success('Template updated')
+        });
+        if (!res.ok)
+          throw new Error(res.error || "Failed to update goal template");
+        toast.success("Template updated");
       } else {
         const res = await apiFetch(`/api/goals/templates`, {
-          method: 'POST',
+          method: "POST",
           body: JSON.stringify(payload),
-        })
-        if (!res.ok) throw new Error(res.error || 'Failed to create goal template')
-        toast.success('Template created')
+        });
+        if (!res.ok)
+          throw new Error(res.error || "Failed to create goal template");
+        toast.success("Template created");
       }
-      navigate('/goal-templates')
+      navigate("/goal-templates");
     } catch (e: any) {
-      toast.error(e?.message || 'Save failed')
+      toast.error(e?.message || "Save failed");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   return (
     <div className="mx-auto max-w-4xl p-4 sm:p-6">
@@ -159,7 +184,7 @@ const EditGoalTemplate = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate('/goal-templates')}
+            onClick={() => navigate("/goal-templates")}
             className="flex items-center gap-2"
             aria-label="Back"
             title="Back"
@@ -167,12 +192,14 @@ const EditGoalTemplate = () => {
             <ArrowLeft className="h-4 w-4" />
             <span className="hidden sm:inline sm:ml-2">Back</span>
           </Button>
-          <h1 className="text-2xl font-bold">{isEdit ? 'Edit Goal Template' : 'Create Template'}</h1>
+          <h1 className="text-2xl font-bold">
+            {isEdit ? "Edit Goal Template" : "Create Template"}
+          </h1>
         </div>
         <div className="flex items-center">
           <Button
             size="sm"
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
             className="hidden sm:inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
             aria-label="Home"
             title="Home"
@@ -186,7 +213,7 @@ const EditGoalTemplate = () => {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-lg">
-            {isEdit ? 'Update Template Details' : 'Template Information'}
+            {isEdit ? "Update Template Details" : "Template Information"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -199,8 +226,11 @@ const EditGoalTemplate = () => {
               disabled={loading || saving}
               className="transition-shadow focus:shadow-sm motion-reduce:transition-none"
               aria-describedby="title-help"
+              data-testid="template-name"
             />
-            <p id="title-help" className="mt-1 text-xs text-muted-foreground">Give your template a concise, descriptive title.</p>
+            <p id="title-help" className="mt-1 text-xs text-muted-foreground">
+              Give your template a concise, descriptive title.
+            </p>
           </div>
           <div>
             <Label htmlFor="description">Description</Label>
@@ -212,7 +242,12 @@ const EditGoalTemplate = () => {
               className="transition-shadow focus:shadow-sm motion-reduce:transition-none"
               aria-describedby="description-help"
             />
-            <p id="description-help" className="mt-1 text-xs text-muted-foreground">Optional: add context so appraisers understand the goal’s intent.</p>
+            <p
+              id="description-help"
+              className="mt-1 text-xs text-muted-foreground"
+            >
+              Optional: add context so appraisers understand the goal’s intent.
+            </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -225,11 +260,17 @@ const EditGoalTemplate = () => {
                 className="transition-shadow focus:shadow-sm motion-reduce:transition-none"
                 aria-describedby="perf-help"
               />
-              <p id="perf-help" className="mt-1 text-xs text-muted-foreground">E.g., Quality, Delivery, Ownership, Collaboration.</p>
+              <p id="perf-help" className="mt-1 text-xs text-muted-foreground">
+                E.g., Quality, Delivery, Ownership, Collaboration.
+              </p>
             </div>
             <div>
               <Label htmlFor="importance">Importance</Label>
-              <Select value={tempImportance} onValueChange={setTempImportance} disabled={loading || saving}>
+              <Select
+                value={tempImportance}
+                onValueChange={setTempImportance}
+                disabled={loading || saving}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select importance level" />
                 </SelectTrigger>
@@ -250,12 +291,21 @@ const EditGoalTemplate = () => {
                 min={1}
                 max={100}
                 value={tempWeightage}
-                onChange={(e) => setTempWeightage(e.target.value === '' ? '' : parseInt(e.target.value))}
+                onChange={(e) =>
+                  setTempWeightage(
+                    e.target.value === "" ? "" : parseInt(e.target.value)
+                  )
+                }
                 disabled={loading || saving}
                 className="transition-shadow focus:shadow-sm motion-reduce:transition-none"
                 aria-describedby="weight-help"
               />
-              <p id="weight-help" className="mt-1 text-xs text-muted-foreground">Must be between 1–100. Appraisal total must sum to 100%.</p>
+              <p
+                id="weight-help"
+                className="mt-1 text-xs text-muted-foreground"
+              >
+                Must be between 1–100. Appraisal total must sum to 100%.
+              </p>
             </div>
           </div>
 
@@ -266,19 +316,32 @@ const EditGoalTemplate = () => {
                 placeholder="Add category name"
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCategory() } }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addCategory();
+                  }
+                }}
                 autoComplete="off"
                 disabled={loading || saving}
                 className="w-full sm:flex-1 transition-shadow focus:shadow-sm motion-reduce:transition-none"
                 aria-describedby="category-help"
               />
-              <Button type="button" onClick={addCategory} disabled={loading || saving}>Add</Button>
+              <Button
+                type="button"
+                onClick={addCategory}
+                disabled={loading || saving}
+              >
+                Add
+              </Button>
             </div>
-            <p id="category-help" className="text-xs text-muted-foreground">Press Enter to add. Avoid duplicates.</p>
+            <p id="category-help" className="text-xs text-muted-foreground">
+              Press Enter to add. Avoid duplicates.
+            </p>
             {allCategories.length > 0 && (
               <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                 <span>Suggestions:</span>
-                {allCategories.map(c => (
+                {allCategories.map((c) => (
                   <button
                     key={c.id}
                     type="button"
@@ -293,7 +356,11 @@ const EditGoalTemplate = () => {
             )}
             <div className="flex flex-wrap gap-2 mt-2">
               {categories.map((c) => (
-                <Badge key={c} variant="outline" className="flex items-center gap-2 bg-rose-50 text-rose-700 border-rose-200">
+                <Badge
+                  key={c}
+                  variant="outline"
+                  className="flex items-center gap-2 bg-rose-50 text-rose-700 border-rose-200"
+                >
                   {c}
                   <button
                     type="button"
@@ -309,11 +376,26 @@ const EditGoalTemplate = () => {
           </div>
 
           <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 pt-4 border-t">
-            <Button variant="outline" type="button" onClick={() => navigate('/goal-templates')} disabled={saving} className="w-full sm:w-auto">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => navigate("/goal-templates")}
+              disabled={saving}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
-            <Button type="button" onClick={save} disabled={saving || loading} className="w-full sm:w-auto px-6">
-              {saving ? 'Saving...' : (isEdit ? 'Save Changes' : 'Create Template')}
+            <Button
+              type="button"
+              onClick={save}
+              disabled={saving || loading}
+              className="w-full sm:w-auto px-6"
+            >
+              {saving
+                ? "Saving..."
+                : isEdit
+                ? "Save Changes"
+                : "Create Template"}
             </Button>
           </div>
         </CardContent>
@@ -321,7 +403,7 @@ const EditGoalTemplate = () => {
 
       {/* Mobile-only floating Home button for better discoverability */}
       <Button
-        onClick={() => navigate('/')}
+        onClick={() => navigate("/")}
         title="Home"
         aria-label="Home"
         className="sm:hidden fixed bottom-20 right-4 z-50 rounded-full h-12 w-12 p-0 bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -329,7 +411,7 @@ const EditGoalTemplate = () => {
         <Home className="h-5 w-5" />
       </Button>
     </div>
-  )
-}
+  );
+};
 
-export default EditGoalTemplate
+export default EditGoalTemplate;

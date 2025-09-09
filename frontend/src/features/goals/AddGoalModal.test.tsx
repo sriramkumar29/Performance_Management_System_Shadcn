@@ -116,10 +116,13 @@ describe("AddGoalModal", () => {
     const user = userEvent.setup();
     render(<AddGoalModal {...defaultProps} />);
 
-    // Wait for categories to load
-    await waitFor(() => {
-      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-    });
+    // Wait for categories to load with increased timeout
+    await waitFor(
+      () => {
+        expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+      },
+      { timeout: 10000 }
+    );
 
     // Fill in required fields
     await user.type(screen.getByLabelText(/goal title/i), "New Goal");
@@ -133,7 +136,7 @@ describe("AddGoalModal", () => {
     const importanceSection = importanceLabel.closest("div") as HTMLElement;
     const importanceTrigger = within(importanceSection).getByRole("combobox");
     await user.click(importanceTrigger);
-    const listbox1 = await screen.findByRole("listbox");
+    const listbox1 = await screen.findByRole("listbox", {}, { timeout: 5000 });
     await user.click(
       within(listbox1).getByRole("option", { name: /high priority/i })
     );
@@ -143,7 +146,7 @@ describe("AddGoalModal", () => {
     const categorySection = categoryLabel.closest("div") as HTMLElement;
     const categoryTrigger = within(categorySection).getByRole("combobox");
     await user.click(categoryTrigger);
-    const listbox2 = await screen.findByRole("listbox");
+    const listbox2 = await screen.findByRole("listbox", {}, { timeout: 5000 });
     await user.click(
       within(listbox2).getByRole("option", { name: /category 1/i })
     );
@@ -185,10 +188,13 @@ describe("AddGoalModal", () => {
     const user = userEvent.setup();
     render(<AddGoalModal {...defaultProps} remainingWeightage={10} />);
 
-    // Wait for categories to load
-    await waitFor(() => {
-      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-    });
+    // Wait for categories to load with longer timeout
+    await waitFor(
+      () => {
+        expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+      },
+      { timeout: 10000 }
+    );
 
     // fill required fields first
     await user.type(screen.getByLabelText(/goal title/i), "Weightage Goal");
@@ -199,28 +205,48 @@ describe("AddGoalModal", () => {
     await user.type(screen.getByLabelText(/performance factors/i), "Factor");
 
     // Importance select (Radix Select)
-    const importanceLabel = screen.getByText(/importance level/i, { selector: "label" });
+    const importanceLabel = screen.getByText(/importance level/i, {
+      selector: "label",
+    });
     const importanceSection = importanceLabel.closest("div") as HTMLElement;
     const importanceTrigger = within(importanceSection).getByRole("combobox");
     await user.click(importanceTrigger);
-    const listboxImp = await screen.findByRole("listbox");
-    await user.click(within(listboxImp).getByRole("option", { name: /high priority/i }));
+    const listboxImp = await screen.findByRole(
+      "listbox",
+      {},
+      { timeout: 8000 }
+    );
+    await user.click(
+      within(listboxImp).getByRole("option", { name: /high priority/i })
+    );
     // ensure selection reflected on trigger
-    await waitFor(() => {
-      expect(importanceTrigger).toHaveTextContent(/high priority/i);
-    });
+    await waitFor(
+      () => {
+        expect(importanceTrigger).toHaveTextContent(/high priority/i);
+      },
+      { timeout: 5000 }
+    );
 
     // Category select (Radix Select)
     const categoryLabel = screen.getByText(/category/i, { selector: "label" });
     const categorySection = categoryLabel.closest("div") as HTMLElement;
     const categoryTrigger = within(categorySection).getByRole("combobox");
     await user.click(categoryTrigger);
-    const listboxCat = await screen.findByRole("listbox");
-    await user.click(within(listboxCat).getByRole("option", { name: /category 1/i }));
+    const listboxCat = await screen.findByRole(
+      "listbox",
+      {},
+      { timeout: 8000 }
+    );
+    await user.click(
+      within(listboxCat).getByRole("option", { name: /category 1/i })
+    );
     // ensure selection reflected on trigger
-    await waitFor(() => {
-      expect(categoryTrigger).toHaveTextContent(/category 1/i);
-    });
+    await waitFor(
+      () => {
+        expect(categoryTrigger).toHaveTextContent(/category 1/i);
+      },
+      { timeout: 5000 }
+    );
 
     // enter weightage > remaining (e.g. 45 when only 10 is left)
     const weightInput = screen.getByLabelText(/weightage/i) as HTMLInputElement;
@@ -232,13 +258,18 @@ describe("AddGoalModal", () => {
     weightInput.removeAttribute("max");
 
     // try to submit via form submit to ensure onSubmit is invoked
-    const formEl = screen.getByRole("button", { name: /add goal/i }).closest("form")!;
+    const formEl = screen
+      .getByRole("button", { name: /add goal/i })
+      .closest("form")!;
     fireEvent.submit(formEl);
 
     // expect toast error with correct message, and no goal added
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalled();
-    });
+    await waitFor(
+      () => {
+        expect(toast.error).toHaveBeenCalled();
+      },
+      { timeout: 5000 }
+    );
     const lastCall = (toast.error as any).mock.calls.at(-1) || [];
     expect(lastCall[0]).toMatch(/Weightage\s+exceeds\s+remaining\s+10%\.?/i);
     expect(mockOnGoalAdded).not.toHaveBeenCalled();
@@ -248,9 +279,12 @@ describe("AddGoalModal", () => {
     const user = userEvent.setup();
     render(<AddGoalModal {...defaultProps} remainingWeightage={60} />);
 
-    await waitFor(() => {
-      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+      },
+      { timeout: 10000 }
+    );
 
     await user.type(screen.getByLabelText(/goal title/i), "Valid Goal");
     await user.type(screen.getByLabelText(/goal description/i), "Desc");

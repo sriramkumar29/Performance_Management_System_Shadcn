@@ -5,6 +5,20 @@ import { AppraisalCreatePage } from '../../pages/appraisals/AppraisalCreatePage'
 import { APIHelper } from '../../utils/api-helpers';
 import { testUsers, appraisalTemplates } from '../../fixtures/test-data';
 
+test.beforeEach(async ({ page }) => {
+  // Intercept API requests and redirect from port 7000 (dev) to 7001 (test)
+  await page.route('**/api/**', async (route) => {
+    const url = route.request().url();
+    const redirectedUrl = url.replace('localhost:7000', 'localhost:7001');
+    
+    console.log(`🔀 API ROUTE: ${url} → ${redirectedUrl}`);
+    
+    await route.continue({
+      url: redirectedUrl
+    });
+  });
+});
+
 test.describe('Goal Template Management Workflow', () => {
   let apiHelper: APIHelper;
   let loginPage: LoginPage;

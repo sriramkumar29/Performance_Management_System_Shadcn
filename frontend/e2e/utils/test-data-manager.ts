@@ -29,18 +29,18 @@ export class TestDataManager {
   async ensureTestEmployees(): Promise<void> {
     const requiredEmployees: TestEmployee[] = [
       {
-        name: 'Jane Smith',
-        email: 'jane.smith@company.com',
+        name: 'Test Developer',
+        email: 'test.dev@example.com',
         role: 'employee'
       },
       {
-        name: 'Bob Wilson',
-        email: 'bob.wilson@company.com',
+        name: 'Test Manager',
+        email: 'test.manager@example.com',
         role: 'manager'
       },
       {
-        name: 'Alice Johnson',
-        email: 'alice.johnson@company.com',
+        name: 'John CEO',
+        email: 'john.ceo@example.com',
         role: 'hr'
       }
     ];

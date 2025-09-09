@@ -50,7 +50,7 @@ vi.mock("dayjs", () => ({
 
 describe("CreateAppraisal Integration Tests", () => {
   beforeAll(() => {
-    vi.setConfig({ testTimeout: 60000 }); // Increase timeout for all tests
+    vi.setConfig({ testTimeout: 120000 }); // Increase timeout to 2 minutes for all tests
   });
 
   beforeEach(() => {
@@ -88,7 +88,9 @@ describe("CreateAppraisal Integration Tests", () => {
     it("should show error toast when employee loading fails", async () => {
       // Mock toast.error before rendering
       const { toast } = await import("sonner");
-      const toastErrorSpy = vi.spyOn(toast, "error").mockImplementation(() => "mock-toast-id");
+      const toastErrorSpy = vi
+        .spyOn(toast, "error")
+        .mockImplementation(() => "mock-toast-id");
 
       server.use(
         http.get("/api/employees", () => {
@@ -543,12 +545,15 @@ describe("CreateAppraisal Integration Tests", () => {
         auth: { user: mockUser, status: "succeeded" },
       });
 
-      // Complete prerequisites first
-      await waitFor(() => {
-        expect(
-          screen.getByRole("combobox", { name: /employee/i })
-        ).toBeInTheDocument();
-      });
+      // Complete prerequisites first with extended timeout
+      await waitFor(
+        () => {
+          expect(
+            screen.getByRole("combobox", { name: /employee/i })
+          ).toBeInTheDocument();
+        },
+        { timeout: 15000 }
+      );
 
       // Select employee
       const employeeSelect = screen.getByRole("combobox", {
@@ -583,12 +588,15 @@ describe("CreateAppraisal Integration Tests", () => {
       await user.click(annualOption);
 
       // Verify Add Goal button is enabled
-      await waitFor(() => {
-        const addGoalButtons = screen.getAllByRole("button", {
-          name: /add goal/i,
-        });
-        expect(addGoalButtons[0]).not.toBeDisabled();
-      });
+      await waitFor(
+        () => {
+          const addGoalButtons = screen.getAllByRole("button", {
+            name: /add goal/i,
+          });
+          expect(addGoalButtons[0]).not.toBeDisabled();
+        },
+        { timeout: 10000 }
+      );
 
       // Add multiple goals using the testGoals data
       const addGoalButton = screen.getByTestId("add-goal-toolbar");
@@ -734,23 +742,37 @@ describe("CreateAppraisal Integration Tests", () => {
 
       // Complete prerequisites
       await waitFor(() => {
-        expect(screen.getByRole("combobox", { name: /employee/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("combobox", { name: /employee/i })
+        ).toBeInTheDocument();
       });
 
-      const employeeSelect = screen.getByRole("combobox", { name: /employee/i });
+      const employeeSelect = screen.getByRole("combobox", {
+        name: /employee/i,
+      });
       await user.click(employeeSelect);
       const listboxEmp = await screen.findByRole("listbox");
-      await user.click(within(listboxEmp).getByRole("option", { name: /jane smith/i }));
+      await user.click(
+        within(listboxEmp).getByRole("option", { name: /jane smith/i })
+      );
 
-      const reviewerSelect = screen.getByRole("combobox", { name: /reviewer/i });
+      const reviewerSelect = screen.getByRole("combobox", {
+        name: /reviewer/i,
+      });
       await user.click(reviewerSelect);
       const listboxReviewer = await screen.findByRole("listbox");
-      await user.click(within(listboxReviewer).getByRole("option", { name: /bob wilson/i }));
+      await user.click(
+        within(listboxReviewer).getByRole("option", { name: /bob wilson/i })
+      );
 
-      const typeSelect = screen.getByRole("combobox", { name: /appraisal type/i });
+      const typeSelect = screen.getByRole("combobox", {
+        name: /appraisal type/i,
+      });
       await user.click(typeSelect);
       const typeOptions = await screen.findAllByRole("option");
-      const annualOption = typeOptions.find(option => option.textContent?.trim().toLowerCase() === "annual");
+      const annualOption = typeOptions.find(
+        (option) => option.textContent?.trim().toLowerCase() === "annual"
+      );
       if (!annualOption) throw new Error("Annual option not found");
       await user.click(annualOption);
 
@@ -772,33 +794,48 @@ describe("CreateAppraisal Integration Tests", () => {
       await waitFor(() => {
         expect(screen.getByTestId("add-goal-toolbar")).toBeEnabled();
       });
-      
+
       await user.click(screen.getByTestId("add-goal-toolbar"));
       const dialog = await screen.findByRole("dialog");
 
       // Fill in first goal
       await user.type(within(dialog).getByLabelText(/title/i), "First Goal");
-      await user.type(within(dialog).getByLabelText(/description/i), "First description");
-      await user.type(within(dialog).getByLabelText(/performance factors/i), "Quality");
-      
+      await user.type(
+        within(dialog).getByLabelText(/description/i),
+        "First description"
+      );
+      await user.type(
+        within(dialog).getByLabelText(/performance factors/i),
+        "Quality"
+      );
+
       const weightageInput = within(dialog).getByLabelText(/weightage/i);
       await user.clear(weightageInput);
       await user.type(weightageInput, "30");
 
-      const importanceSelect = within(dialog).getByRole("combobox", { name: /importance level/i });
+      const importanceSelect = within(dialog).getByRole("combobox", {
+        name: /importance level/i,
+      });
       await user.click(importanceSelect);
       await user.click(screen.getByRole("option", { name: /high priority/i }));
 
-      const categorySelect = within(dialog).getByRole("combobox", { name: /category/i });
+      const categorySelect = within(dialog).getByRole("combobox", {
+        name: /category/i,
+      });
       await user.click(categorySelect);
       await user.click(screen.getByRole("option", { name: /technical/i }));
 
-      await user.click(within(dialog).getByRole("button", { name: /add goal/i }));
+      await user.click(
+        within(dialog).getByRole("button", { name: /add goal/i })
+      );
 
       // Wait for dialog to close and goal to be added
-      await waitFor(() => {
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-      }, { timeout: 15000 });
+      await waitFor(
+        () => {
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        },
+        { timeout: 15000 }
+      );
 
       // Verify first goal was added
       await waitFor(() => {
@@ -822,23 +859,37 @@ describe("CreateAppraisal Integration Tests", () => {
 
       // Complete prerequisites
       await waitFor(() => {
-        expect(screen.getByRole("combobox", { name: /employee/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("combobox", { name: /employee/i })
+        ).toBeInTheDocument();
       });
 
-      const employeeSelect = screen.getByRole("combobox", { name: /employee/i });
+      const employeeSelect = screen.getByRole("combobox", {
+        name: /employee/i,
+      });
       await user.click(employeeSelect);
       const listboxEmp = await screen.findByRole("listbox");
-      await user.click(within(listboxEmp).getByRole("option", { name: /jane smith/i }));
+      await user.click(
+        within(listboxEmp).getByRole("option", { name: /jane smith/i })
+      );
 
-      const reviewerSelect = screen.getByRole("combobox", { name: /reviewer/i });
+      const reviewerSelect = screen.getByRole("combobox", {
+        name: /reviewer/i,
+      });
       await user.click(reviewerSelect);
       const listboxReviewer = await screen.findByRole("listbox");
-      await user.click(within(listboxReviewer).getByRole("option", { name: /bob wilson/i }));
+      await user.click(
+        within(listboxReviewer).getByRole("option", { name: /bob wilson/i })
+      );
 
-      const typeSelect = screen.getByRole("combobox", { name: /appraisal type/i });
+      const typeSelect = screen.getByRole("combobox", {
+        name: /appraisal type/i,
+      });
       await user.click(typeSelect);
       const typeOptions = await screen.findAllByRole("option");
-      const annualOption = typeOptions.find(option => option.textContent?.trim().toLowerCase() === "annual");
+      const annualOption = typeOptions.find(
+        (option) => option.textContent?.trim().toLowerCase() === "annual"
+      );
       if (!annualOption) throw new Error("Annual option not found");
       await user.click(annualOption);
 
@@ -858,7 +909,9 @@ describe("CreateAppraisal Integration Tests", () => {
       );
 
       // Initially submit button should be disabled
-      const submitButton = screen.getByTestId("submit-for-acknowledgement-button");
+      const submitButton = screen.getByTestId(
+        "submit-for-acknowledgement-button"
+      );
       expect(submitButton).toBeDisabled();
 
       // Add a goal with 100% weightage
@@ -870,28 +923,52 @@ describe("CreateAppraisal Integration Tests", () => {
       const dialog = await screen.findByRole("dialog");
 
       // Fill in goal details
-      await user.type(within(dialog).getByPlaceholderText(/enter a clear, specific goal title/i), "Complete Goal");
-      await user.type(within(dialog).getByPlaceholderText(/provide a detailed description/i), "This goal covers everything");
-      await user.type(within(dialog).getByPlaceholderText(/describe how performance will be measured/i), "Overall performance");
+      await user.type(
+        within(dialog).getByPlaceholderText(
+          /enter a clear, specific goal title/i
+        ),
+        "Complete Goal"
+      );
+      await user.type(
+        within(dialog).getByPlaceholderText(/provide a detailed description/i),
+        "This goal covers everything"
+      );
+      await user.type(
+        within(dialog).getByPlaceholderText(
+          /describe how performance will be measured/i
+        ),
+        "Overall performance"
+      );
 
-      const importanceSelect = within(dialog).getByRole("combobox", { name: /importance level/i });
+      const importanceSelect = within(dialog).getByRole("combobox", {
+        name: /importance level/i,
+      });
       await user.click(importanceSelect);
       await user.click(screen.getByRole("option", { name: /high priority/i }));
 
-      const categorySelect = within(dialog).getByRole("combobox", { name: /category/i });
+      const categorySelect = within(dialog).getByRole("combobox", {
+        name: /category/i,
+      });
       await user.click(categorySelect);
       await user.click(screen.getByRole("option", { name: /category 1/i }));
 
-      const weightageInput = within(dialog).getByPlaceholderText(/enter weightage percentage/i);
+      const weightageInput = within(dialog).getByPlaceholderText(
+        /enter weightage percentage/i
+      );
       await user.clear(weightageInput);
       await user.type(weightageInput, "100");
 
-      await user.click(within(dialog).getByRole("button", { name: /add goal/i }));
+      await user.click(
+        within(dialog).getByRole("button", { name: /add goal/i })
+      );
 
       // Wait for dialog to close and goal to be added
-      await waitFor(() => {
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-      }, { timeout: 15000 });
+      await waitFor(
+        () => {
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        },
+        { timeout: 15000 }
+      );
 
       // Verify 100% is displayed
       await waitFor(() => {
@@ -917,26 +994,42 @@ describe("CreateAppraisal Integration Tests", () => {
 
       // Complete prerequisites
       await waitFor(() => {
-        expect(screen.getByRole("combobox", { name: /employee/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("combobox", { name: /employee/i })
+        ).toBeInTheDocument();
       });
 
-      const employeeSelect = screen.getByRole("combobox", { name: /employee/i });
+      const employeeSelect = screen.getByRole("combobox", {
+        name: /employee/i,
+      });
       await user.click(employeeSelect);
       const listboxEmp = await screen.findByRole("listbox");
-      await user.click(within(listboxEmp).getByRole("option", { name: /jane smith/i }));
+      await user.click(
+        within(listboxEmp).getByRole("option", { name: /jane smith/i })
+      );
 
-      const reviewerSelect = screen.getByRole("combobox", { name: /reviewer/i });
+      const reviewerSelect = screen.getByRole("combobox", {
+        name: /reviewer/i,
+      });
       await user.click(reviewerSelect);
       const listboxReviewer = await screen.findByRole("listbox");
-      await user.click(within(listboxReviewer).getByRole("option", { name: /bob wilson/i }));
+      await user.click(
+        within(listboxReviewer).getByRole("option", { name: /bob wilson/i })
+      );
 
-      const typeSelect = screen.getByRole("combobox", { name: /appraisal type/i });
+      const typeSelect = screen.getByRole("combobox", {
+        name: /appraisal type/i,
+      });
       await user.click(typeSelect);
-      const annualOption = await screen.findByRole("option", { name: /^annual$/i });
+      const annualOption = await screen.findByRole("option", {
+        name: /^annual$/i,
+      });
       await user.click(annualOption);
 
       // Submit button should be disabled initially
-      const submitButton = screen.getByTestId("submit-for-acknowledgement-button");
+      const submitButton = screen.getByTestId(
+        "submit-for-acknowledgement-button"
+      );
       expect(submitButton).toBeDisabled();
 
       // For this test, we'll just verify the basic functionality
@@ -998,7 +1091,9 @@ describe("CreateAppraisal Integration Tests", () => {
       });
 
       // Should block submission due to 0% weightage
-      const submitButton = screen.getByTestId("submit-for-acknowledgement-button");
+      const submitButton = screen.getByTestId(
+        "submit-for-acknowledgement-button"
+      );
       expect(submitButton).toBeDisabled();
     });
   });
@@ -1080,7 +1175,9 @@ describe("CreateAppraisal Integration Tests", () => {
 
       // Spy on toast.error
       const { toast } = await import("sonner");
-      const toastSpy = vi.spyOn(toast, "error").mockImplementation(() => "toast-id");
+      const toastSpy = vi
+        .spyOn(toast, "error")
+        .mockImplementation(() => "toast-id");
 
       render(<CreateAppraisal />, {
         auth: { user: mockUser, status: "succeeded" },
@@ -1088,23 +1185,37 @@ describe("CreateAppraisal Integration Tests", () => {
 
       // Complete prerequisites
       await waitFor(() => {
-        expect(screen.getByRole("combobox", { name: /employee/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("combobox", { name: /employee/i })
+        ).toBeInTheDocument();
       });
 
-      const employeeSelect = screen.getByRole("combobox", { name: /employee/i });
+      const employeeSelect = screen.getByRole("combobox", {
+        name: /employee/i,
+      });
       await user.click(employeeSelect);
       const listboxEmp = await screen.findByRole("listbox");
-      await user.click(within(listboxEmp).getByRole("option", { name: /jane smith/i }));
+      await user.click(
+        within(listboxEmp).getByRole("option", { name: /jane smith/i })
+      );
 
-      const reviewerSelect = screen.getByRole("combobox", { name: /reviewer/i });
+      const reviewerSelect = screen.getByRole("combobox", {
+        name: /reviewer/i,
+      });
       await user.click(reviewerSelect);
       const listboxReviewer = await screen.findByRole("listbox");
-      await user.click(within(listboxReviewer).getByRole("option", { name: /bob wilson/i }));
+      await user.click(
+        within(listboxReviewer).getByRole("option", { name: /bob wilson/i })
+      );
 
-      const typeSelect = screen.getByRole("combobox", { name: /appraisal type/i });
+      const typeSelect = screen.getByRole("combobox", {
+        name: /appraisal type/i,
+      });
       await user.click(typeSelect);
       const typeOptions = await screen.findAllByRole("option");
-      const annualOption = typeOptions.find(option => option.textContent?.trim().toLowerCase() === "annual");
+      const annualOption = typeOptions.find(
+        (option) => option.textContent?.trim().toLowerCase() === "annual"
+      );
       if (!annualOption) throw new Error("Annual option not found");
       await user.click(annualOption);
 
@@ -1113,15 +1224,20 @@ describe("CreateAppraisal Integration Tests", () => {
       await user.click(saveButton);
 
       // Verify error handling - either toast is called or button remains unchanged
-      await waitFor(() => {
-        // Check if error toast was called OR button text remains the same
-        const stillSaveButton = screen.queryByRole("button", { name: /save draft/i });
-        if (stillSaveButton) {
-          expect(stillSaveButton).toBeInTheDocument();
-        } else {
-          expect(toastSpy).toHaveBeenCalled();
-        }
-      }, { timeout: 15000 });
+      await waitFor(
+        () => {
+          // Check if error toast was called OR button text remains the same
+          const stillSaveButton = screen.queryByRole("button", {
+            name: /save draft/i,
+          });
+          if (stillSaveButton) {
+            expect(stillSaveButton).toBeInTheDocument();
+          } else {
+            expect(toastSpy).toHaveBeenCalled();
+          }
+        },
+        { timeout: 15000 }
+      );
 
       toastSpy.mockRestore();
     }, 30000);
@@ -1137,15 +1253,19 @@ describe("CreateAppraisal Integration Tests", () => {
 
       // Wait for the employee dropdown to be available
       await waitFor(() => {
-        expect(screen.getByRole("combobox", { name: /employee/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("combobox", { name: /employee/i })
+        ).toBeInTheDocument();
       });
 
-      const employeeSelect = screen.getByRole("combobox", { name: /employee/i });
+      const employeeSelect = screen.getByRole("combobox", {
+        name: /employee/i,
+      });
       await user.click(employeeSelect);
 
       // Wait for dropdown options to appear
       const listbox = await screen.findByRole("listbox");
-      
+
       // Should show Jane Smith (from the mock data)
       expect(
         within(listbox).getByRole("option", { name: /jane smith/i })

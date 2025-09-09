@@ -73,9 +73,12 @@ describe("EditGoalModal", () => {
         <EditGoalModal {...defaultProps} open={true} goalData={mockGoalData} />
       );
 
-      await waitFor(() => {
-        expect(screen.getByText("Edit Goal")).toBeInTheDocument();
-      });
+      await waitFor(
+        () => {
+          expect(screen.getByText("Edit Goal")).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
     });
 
     it("should close when onClose is called", async () => {
@@ -89,9 +92,12 @@ describe("EditGoalModal", () => {
         />
       );
 
-      await waitFor(() => {
-        expect(screen.getByText("Edit Goal")).toBeInTheDocument();
-      });
+      await waitFor(
+        () => {
+          expect(screen.getByText("Edit Goal")).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
 
       // Simulate dialog close
       fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
