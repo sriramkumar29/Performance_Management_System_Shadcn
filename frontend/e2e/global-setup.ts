@@ -1,4 +1,5 @@
 import type { FullConfig } from '@playwright/test'
+import TestDataManager from './utils/test-data-manager'
 
 async function waitForBackend(url: string, timeoutMs: number) {
   const start = Date.now()
@@ -28,6 +29,21 @@ async function waitForBackend(url: string, timeoutMs: number) {
 
 export default async function globalSetup(_config: FullConfig) {
   const backendBase = process.env.BACKEND_URL || 'http://localhost:7000'
+  
+  console.log('🔍 Checking backend availability...')
+  
   // Use the public root endpoint that doesn't require auth
   await waitForBackend(`${backendBase}/`, 30000)
+  
+  console.log('✅ Backend is available')
+
+  // Setup test data for consistent E2E testing
+  console.log('🛠️ Setting up test environment...')
+  try {
+    const testDataManager = new TestDataManager(backendBase)
+    await testDataManager.setupTestEnvironment()
+    console.log('✅ Test environment ready')
+  } catch (error) {
+    console.warn('⚠️ Test data setup failed, continuing with existing data:', error)
+  }
 }
