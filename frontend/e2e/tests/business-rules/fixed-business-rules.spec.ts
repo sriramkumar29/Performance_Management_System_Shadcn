@@ -59,13 +59,13 @@ test.describe('🔧 Fixed Business Rules Tests', () => {
     });
     console.log('✅ Successfully filled date fields');
 
-    // Step 6: Verify all buttons are present
-    await expect(page.getByRole('button', { name: 'Select employee to appraise' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Select reviewer' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Select appraisal type' })).toBeVisible();
+    // Step 6: Verify all form controls are present
+    await expect(page.getByRole('combobox', { name: 'Employee' })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: 'Reviewer' })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: 'Appraisal Type' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save Draft' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Submit for Acknowledgement' })).toBeVisible();
-    console.log('✅ All expected form buttons are present and visible');
+    console.log('✅ All expected form controls are present and visible');
 
     console.log('🎉 APPRAISAL CREATION FORM: FULLY FUNCTIONAL');
   });
@@ -75,24 +75,35 @@ test.describe('🔧 Fixed Business Rules Tests', () => {
     
     await appraisalPage.goto();
     
-    // Try to click the employee selection button
-    const selectEmployeeButton = page.getByRole('button', { name: 'Select employee to appraise' });
-    await selectEmployeeButton.click();
-    console.log('✅ Successfully clicked employee selection button');
+    // Try to click the employee selection combobox
+    const selectEmployeeCombobox = page.getByRole('combobox', { name: 'Employee' });
+    await selectEmployeeCombobox.click();
+    console.log('✅ Successfully clicked employee selection combobox');
     
-    // Wait for any modal or dropdown to appear
+    // Wait for dropdown to appear
     await page.waitForTimeout(1000);
     
+    // Look for employee options
+    const employeeOptions = page.locator('[role="option"]');
+    const optionCount = await employeeOptions.count();
+    console.log(`🔍 Found ${optionCount} employee option(s) in dropdown`);
+    
+    if (optionCount > 0) {
+      console.log('✅ Employee dropdown contains selectable options');
+      // List first few options for debugging
+      for (let i = 0; i < Math.min(3, optionCount); i++) {
+        const optionText = await employeeOptions.nth(i).textContent();
+        console.log(`  Option ${i + 1}: ${optionText}`);
+      }
+    } else {
+      console.log('⚠️ No employee options found in dropdown');
+    }
+    
     // Take a screenshot to see what appears
-    await page.screenshot({ path: 'employee-selection-modal.png', fullPage: true });
-    console.log('📷 Screenshot saved as employee-selection-modal.png');
+    await page.screenshot({ path: 'employee-selection-dropdown.png', fullPage: true });
+    console.log('� Screenshot saved as employee-selection-dropdown.png');
     
-    // Look for any new elements that appeared
-    const modals = page.locator('[role="dialog"]');
-    const modalCount = await modals.count();
-    console.log(`🔍 Found ${modalCount} modal(s) after clicking employee selection`);
-    
-    // Look for dropdowns
+    // Look for dropdowns and listboxes
     const dropdowns = page.locator('[role="listbox"], [role="menu"], .dropdown-menu');
     const dropdownCount = await dropdowns.count();
     console.log(`🔍 Found ${dropdownCount} dropdown(s) after clicking employee selection`);
@@ -105,25 +116,42 @@ test.describe('🔧 Fixed Business Rules Tests', () => {
     
     // Test initial state
     const addGoalBtn = page.getByRole('button', { name: 'Add Goal' }).first();
-    const selectReviewerBtn = page.getByRole('button', { name: 'Select reviewer' });
-    const selectTypeBtn = page.getByRole('button', { name: 'Select appraisal type' });
+    const selectEmployeeCombobox = page.getByRole('combobox', { name: 'Employee' });
+    const selectReviewerCombobox = page.getByRole('combobox', { name: 'Reviewer' });
+    const selectTypeCombobox = page.getByRole('combobox', { name: 'Appraisal Type' });
     
     // Verify initial disabled states
     await expect(addGoalBtn).toBeDisabled();
-    await expect(selectReviewerBtn).toBeDisabled(); 
-    await expect(selectTypeBtn).toBeDisabled();
-    console.log('✅ Initial form state: correct buttons disabled');
+    await expect(selectReviewerCombobox).toBeDisabled(); 
+    await expect(selectTypeCombobox).toBeDisabled();
+    console.log('✅ Initial form state: correct controls disabled');
     
-    // Try employee selection to see if it enables other buttons
-    await page.getByRole('button', { name: 'Select employee to appraise' }).click();
-    await page.waitForTimeout(500);
+    // Try opening employee dropdown to see options
+    await selectEmployeeCombobox.click();
+    await page.waitForTimeout(1000);
     
-    // Check if states changed
-    const reviewerEnabledAfter = await selectReviewerBtn.isEnabled();
-    const typeEnabledAfter = await selectTypeBtn.isEnabled();
+    // Look for employee options in the dropdown
+    const employeeOptions = page.locator('[role="option"]');
+    const optionCount = await employeeOptions.count();
+    console.log(`🔍 Found ${optionCount} employee option(s) in dropdown`);
     
-    console.log(`🔍 After employee selection attempt:`);
-    console.log(`  - Reviewer button enabled: ${reviewerEnabledAfter}`);
-    console.log(`  - Type button enabled: ${typeEnabledAfter}`);
+    if (optionCount > 0) {
+      // Select the first employee
+      await employeeOptions.first().click();
+      console.log('✅ Selected first employee from dropdown');
+      
+      // Wait a moment for form state to update
+      await page.waitForTimeout(1000);
+      
+      // Check if reviewer field is now enabled
+      const reviewerEnabledAfter = await selectReviewerCombobox.isEnabled();
+      const typeEnabledAfter = await selectTypeCombobox.isEnabled();
+      
+      console.log(`🔍 After employee selection:`);
+      console.log(`  - Reviewer control enabled: ${reviewerEnabledAfter}`);
+      console.log(`  - Type control enabled: ${typeEnabledAfter}`);
+    } else {
+      console.log('⚠️ No employee options found - skipping state change test');
+    }
   });
 });

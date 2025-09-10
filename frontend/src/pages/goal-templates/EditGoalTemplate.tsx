@@ -390,6 +390,7 @@ const EditGoalTemplate = () => {
               onClick={save}
               disabled={saving || loading}
               className="w-full sm:w-auto px-6"
+              data-testid="save-template"
             >
               {saving
                 ? "Saving..."
