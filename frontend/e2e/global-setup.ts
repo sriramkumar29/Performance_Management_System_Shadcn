@@ -37,10 +37,18 @@ export default async function globalSetup(_config: FullConfig) {
   
   console.log('✅ Backend is available')
 
-  // Skip test data setup since backend already has seeded data
-  console.log('🛠️ Using existing backend test data...')
+  // Ensure critical test data exists in the TEST backend & DB via API (no backend code changes)
+  console.log('🛠️ Ensuring test data (goal templates, etc.) in test backend...')
+  try {
+    const tdm = new TestDataManager(backendBase)
+    await tdm.setupTestEnvironment()
+    await tdm.ensureGoalTemplates()
+    console.log('✅ Test data ensured')
+  } catch (e) {
+    console.warn('⚠️ Test data ensure step failed, proceeding with existing data:', e)
+  }
   console.log('✅ Test environment ready')
   
   // Set global API base URL for tests to override frontend config
-  global.__API_BASE_URL__ = ''  // Use empty string for relative paths through proxy
+  global.__API_BASE_URL__ = backendBase  // Use direct backend URL for tests
 }

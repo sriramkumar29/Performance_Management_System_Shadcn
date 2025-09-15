@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
-from sqlalchemy import and_
+from sqlalchemy import and_, delete, insert
 from typing import List
 
 from app.db.database import get_db
-from app.models.goal import GoalTemplate, Goal, Category, AppraisalGoal
+from app.models.goal import GoalTemplate, Goal, Category, AppraisalGoal, goal_template_categories
 from app.schemas.goal import (
     GoalTemplateCreate,
     GoalTemplateUpdate,
@@ -154,7 +154,11 @@ async def update_goal_template(
 ):
     """Update a goal template."""
     
-    result = await db.execute(select(GoalTemplate).where(GoalTemplate.temp_id == template_id))
+    result = await db.execute(
+        select(GoalTemplate)
+        .options(selectinload(GoalTemplate.categories))
+        .where(GoalTemplate.temp_id == template_id)
+    )
     db_goal_template = result.scalars().first()
     
     if not db_goal_template:
@@ -167,28 +171,43 @@ async def update_goal_template(
     update_data = goal_template.model_dump(exclude={"categories"}, exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_goal_template, key, value)
+    # Ensure pending scalar changes are flushed before mutating relationships
+    await db.flush()
     
     # Update categories if provided
     if goal_template.categories is not None:
-        # Clear existing categories
-        db_goal_template.categories = []
-        
-        # Add new categories
+        # Delete existing associations directly to avoid lazy loading
+        await db.execute(
+            delete(goal_template_categories).where(
+                goal_template_categories.c.template_id == db_goal_template.temp_id
+            )
+        )
+
+        # Insert associations for provided categories
         for category_name in goal_template.categories:
+            # Get or create category id
             result = await db.execute(select(Category).where(Category.name == category_name))
             category = result.scalars().first()
-            
             if not category:
                 category = Category(name=category_name)
                 db.add(category)
                 await db.flush()
-            
-            db_goal_template.categories.append(category)
+            # Insert link row
+            await db.execute(
+                insert(goal_template_categories).values(
+                    template_id=db_goal_template.temp_id,
+                    category_id=category.id
+                )
+            )
     
     await db.commit()
-    await db.refresh(db_goal_template)
+    # Re-select with eager-loaded categories to avoid async lazy-load during serialization
+    result = await db.execute(
+        select(GoalTemplate).options(selectinload(GoalTemplate.categories)).where(GoalTemplate.temp_id == db_goal_template.temp_id)
+    )
+    loaded_template = result.scalars().first()
     
-    return db_goal_template
+    return loaded_template
 
 
 @router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)

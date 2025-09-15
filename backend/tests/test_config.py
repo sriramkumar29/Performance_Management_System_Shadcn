@@ -206,10 +206,11 @@ class TestSettings:
 
     def test_settings_development_vs_production(self):
         """Should have different configurations for development vs production."""
-        # Development settings
-        dev_settings = Settings()
-        assert dev_settings.DEBUG is True
-        assert dev_settings.APP_ENV == "development"
+        # Development settings - explicitly set environment
+        with patch.dict(os.environ, {"APP_ENV": "development", "DEBUG": "true"}):
+            dev_settings = Settings()
+            assert dev_settings.DEBUG is True
+            assert dev_settings.APP_ENV == "development"
         
         # Production settings
         with patch.dict(os.environ, {"APP_ENV": "production", "DEBUG": "false"}):

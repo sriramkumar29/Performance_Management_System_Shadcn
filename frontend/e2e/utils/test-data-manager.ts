@@ -18,9 +18,29 @@ export interface TestAppraisalType {
 
 export class TestDataManager {
   private baseURL: string;
+  private authToken: string | null = null;
 
   constructor(baseURL: string = 'http://localhost:7001') {
     this.baseURL = baseURL;
+  }
+
+  /**
+   * Authenticate with the backend and store access token for subsequent requests.
+   */
+  async login(email: string, password: string): Promise<boolean> {
+    try {
+      const res = await fetch(`${this.baseURL}/api/employees/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      this.authToken = data?.access_token || null;
+      return Boolean(this.authToken);
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -83,6 +103,71 @@ export class TestDataManager {
       await this.ensureAppraisalTypes();
     } catch (error) {
       console.warn('Test data setup failed, continuing with existing data:', error);
+    }
+  }
+
+  /**
+   * Ensure a minimal set of goal templates exist for UI listing/tests.
+   * Requires manager privileges.
+   */
+  async ensureGoalTemplates(): Promise<void> {
+    try {
+      // Try to log in as a seeded manager; fallback to CEO if needed
+      const loggedIn = (await this.login('lisa.manager@example.com', 'password123'))
+        || (await this.login('john.ceo@example.com', 'password123'));
+      if (!loggedIn) {
+        console.warn('Skipping goal template seeding: could not authenticate');
+        return;
+      }
+
+      const headers: HeadersInit = this.authToken
+        ? { 'Content-Type': 'application/json', Authorization: `Bearer ${this.authToken}` }
+        : { 'Content-Type': 'application/json' };
+
+      const templates = [
+        {
+          temp_title: 'Code Quality',
+          temp_description: 'Write clean, maintainable code with proper documentation and testing',
+          temp_performance_factor: 'Technical Excellence',
+          temp_importance: 'High',
+          temp_weightage: 30,
+          categories: ['Technical Skills', 'Quality Assurance']
+        },
+        {
+          temp_title: 'Team Collaboration',
+          temp_description: 'Work effectively with team members and contribute to team goals',
+          temp_performance_factor: 'Teamwork',
+          temp_importance: 'High',
+          temp_weightage: 25,
+          categories: ['Team Collaboration', 'Communication']
+        },
+        {
+          temp_title: 'Project Delivery',
+          temp_description: 'Deliver projects on time, within scope, and meeting quality standards',
+          temp_performance_factor: 'Delivery Excellence',
+          temp_importance: 'High',
+          temp_weightage: 35,
+          categories: ['Project Management']
+        }
+      ];
+
+      for (const tpl of templates) {
+        try {
+          const res = await fetch(`${this.baseURL}/api/goals/templates`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(tpl)
+          });
+          if (!res.ok && res.status !== 409) {
+            // 409 -> already exists (if backend supports conflict)
+            console.warn(`Failed to create template ${tpl.temp_title}: ${res.status}`);
+          }
+        } catch (e) {
+          console.warn(`Error creating template ${tpl.temp_title}:`, e);
+        }
+      }
+    } catch (e) {
+      console.warn('ensureGoalTemplates failed:', e);
     }
   }
 

@@ -8,7 +8,7 @@ from datetime import date, timedelta
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-import bcrypt
+from passlib.context import CryptContext
 
 # Set test environment BEFORE importing any app modules
 os.environ["APP_ENV"] = "test"
@@ -23,13 +23,16 @@ from app.models.appraisal import Appraisal  # Import Appraisal to register the c
 from app.models.appraisal_type import AppraisalType, AppraisalRange
 from app.models.goal import Category, GoalTemplate, Goal, AppraisalGoal
 
+# Use the same password context as the backend
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 # Create test engine and session
 test_engine = create_async_engine(settings.DATABASE_URL, echo=False)
 TestSessionLocal = sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
 def hash_password(password: str) -> str:
-    """Hash password using bcrypt."""
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    """Hash password using the same method as the backend."""
+    return pwd_context.hash(password)
 
 async def seed_test_data():
     """Seed the test database with minimal data for integration tests."""
