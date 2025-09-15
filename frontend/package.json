@@ -13,7 +13,8 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "test:integration": "vitest --config vitest.integration.config.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "heroku-postbuild": "cd client && npm install && npm run build"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.1",
