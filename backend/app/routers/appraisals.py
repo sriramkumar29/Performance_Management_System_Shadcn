@@ -24,8 +24,8 @@ from app.schemas.appraisal import (
 
 from app.routers.auth import get_current_user
 
-router = APIRouter(dependencies=[Depends(get_current_user)])
-
+# router = APIRouter(dependencies=[Depends(get_current_user)])
+router = APIRouter()
 
 @router.post("/", response_model=AppraisalWithGoals, status_code=status.HTTP_201_CREATED)
 async def create_appraisal(
@@ -149,27 +149,27 @@ async def read_appraisals(
     status: AppraisalStatus = None,
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Get all appraisals, optionally filtered by appraisee, appraiser, reviewer, or status."""
     
     query = select(Appraisal)
     
-    if appraisee_id:
-        query = query.where(Appraisal.appraisee_id == appraisee_id)
+    # if appraisee_id:
+    #     query = query.where(Appraisal.appraisee_id == appraisee_id)
     
-    if appraiser_id:
-        query = query.where(Appraisal.appraiser_id == appraiser_id)
+    # if appraiser_id:
+    #     query = query.where(Appraisal.appraiser_id == appraiser_id)
     
-    if reviewer_id:
-        query = query.where(Appraisal.reviewer_id == reviewer_id)
+    # if reviewer_id:
+    #     query = query.where(Appraisal.reviewer_id == reviewer_id)
     
-    if status:
-        query = query.where(Appraisal.status == status)
+    # if status:
+    #     query = query.where(Appraisal.status == status)
     
     result = await db.execute(query.offset(skip).limit(limit))
     appraisals = result.scalars().all()
-    
+    print("\nAppraisals fetched:", appraisals)  # Debugging line
     return appraisals
 
 

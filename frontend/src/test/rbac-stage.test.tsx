@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
-import { render, userEvent, setupAuthTokens } from './test-utils'
+import { screen} from '@testing-library/react'
+import { render, setupAuthTokens } from './test-utils'
 import { server } from './mocks/server'
-import { http, HttpResponse } from 'msw'
 
 // Mock components for testing RBAC behavior
 const MockAppraisalView = ({ appraisalId, userRole, status }: { 
@@ -485,7 +484,6 @@ describe('RBAC and Stage-based Access Control', () => {
 
   describe('Field Read-only Enforcement', () => {
     it('should make fields read-only after submission at each stage', async () => {
-      const user = userEvent.setup()
       
       // Test self assessment becomes read-only after submission
       const { rerender } = render(

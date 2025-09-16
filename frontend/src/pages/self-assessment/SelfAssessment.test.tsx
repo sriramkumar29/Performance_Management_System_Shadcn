@@ -5,17 +5,6 @@ import { http, HttpResponse } from "msw";
 import { server } from "../../test/mocks/server";
 import SelfAssessment from "./SelfAssessment";
 
-interface Goal {
-  goal_id: number;
-  goal_title: string;
-  goal_description?: string | null;
-  goal_weightage: number;
-  self_comment?: string | null;
-  self_rating?: number | null;
-  appraiser_comment?: string | null;
-  appraiser_rating?: number | null;
-}
-
 const mockUseAuth = vi.fn();
 vi.mock("../../contexts/AuthContext", () => ({
   useAuth: mockUseAuth,

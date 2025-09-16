@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { Input } from "../../components/ui/input";
+// import axios from 'axios';
 
 type Appraisal = {
   appraisal_id: number;
@@ -123,6 +124,21 @@ const MyAppraisal = () => {
         setAppraisalsError(res.error || "Failed to fetch appraisals");
       }
       setAppraisalsLoading(false);
+
+      // empId++;
+      // empId--;
+      // const res = await axios.get<Appraisal[]>(
+      //   `http://localhost:7000/api/appraisals?skip=0&limit=100`
+      // );
+      // console.log("Appraisals fetch response:", res);
+      
+      // if (res.data) {
+      //   setAppraisals(res.data);
+      // } else {
+      //   setAppraisalsError(res.statusText);
+      // }
+      // setAppraisalsLoading(false);
+      
     };
     if (user?.emp_id) loadAppraisals(user.emp_id);
   }, [user?.emp_id]);
