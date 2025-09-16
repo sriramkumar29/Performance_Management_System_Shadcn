@@ -12,14 +12,13 @@ export type ApiResult<T> = {
 let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
 
-// Get base URL from window override (preferred) or environment, else empty string for relative paths
+// Get base URL from environment or use empty string for relative paths
 function getApiBaseUrl(): string {
-  // Allow tests to override via window.__API_BASE_URL__ (takes precedence)
-  const win = typeof window !== 'undefined' ? (window as any) : undefined;
-  const winUrl = win && win.__API_BASE_URL__;
   // Resolve lazily so test setup can mutate import.meta.env at runtime
   const envUrl = (import.meta as any)?.env?.VITE_API_BASE_URL || '';
-  return (winUrl || envUrl || '') as string;
+  // Allow tests to override via window.__API_BASE_URL__
+  const win = typeof window !== 'undefined' ? (window as any) : undefined;
+  return (envUrl || (win && win.__API_BASE_URL__) || '') as string;
 }
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT ?? 10000);
 const API_RETRIES = Number(import.meta.env.VITE_API_RETRIES ?? 3);
@@ -95,7 +94,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
     }
 
     try {
-      const   res = await fetch(fullUrl, {
+      const res = await fetch(fullUrl, {
         ...init,
         headers: {
           ...baseHeaders,
@@ -211,14 +210,6 @@ export const api = {
     });
   },
   
-  /**
-   * PUT request with JSON body.
-   *
-   * @param path URL path
-   * @param data Optional JSON-serializable data to send in the request body
-   * @param init Optional `RequestInit` object
-   * @returns Result of the API call
-   */
   put: async <T>(path: string, data?: unknown, init?: RequestInit) => {
     return apiFetch<T>(path, {
       method: 'PUT',
