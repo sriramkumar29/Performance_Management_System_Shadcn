@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 # Set test environment BEFORE importing any app modules
-os.environ["APP_ENV"] = "test"
+os.environ["APP_ENV"] = "development"
 
 # Import config after setting environment
 from app.core.config import settings

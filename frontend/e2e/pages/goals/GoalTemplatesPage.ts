@@ -11,6 +11,12 @@ interface GoalTemplate {
 }
 
 export class GoalTemplatesPage {
+  openCreateTemplate() {
+    throw new Error('Method not implemented.');
+  }
+  saveTemplateAndReturnToList() {
+    throw new Error('Method not implemented.');
+  }
   readonly page: Page;
   readonly createTemplateButton: Locator;
   readonly templateNameInput: Locator;

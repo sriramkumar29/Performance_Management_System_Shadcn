@@ -4,7 +4,7 @@ SELECT * FROM appraisals;
 
 SELECT * FROM appraisal_types;
 
-SELECT * FROM appraisal_ranges;
+SELECT * FROM appraisal_ranges;	
 
 SELECT * FROM categories;
 

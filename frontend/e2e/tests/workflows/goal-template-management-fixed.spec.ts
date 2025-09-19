@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { LoginPage } from '../../pages/auth/LoginPage';
 import { GoalTemplatesPage } from '../../pages/goals/GoalTemplatesPage';
 
+
 test.describe("Goal Template Management - Fixed Version", () => {
   let loginPage: LoginPage;
   let templatesPage: GoalTemplatesPage;
@@ -125,4 +126,114 @@ test.describe("Goal Template Management - Fixed Version", () => {
     await expect(page).toHaveURL(/.*\/goal-templates\/new/);
     console.log("✅ Access to template creation granted");
   });
+
+  // test("Manager can create a goal template end-to-end", async ({ page }) => {
+  //   const loginPage = new LoginPage(page);
+  //   const templatesPage = new GoalTemplatesPage(page);
+
+  //   // Login as Manager
+  //   await loginPage.goto();
+  //   await loginPage.loginSuccessfully(
+  //     "lisa.manager@example.com",
+  //     "password123"
+  //   );
+
+//     // Navigate to Manage Goal Templates and open create
+//     await templatesPage.goto();
+//     await templatesPage.openCreateTemplate();
+
+//     const templateName = `E2E Template ${Date.now()}`;
+//     await templatesPage.fillTemplateForm({
+//       title: templateName,
+//       description: "E2E-created template description",
+//       performanceFactor: "Technical Excellence",
+//       weight: 100,
+//       importance: "High",
+//     });
+//     await templatesPage.saveTemplateAndReturnToList();
+
+//     // Verify template exists and shows 100%
+//     await templatesPage.expectTemplateVisible(templateName);
+//     const createdItem = page
+//       .locator('[data-testid="template-item"]')
+//       .filter({ hasText: templateName })
+//       .first();
+//     await expect(createdItem).toContainText("100%");
+//   });
+
+//   test("Manager can edit an existing goal template and add categories", async ({
+//     page,
+//   }) => {
+//     const loginPage = new LoginPage(page);
+//     const templatesPage = new GoalTemplatesPage(page);
+
+//     // Login as Manager
+//     await loginPage.goto();
+//     await loginPage.loginSuccessfully(
+//       "lisa.manager@example.com",
+//       "password123"
+//     );
+
+//     // Create a template to edit
+//     await templatesPage.goto();
+//     await templatesPage.openCreateTemplate();
+//     const baseName = `E2E Edit Template ${Date.now()}`;
+//     await templatesPage.fillTemplateForm({
+//       title: baseName,
+//       weight: 100,
+//       performanceFactor: "Initial PF",
+//       importance: "Medium",
+//     });
+//     await templatesPage.saveTemplateAndReturnToList();
+
+//     // Open edit and update fields
+//     await templatesPage.openEditTemplate(baseName);
+//     const updatedName = `${baseName} (Updated)`;
+//     await templatesPage.fillTemplateForm({
+//       title: updatedName,
+//       description: "Updated description for E2E",
+//       weight: 60,
+//       performanceFactor: "Updated PF",
+//       importance: "High",
+//     });
+//     await templatesPage.addCategory("Innovation");
+//     await templatesPage.saveTemplateAndReturnToList();
+
+//     // Verify updates
+//     const updatedItem = page
+//       .locator('[data-testid="template-item"]')
+//       .filter({ hasText: updatedName })
+//       .first();
+//     await expect(updatedItem).toBeVisible({ timeout: 10000 });
+//     await expect(updatedItem).toContainText("60%");
+//     await expect(updatedItem).toContainText("Innovation");
+//   });
+
+//   test("Manager can delete an existing goal template", async ({ page }) => {
+//     const loginPage = new LoginPage(page);
+//     const templatesPage = new GoalTemplatesPage(page);
+
+//     // Login as Manager
+//     await loginPage.goto();
+//     await loginPage.loginSuccessfully(
+//       "lisa.manager@example.com",
+//       "password123"
+//     );
+
+//     // Create a template to delete
+//     await templatesPage.goto();
+//     await templatesPage.openCreateTemplate();
+//     const deleteName = `E2E Delete Template ${Date.now()}`;
+//     await templatesPage.fillTemplateForm({
+//       title: deleteName,
+//       weight: 100,
+//       performanceFactor: "PF",
+//       importance: "Low",
+//     });
+//     await templatesPage.saveTemplateAndReturnToList();
+
+//     // Delete and verify removal
+//     await templatesPage.deleteTemplate(deleteName);
+//   });
+
 });

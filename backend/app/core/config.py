@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     """Application settings."""
 
     # Database settings - defaults to development, overridden by env files
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:sri%40123@localhost:5432/Performance_Management"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:sri%40123@localhost:5432/performance_management_test"
 
     # Security settings
     SECRET_KEY: str = "60b2c32eac0fe0b3b026b112ab8f7d6c996b88a9d20467bd1c7a5681d46e0e09"  # Change in production
@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     BASE_PATH: str = "/"
 
     # CORS settings
-    CORS_ORIGINS: list[str] = ["http://localhost:5173"]
+    CORS_ORIGINS: str = "http://localhost:5173"
 
     # Environment variables
     APP_ENV: str = "development"
