@@ -149,8 +149,7 @@ async def read_appraisals(
     status: AppraisalStatus = None,
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),
-    current_user: Employee = Depends(get_current_user)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get all appraisals, optionally filtered by appraisee, appraiser, reviewer, or status."""
     

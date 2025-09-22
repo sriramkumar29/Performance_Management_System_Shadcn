@@ -195,7 +195,7 @@ async def create_employee(
         )
 
 
-@router.get("/", response_model=List[EmployeeResponse])
+@router.get("", response_model=List[EmployeeResponse])
 async def read_employees(
     skip: int = 0,
     limit: int = 100,

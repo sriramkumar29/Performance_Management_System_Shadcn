@@ -100,7 +100,7 @@ const MyAppraisal = () => {
   useEffect(() => {
     const loadTypes = async () => {
       setTypesStatus("loading");
-      const res = await apiFetch<AppraisalType[]>("/api/appraisal-types");
+      const res = await apiFetch<AppraisalType[]>("/api/appraisal-types/");
       if (res.ok && res.data) {
         setTypes(res.data);
         setTypesStatus("succeeded");
@@ -116,7 +116,7 @@ const MyAppraisal = () => {
       setAppraisalsLoading(true);
       setAppraisalsError(null);
       const res = await apiFetch<Appraisal[]>(
-        `/api/appraisals?appraisee_id=${encodeURIComponent(empId)}`
+        `/api/appraisals/?appraisee_id=${encodeURIComponent(empId)}`
       );
       if (res.ok && res.data) {
         setAppraisals(res.data);

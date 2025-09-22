@@ -13,13 +13,56 @@ let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
 
 // Get base URL from environment or use empty string for relative paths
+// function getApiBaseUrl(): string {
+//   // Force empty string in production to use relative URLs and avoid mixed content
+//   if (import.meta.env.PROD) {
+//     return '';
+//   }
+  
+//   // Resolve lazily so test setup can mutate import.meta.env at runtime
+//   const envUrl = (import.meta as any)?.env?.VITE_API_BASE_URL || '';
+//   // Allow tests to override via window.__API_BASE_URL__
+//   const win = typeof window !== 'undefined' ? (window as any) : undefined;
+//   return (envUrl || (win && win.__API_BASE_URL__) || '') as string;
+// }
+
+
+// function getApiBaseUrl(): string {
+//   // Force empty string in production to use relative URLs and avoid mixed content
+//   if (import.meta.env.PROD) {
+//     return '';
+//   }
+  
+//   // In development, ensure we use HTTPS if we have a full URL
+//   const envUrl = (import.meta as any)?.env?.VITE_API_BASE_URL || '';
+//   const win = typeof window !== 'undefined' ? (window as any) : undefined;
+//   let result = (envUrl || (win && win.__API_BASE_URL__) || '') as string;
+  
+//   // Convert HTTP to HTTPS if it's a full URL
+//   if (result.startsWith('http://')) {
+//     result = result.replace('http://', 'https://');
+//   }
+
+//   return result;
+// }
+
 function getApiBaseUrl(): string {
+  // Force empty string in production to use relative URLs and avoid mixed content
+  if (import.meta.env.PROD || import.meta.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'production') {
+    console.log('Production mode: using relative URLs');
+    return 'https://hibiz-tr-wsf-dev-1ac682fa9c0e.herokuapp.com';
+  }
+  
   // Resolve lazily so test setup can mutate import.meta.env at runtime
   const envUrl = (import.meta as any)?.env?.VITE_API_BASE_URL || '';
   // Allow tests to override via window.__API_BASE_URL__
   const win = typeof window !== 'undefined' ? (window as any) : undefined;
-  return (envUrl || (win && win.__API_BASE_URL__) || '') as string;
+  const result = (envUrl || (win && win.__API_BASE_URL__) || '') as string;
+  
+  console.log('Development mode - API Base URL:', result);
+  return result;
 }
+
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT ?? 10000);
 const API_RETRIES = Number(import.meta.env.VITE_API_RETRIES ?? 3);
 
@@ -64,6 +107,8 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
   const cleanPath = path.replace(/^\/+/, '');
   const apiPath = cleanPath.startsWith('api/') ? `/${cleanPath}` : `/api/${cleanPath}`;
   const fullUrl = isAbsolute ? path : `${getApiBaseUrl()}${apiPath}`;
+  console.log('Final URL being used:', fullUrl);
+  console.log('getApiBaseUrl() returned:', getApiBaseUrl());
 
   // Get JWT token from sessionStorage
   const token = sessionStorage.getItem('auth_token');

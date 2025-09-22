@@ -424,7 +424,7 @@ const CreateAppraisal = () => {
 
   const fetchAppraisalTypes = async () => {
     try {
-      const res = await apiFetch<AppraisalType[]>("/api/appraisal-types");
+      const res = await apiFetch<AppraisalType[]>("/api/appraisal-types/");
       if (res.ok && res.data) {
         setAppraisalTypes(res.data);
       } else {
