@@ -11,6 +11,11 @@ from app.models.goal import Goal, AppraisalGoal, Category
 from app.schemas.appraisal import AppraisalWithGoals
 
 from app.routers.auth import get_current_user
+from app.constants import (
+    APPRAISAL_NOT_FOUND,
+    GOAL_NOT_FOUND,
+    GOAL_NOT_IN_APPRAISAL
+)
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 
@@ -30,7 +35,7 @@ async def add_goal_to_appraisal(
     if not db_appraisal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal not found"
+            detail=APPRAISAL_NOT_FOUND
         )
     
     # Check if appraisal is in Draft status (only allow adding goals in Draft)
@@ -47,7 +52,7 @@ async def add_goal_to_appraisal(
     if not db_goal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Goal not found"
+            detail=GOAL_NOT_FOUND
         )
     
     # Ensure the goal is not already assigned to another appraisal
@@ -129,7 +134,7 @@ async def remove_goal_from_appraisal(
     if not db_appraisal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal not found"
+            detail=APPRAISAL_NOT_FOUND
         )
     
     # Check if appraisal is in Draft status (only allow removing goals in Draft)
@@ -153,7 +158,7 @@ async def remove_goal_from_appraisal(
     if not appraisal_goal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Goal not found in this appraisal"
+            detail=GOAL_NOT_IN_APPRAISAL
         )
     
     # Delete the appraisal-goal link first
@@ -204,7 +209,7 @@ async def get_appraisal_weightage_summary(
     if not db_appraisal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal not found"
+            detail=APPRAISAL_NOT_FOUND
         )
     
     # Calculate current total weightage

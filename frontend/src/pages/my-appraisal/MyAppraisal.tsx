@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { apiFetch } from "../../utils/api";
+import { apiFetch, api } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import {
@@ -31,7 +31,6 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { Input } from "../../components/ui/input";
-// import axios from 'axios';
 
 type Appraisal = {
   appraisal_id: number;
@@ -64,14 +63,428 @@ type AppraisalWithGoals = Appraisal & {
 };
 
 type AppraisalType = { id: number; name: string; has_range?: boolean };
+type FilterType = "Active" | "Completed" | "All";
 
-const MyAppraisal = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
+// Helper function to load appraisal types
+const useAppraisalTypes = () => {
   const [types, setTypes] = useState<AppraisalType[]>([]);
   const [typesStatus, setTypesStatus] = useState<
     "idle" | "loading" | "succeeded" | "failed"
   >("idle");
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadTypes = async () => {
+      setTypesStatus("loading");
+      const result = await api.get<AppraisalType[]>("/appraisal-types");
+      if (cancelled) return;
+
+      if (result.ok) {
+        setTypes(result.data || []);
+        setTypesStatus("succeeded");
+      } else {
+        setTypesStatus("failed");
+      }
+    };
+
+    if (typesStatus === "idle") {
+      loadTypes();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [typesStatus]);
+
+  return { types, typesStatus };
+};
+
+// Helper function to calculate completion percentage
+const calculateCompletionPct = (
+  selectedAppraisal: Appraisal | null,
+  detailsById: Record<number, AppraisalWithGoals | undefined>
+): number | null => {
+  if (!selectedAppraisal) return null;
+  const details = detailsById[selectedAppraisal.appraisal_id];
+  if (!details) return null;
+  const goals = details.appraisal_goals || [];
+  if (!goals.length) return 0;
+
+  const total = goals.reduce(
+    (acc, g) => acc + (g.goal?.goal_weightage ?? 0),
+    0
+  );
+  if (total <= 0) return 0;
+
+  const status = selectedAppraisal.status;
+  const useAppraiser =
+    status === "Appraiser Evaluation" ||
+    status === "Reviewer Evaluation" ||
+    status === "Complete";
+
+  const completed = goals.reduce((acc, g) => {
+    let done: boolean;
+    if (useAppraiser) {
+      done = g.appraiser_rating != null;
+    } else if (status === "Appraisee Self Assessment") {
+      done = g.self_rating != null;
+    } else {
+      done = false;
+    }
+    return acc + (done ? g.goal?.goal_weightage ?? 0 : 0);
+  }, 0);
+
+  return Math.round((completed / total) * 100);
+};
+
+// Helper function for appraisal filtering by period and type
+const useAppraisalFiltering = (
+  appraisals: Appraisal[],
+  period: Period,
+  searchTypeId: string,
+  searchName: string,
+  typeNameById: (id: number) => string
+) => {
+  const appraisalsInPeriod = useMemo(() => {
+    if (!period.startDate || !period.endDate) return appraisals;
+
+    const start = new Date(period.startDate);
+    const end = new Date(period.endDate);
+    return appraisals.filter(
+      (a) => new Date(a.end_date) >= start && new Date(a.start_date) <= end
+    );
+  }, [appraisals, period]);
+
+  const myActives = useMemo(
+    () =>
+      appraisalsInPeriod.filter(
+        (a) =>
+          a.status === "Submitted" || a.status === "Appraisee Self Assessment"
+      ),
+    [appraisalsInPeriod]
+  );
+
+  const myCompleted = useMemo(
+    () => appraisalsInPeriod.filter((a) => a.status === "Complete"),
+    [appraisalsInPeriod]
+  );
+
+  const combinedMine = useMemo(
+    () =>
+      [...myActives, ...myCompleted].sort(
+        (a, b) =>
+          new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
+      ),
+    [myActives, myCompleted]
+  );
+
+  const filteredMineSearch = useMemo(() => {
+    const q = searchName.trim().toLowerCase();
+    return combinedMine.filter((a) => {
+      const matchType =
+        searchTypeId === "all"
+          ? true
+          : a.appraisal_type_id === Number(searchTypeId);
+      const matchQuery = q
+        ? typeNameById(a.appraisal_type_id).toLowerCase().includes(q)
+        : true;
+      return matchType && matchQuery;
+    });
+  }, [combinedMine, searchTypeId, searchName, typeNameById]);
+
+  return {
+    appraisalsInPeriod,
+    myActives,
+    myCompleted,
+    combinedMine,
+    filteredMineSearch,
+  };
+};
+
+// Helper function to select the most relevant appraisal for overview
+const useSelectedAppraisal = (appraisals: Appraisal[], period: Period) => {
+  return useMemo(() => {
+    const now = new Date();
+    const activeStatuses = new Set(["Submitted", "Appraisee Self Assessment"]);
+
+    // Find upcoming active appraisals
+    const upcomingActive = appraisals.filter((a) => {
+      const end = new Date(a.end_date);
+      return activeStatuses.has(a.status) && end >= now;
+    });
+
+    // Return soonest active if available
+    const activeSoonest = [...upcomingActive].sort(
+      (a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime()
+    )[0];
+    if (activeSoonest) return activeSoonest;
+
+    // Fallback: most recent in period among allowed statuses
+    const inPeriod =
+      period.startDate && period.endDate
+        ? appraisals.filter(
+            (a) =>
+              new Date(a.end_date) >= new Date(period.startDate!) &&
+              new Date(a.start_date) <= new Date(period.endDate!)
+          )
+        : appraisals;
+
+    const allowedForOverview = inPeriod.filter(
+      (a) =>
+        a.status === "Submitted" ||
+        a.status === "Appraisee Self Assessment" ||
+        a.status === "Complete"
+    );
+
+    const latest = [...allowedForOverview].sort(
+      (a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
+    )[0];
+
+    return latest || null;
+  }, [appraisals, period]);
+};
+
+// Helper component for pagination controls
+const PaginationControls = ({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) => (
+  <div
+    className="inline-flex items-center gap-1 rounded-full border border-border bg-background/60 px-1.5 py-1 shadow-sm backdrop-blur flex-shrink-0 whitespace-nowrap"
+    aria-live="polite"
+  >
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+      disabled={currentPage <= 1}
+      title="Previous page"
+      aria-label="Previous page"
+      className="rounded-full hover:bg-primary/10"
+    >
+      <ArrowLeft className="h-4 w-4" />
+    </Button>
+    <span className="hidden sm:inline px-2 text-xs font-medium text-muted-foreground">
+      Page {currentPage} <span className="mx-1">/</span> {totalPages}
+    </span>
+    <span className="sr-only sm:hidden">
+      Page {currentPage} of {totalPages}
+    </span>
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+      disabled={currentPage >= totalPages}
+      title="Next page"
+      aria-label="Next page"
+      className="rounded-full hover:bg-primary/10"
+    >
+      <ArrowRight className="h-4 w-4" />
+    </Button>
+  </div>
+);
+
+// Helper function for self assessment navigation
+const useSelfAssessmentHandler = (
+  setActionError: (error: string | null) => void,
+  navigate: (path: string) => void
+) => {
+  return async (a: Appraisal) => {
+    try {
+      // If status is Submitted, move to Appraisee Self Assessment first
+      if (a.status === "Submitted") {
+        const res = await apiFetch(`/api/appraisals/${a.appraisal_id}/status`, {
+          method: "PUT",
+          body: JSON.stringify({ status: "Appraisee Self Assessment" }),
+        });
+        if (!res.ok) {
+          setActionError(res.error || "Failed to start self assessment");
+          return;
+        }
+      }
+      setActionError(null);
+      navigate(`/self-assessment/${a.appraisal_id}`);
+    } catch (e: any) {
+      console.error("Failed to start self assessment:", e);
+      setActionError("Unable to start self assessment");
+    }
+  };
+};
+
+// Helper component for appraisal status badge
+const AppraisalStatusBadge = ({
+  status,
+  displayStatus,
+}: {
+  status: string;
+  displayStatus: (s: string) => string;
+}) => {
+  if (status === "Complete") {
+    return (
+      <Badge className="bg-green-100 text-green-800 border-green-200">
+        Completed
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge
+      variant="secondary"
+      className={
+        status === "Submitted"
+          ? "bg-yellow-100 text-yellow-800 border-yellow-200"
+          : "bg-blue-100 text-blue-800 border-blue-200"
+      }
+    >
+      {displayStatus(status)}
+    </Badge>
+  );
+};
+
+// Helper component for appraisal action buttons
+const AppraisalActionButtons = ({
+  appraisal,
+  onSelfAssessment,
+  navigate,
+}: {
+  appraisal: Appraisal;
+  onSelfAssessment: (a: Appraisal) => void;
+  navigate: (path: string) => void;
+}) => {
+  if (
+    appraisal.status === "Submitted" ||
+    appraisal.status === "Appraisee Self Assessment"
+  ) {
+    const buttonText =
+      appraisal.status === "Submitted"
+        ? "Take Self Assessment"
+        : "Continue Self Assessment";
+
+    return (
+      <Button
+        onClick={() => onSelfAssessment(appraisal)}
+        className="bg-primary hover:bg-primary/90 text-primary-foreground"
+        aria-label={buttonText}
+        title={buttonText}
+      >
+        <span className="hidden sm:inline">{buttonText}</span>
+        <ArrowRight className="h-4 w-4 sm:ml-2" />
+      </Button>
+    );
+  }
+
+  if (appraisal.status === "Complete") {
+    return (
+      <Button
+        variant="outline"
+        onClick={() => navigate(`/appraisal/${appraisal.appraisal_id}`)}
+        className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
+        aria-label="View appraisal"
+        title="View appraisal"
+      >
+        <span className="hidden sm:inline">View</span>
+        <ArrowRight className="h-4 w-4 sm:ml-2" />
+      </Button>
+    );
+  }
+
+  return null;
+};
+
+// Helper component for filters section
+const AppraisalFilters = ({
+  showFilters,
+  searchName,
+  onSearchNameChange,
+  searchTypeId,
+  onSearchTypeIdChange,
+  types,
+  period,
+  onPeriodChange,
+}: {
+  showFilters: boolean;
+  searchName: string;
+  onSearchNameChange: (value: string) => void;
+  searchTypeId: string;
+  onSearchTypeIdChange: (value: string) => void;
+  types: AppraisalType[];
+  period: Period;
+  onPeriodChange: (period: Period) => void;
+}) => {
+  if (!showFilters) return null;
+
+  return (
+    <div id="my-filters" className="w-full">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="w-full md:flex-1 min-w-0">
+          <Label className="mb-1 block">Search</Label>
+          <Input
+            placeholder="Search appraisal type"
+            value={searchName}
+            onChange={(e) => onSearchNameChange(e.target.value)}
+          />
+        </div>
+        <div className="w-full md:w-40 flex-none">
+          <Label className="mb-1 block">Type</Label>
+          <Select value={searchTypeId} onValueChange={onSearchTypeIdChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="All types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All types</SelectItem>
+              {types.map((t) => (
+                <SelectItem key={t.id} value={String(t.id)}>
+                  {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-full md:basis-full xl:flex-1 min-w-0">
+          <PeriodFilter
+            defaultPreset="This Year"
+            value={period}
+            onChange={onPeriodChange}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Helper component for tab filter buttons
+const TabFilterButtons = ({
+  currentFilter,
+  onFilterChange,
+}: {
+  currentFilter: FilterType;
+  onFilterChange: (filter: FilterType) => void;
+}) => (
+  <div className="flex items-center gap-2">
+    {(["Active", "Completed", "All"] as const).map((filter) => (
+      <Button
+        key={filter}
+        variant={currentFilter === filter ? "default" : "outline"}
+        onClick={() => onFilterChange(filter)}
+        className={
+          currentFilter === filter ? "bg-primary text-primary-foreground" : ""
+        }
+      >
+        {filter}
+      </Button>
+    ))}
+  </div>
+);
+
+const MyAppraisal = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { types } = useAppraisalTypes();
   const [appraisals, setAppraisals] = useState<Appraisal[]>([]);
   const [appraisalsLoading, setAppraisalsLoading] = useState(false);
   const [appraisalsError, setAppraisalsError] = useState<string | null>(null);
@@ -89,34 +502,20 @@ const MyAppraisal = () => {
   const ITEMS_PER_PAGE = 5;
   const [myPage, setMyPage] = useState(1);
   // Filter for combined list
-  const [myFilter, setMyFilter] = useState<"Active" | "Completed" | "All">(
-    "All"
-  );
+  const [myFilter, setMyFilter] = useState<FilterType>("All");
   // Show/hide advanced filters and type filter
   const [showFilters, setShowFilters] = useState(false);
   const [searchTypeId, setSearchTypeId] = useState<string>("all");
   const [searchName, setSearchName] = useState("");
 
   useEffect(() => {
-    const loadTypes = async () => {
-      setTypesStatus("loading");
-      const res = await apiFetch<AppraisalType[]>("/api/appraisal-types/");
-      if (res.ok && res.data) {
-        setTypes(res.data);
-        setTypesStatus("succeeded");
-      } else {
-        setTypesStatus("failed");
-      }
-    };
-    if (typesStatus === "idle") loadTypes();
-  }, [typesStatus]);
+    if (!user?.emp_id) return;
 
-  useEffect(() => {
-    const loadAppraisals = async (empId: number) => {
+    const loadAppraisals = async () => {
       setAppraisalsLoading(true);
       setAppraisalsError(null);
       const res = await apiFetch<Appraisal[]>(
-        `/api/appraisals/?appraisee_id=${encodeURIComponent(empId)}`
+        `/api/appraisals/?appraisee_id=${encodeURIComponent(user.emp_id)}`
       );
       if (res.ok && res.data) {
         setAppraisals(res.data);
@@ -124,23 +523,8 @@ const MyAppraisal = () => {
         setAppraisalsError(res.error || "Failed to fetch appraisals");
       }
       setAppraisalsLoading(false);
-
-      // empId++;
-      // empId--;
-      // const res = await axios.get<Appraisal[]>(
-      //   `http://localhost:7000/api/appraisals?skip=0&limit=100`
-      // );
-      // console.log("Appraisals fetch response:", res);
-      
-      // if (res.data) {
-      //   setAppraisals(res.data);
-      // } else {
-      //   setAppraisalsError(res.statusText);
-      // }
-      // setAppraisalsLoading(false);
-      
     };
-    if (user?.emp_id) loadAppraisals(user.emp_id);
+    loadAppraisals();
   }, [user?.emp_id]);
 
   const formatDate = (iso: string) => {
@@ -157,89 +541,33 @@ const MyAppraisal = () => {
   }, [types]);
   const displayStatus = (status: string) =>
     status === "Submitted" ? "Waiting Acknowledgement" : status;
-  const now = new Date();
-  const activeStatuses = new Set<string>([
-    "Submitted",
-    "Appraisee Self Assessment",
-  ]);
-  const upcomingActive = (appraisals || []).filter((a) => {
-    const end = new Date(a.end_date);
-    return activeStatuses.has(a.status) && end >= now;
-  });
-  const selectedAppraisal = useMemo(() => {
-    const activeSoonest = [...upcomingActive].sort(
-      (a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime()
-    )[0];
-    if (activeSoonest) return activeSoonest;
-    // Fallback: most recent in period among allowed statuses
-    const inPeriod =
-      period.startDate && period.endDate
-        ? appraisals.filter(
-            (a) =>
-              new Date(a.end_date) >= new Date(period.startDate!) &&
-              new Date(a.start_date) <= new Date(period.endDate!)
-          )
-        : appraisals;
-    const allowedForOverview = inPeriod.filter(
-      (a) =>
-        a.status === "Submitted" ||
-        a.status === "Appraisee Self Assessment" ||
-        a.status === "Complete"
-    );
-    const latest = [...allowedForOverview].sort(
-      (a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
-    )[0];
-    return latest || null;
-  }, [upcomingActive, period, appraisals]);
+  const selectedAppraisal = useSelectedAppraisal(appraisals || [], period);
   const dueDateStr = selectedAppraisal
     ? formatDate(selectedAppraisal.end_date)
     : "—";
 
-  const appraisalsInPeriod = useMemo(() => {
-    if (!period.startDate || !period.endDate) return appraisals;
-    const start = new Date(period.startDate);
-    const end = new Date(period.endDate);
-    return appraisals.filter(
-      (a) => new Date(a.end_date) >= start && new Date(a.start_date) <= end
-    );
-  }, [appraisals, period]);
-
-  const myActives = useMemo(
-    () =>
-      appraisalsInPeriod.filter(
-        (a) =>
-          a.status === "Submitted" || a.status === "Appraisee Self Assessment"
-      ),
-    [appraisalsInPeriod]
-  );
-  const myCompleted = useMemo(
-    () => appraisalsInPeriod.filter((a) => a.status === "Complete"),
-    [appraisalsInPeriod]
+  const { myActives, myCompleted, combinedMine } = useAppraisalFiltering(
+    appraisals,
+    period,
+    searchTypeId,
+    searchName,
+    typeNameById
   );
 
-  const combinedMine = useMemo(
-    () =>
-      [...myActives, ...myCompleted].sort(
-        (a, b) =>
-          new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
-      ),
-    [myActives, myCompleted]
-  );
-  const filteredMine = useMemo(() => {
-    switch (myFilter) {
-      case "Active":
-        return myActives;
-      case "Completed":
-        return myCompleted;
-      default:
-        return combinedMine;
-    }
-  }, [myFilter, myActives, myCompleted, combinedMine]);
+  const { filteredMineSearch } = useMemo(() => {
+    const filteredByTab = (() => {
+      switch (myFilter) {
+        case "Active":
+          return myActives;
+        case "Completed":
+          return myCompleted;
+        default:
+          return combinedMine;
+      }
+    })();
 
-  // Apply Type filter
-  const filteredMineSearch = useMemo(() => {
     const q = searchName.trim().toLowerCase();
-    return filteredMine.filter((a) => {
+    const filteredBySearch = filteredByTab.filter((a) => {
       const matchType =
         searchTypeId === "all"
           ? true
@@ -249,7 +577,19 @@ const MyAppraisal = () => {
         : true;
       return matchType && matchQuery;
     });
-  }, [filteredMine, searchTypeId, searchName, typeNameById]);
+
+    return {
+      filteredMineSearch: filteredBySearch,
+    };
+  }, [
+    myFilter,
+    myActives,
+    myCompleted,
+    combinedMine,
+    searchTypeId,
+    searchName,
+    typeNameById,
+  ]);
 
   const listTotalPages = Math.max(
     1,
@@ -270,65 +610,29 @@ const MyAppraisal = () => {
   }, [filteredMineSearch.length, myFilter, searchTypeId, searchName]);
 
   useEffect(() => {
-    const loadDetails = async (appraisalId: number) => {
+    if (!selectedAppraisal || detailsById[selectedAppraisal.appraisal_id])
+      return;
+
+    const loadDetails = async () => {
       const res = await apiFetch<AppraisalWithGoals>(
-        `/api/appraisals/${encodeURIComponent(appraisalId)}`
+        `/api/appraisals/${encodeURIComponent(selectedAppraisal.appraisal_id)}`
       );
       if (res.ok && res.data) {
-        setDetailsById((prev) => ({ ...prev, [appraisalId]: res.data! }));
+        setDetailsById((prev) => ({
+          ...prev,
+          [selectedAppraisal.appraisal_id]: res.data!,
+        }));
       }
     };
-    if (selectedAppraisal && !detailsById[selectedAppraisal.appraisal_id]) {
-      loadDetails(selectedAppraisal.appraisal_id);
-    }
+    loadDetails();
   }, [selectedAppraisal?.appraisal_id, detailsById]);
 
-  const startOrContinueSelfAssessment = async (a: Appraisal) => {
-    try {
-      // If status is Submitted, move to Appraisee Self Assessment first
-      if (a.status === "Submitted") {
-        const res = await apiFetch(`/api/appraisals/${a.appraisal_id}/status`, {
-          method: "PUT",
-          body: JSON.stringify({ status: "Appraisee Self Assessment" }),
-        });
-        if (!res.ok) {
-          setActionError(res.error || "Failed to start self assessment");
-          return;
-        }
-      }
-      setActionError(null);
-      navigate(`/self-assessment/${a.appraisal_id}`);
-    } catch (e: any) {
-      setActionError("Unable to start self assessment");
-    }
-  };
+  const startOrContinueSelfAssessment = useSelfAssessmentHandler(
+    setActionError,
+    navigate
+  );
 
-  const completionPct = (() => {
-    if (!selectedAppraisal) return null;
-    const details = detailsById[selectedAppraisal.appraisal_id];
-    if (!details) return null;
-    const goals = details.appraisal_goals || [];
-    if (!goals.length) return 0;
-    const total = goals.reduce(
-      (acc, g) => acc + (g.goal?.goal_weightage ?? 0),
-      0
-    );
-    if (total <= 0) return 0;
-    const status = selectedAppraisal.status;
-    const useAppraiser =
-      status === "Appraiser Evaluation" ||
-      status === "Reviewer Evaluation" ||
-      status === "Complete";
-    const completed = goals.reduce((acc, g) => {
-      const done = useAppraiser
-        ? g.appraiser_rating != null
-        : status === "Appraisee Self Assessment"
-        ? g.self_rating != null
-        : false;
-      return acc + (done ? g.goal?.goal_weightage ?? 0 : 0);
-    }, 0);
-    return Math.round((completed / total) * 100);
-  })();
+  const completionPct = calculateCompletionPct(selectedAppraisal, detailsById);
   return (
     <div className="space-y-6 text-foreground">
       {/* Overview cards */}
@@ -414,85 +718,24 @@ const MyAppraisal = () => {
                   />
                 </Button>
                 {filteredMineSearch.length > 0 && (
-                  <div
-                    className="inline-flex items-center gap-1 rounded-full border border-border bg-background/60 px-1.5 py-1 shadow-sm backdrop-blur flex-shrink-0 whitespace-nowrap"
-                    aria-live="polite"
-                  >
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setMyPage((p) => Math.max(1, p - 1))}
-                      disabled={myPage <= 1}
-                      title="Previous page"
-                      aria-label="Previous page"
-                      className="rounded-full hover:bg-primary/10"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="hidden sm:inline px-2 text-xs font-medium text-muted-foreground">
-                      Page {myPage} <span className="mx-1">/</span>{" "}
-                      {listTotalPages}
-                    </span>
-                    <span className="sr-only sm:hidden">
-                      Page {myPage} of {listTotalPages}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() =>
-                        setMyPage((p) => Math.min(listTotalPages, p + 1))
-                      }
-                      disabled={myPage >= listTotalPages}
-                      title="Next page"
-                      aria-label="Next page"
-                      className="rounded-full hover:bg-primary/10"
-                    >
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <PaginationControls
+                    currentPage={myPage}
+                    totalPages={listTotalPages}
+                    onPageChange={setMyPage}
+                  />
                 )}
               </div>
             </div>
-            {showFilters && (
-              <div id="my-filters" className="w-full">
-                <div className="flex flex-wrap items-end gap-3">
-                  <div className="w-full md:flex-1 min-w-0">
-                    <Label className="mb-1 block">Search</Label>
-                    <Input
-                      placeholder="Search appraisal type"
-                      value={searchName}
-                      onChange={(e) => setSearchName(e.target.value)}
-                    />
-                  </div>
-                  <div className="w-full md:w-40 flex-none">
-                    <Label className="mb-1 block">Type</Label>
-                    <Select
-                      value={searchTypeId}
-                      onValueChange={(v) => setSearchTypeId(v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="All types" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All types</SelectItem>
-                        {types.map((t) => (
-                          <SelectItem key={t.id} value={String(t.id)}>
-                            {t.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="w-full md:basis-full xl:flex-1 min-w-0">
-                    <PeriodFilter
-                      defaultPreset="This Year"
-                      value={period}
-                      onChange={setPeriod}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
+            <AppraisalFilters
+              showFilters={showFilters}
+              searchName={searchName}
+              onSearchNameChange={setSearchName}
+              searchTypeId={searchTypeId}
+              onSearchTypeIdChange={setSearchTypeId}
+              types={types}
+              period={period}
+              onPeriodChange={setPeriod}
+            />
           </CardHeader>
           <CardContent>
             {actionError && (
@@ -516,41 +759,10 @@ const MyAppraisal = () => {
             ) : (
               <>
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant={myFilter === "Active" ? "default" : "outline"}
-                      onClick={() => setMyFilter("Active")}
-                      className={
-                        myFilter === "Active"
-                          ? "bg-primary text-primary-foreground"
-                          : ""
-                      }
-                    >
-                      Active
-                    </Button>
-                    <Button
-                      variant={myFilter === "Completed" ? "default" : "outline"}
-                      onClick={() => setMyFilter("Completed")}
-                      className={
-                        myFilter === "Completed"
-                          ? "bg-primary text-primary-foreground"
-                          : ""
-                      }
-                    >
-                      Completed
-                    </Button>
-                    <Button
-                      variant={myFilter === "All" ? "default" : "outline"}
-                      onClick={() => setMyFilter("All")}
-                      className={
-                        myFilter === "All"
-                          ? "bg-primary text-primary-foreground"
-                          : ""
-                      }
-                    >
-                      All
-                    </Button>
-                  </div>
+                  <TabFilterButtons
+                    currentFilter={myFilter}
+                    onFilterChange={setMyFilter}
+                  />
                 </div>
                 <div className="space-y-3">
                   {filteredMineSearch.length === 0 ? (
@@ -576,60 +788,15 @@ const MyAppraisal = () => {
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            {a.status === "Complete" ? (
-                              <Badge className="bg-green-100 text-green-800 border-green-200">
-                                Completed
-                              </Badge>
-                            ) : (
-                              <Badge
-                                variant="secondary"
-                                className={
-                                  a.status === "Submitted"
-                                    ? "bg-yellow-100 text-yellow-800 border-yellow-200"
-                                    : "bg-blue-100 text-blue-800 border-blue-200"
-                                }
-                              >
-                                {displayStatus(a.status)}
-                              </Badge>
-                            )}
-                            {a.status === "Submitted" ||
-                            a.status === "Appraisee Self Assessment" ? (
-                              <Button
-                                onClick={() => startOrContinueSelfAssessment(a)}
-                                className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                                aria-label={
-                                  a.status === "Submitted"
-                                    ? "Take Self Assessment"
-                                    : "Continue Self Assessment"
-                                }
-                                title={
-                                  a.status === "Submitted"
-                                    ? "Take Self Assessment"
-                                    : "Continue Self Assessment"
-                                }
-                              >
-                                <span className="hidden sm:inline">
-                                  {a.status === "Submitted"
-                                    ? "Take Self Assessment"
-                                    : "Continue Self Assessment"}
-                                </span>
-                                <ArrowRight className="h-4 w-4 sm:ml-2" />
-                              </Button>
-                            ) : null}
-                            {a.status === "Complete" ? (
-                              <Button
-                                variant="outline"
-                                onClick={() =>
-                                  navigate(`/appraisal/${a.appraisal_id}`)
-                                }
-                                className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
-                                aria-label="View appraisal"
-                                title="View appraisal"
-                              >
-                                <span className="hidden sm:inline">View</span>
-                                <ArrowRight className="h-4 w-4 sm:ml-2" />
-                              </Button>
-                            ) : null}
+                            <AppraisalStatusBadge
+                              status={a.status}
+                              displayStatus={displayStatus}
+                            />
+                            <AppraisalActionButtons
+                              appraisal={a}
+                              onSelfAssessment={startOrContinueSelfAssessment}
+                              navigate={navigate}
+                            />
                           </div>
                         </div>
                       </div>

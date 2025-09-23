@@ -16,10 +16,12 @@ from app.schemas.appraisal_type import (
 )
 
 from app.routers.auth import get_current_user
+from app.constants import (
+    APPRAISAL_TYPE_NOT_FOUND,
+    APPRAISAL_RANGE_NOT_FOUND
+)
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
-
-# router = APIRouter()
 
 
 # Appraisal Types endpoints
@@ -78,7 +80,7 @@ async def create_appraisal_range(
     if not appraisal_type:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Appraisal type not found"
+            detail=APPRAISAL_TYPE_NOT_FOUND
         )
     
     # Create new appraisal range
@@ -123,7 +125,7 @@ async def read_appraisal_range(
     if not appraisal_range:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal range not found"
+            detail=APPRAISAL_RANGE_NOT_FOUND
         )
     
     return appraisal_range
@@ -143,7 +145,7 @@ async def update_appraisal_range(
     if not db_appraisal_range:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal range not found"
+            detail=APPRAISAL_RANGE_NOT_FOUND
         )
     
     # Update appraisal range
@@ -170,7 +172,7 @@ async def delete_appraisal_range(
     if not db_appraisal_range:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal range not found"
+            detail=APPRAISAL_RANGE_NOT_FOUND
         )
     
     await db.delete(db_appraisal_range)
@@ -193,7 +195,7 @@ async def read_appraisal_type(
     if not appraisal_type:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal type not found"
+            detail=APPRAISAL_TYPE_NOT_FOUND
         )
     
     return appraisal_type
@@ -213,7 +215,7 @@ async def update_appraisal_type(
     if not db_appraisal_type:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal type not found"
+            detail=APPRAISAL_TYPE_NOT_FOUND
         )
     
     # Check if name already exists if updating name
@@ -251,7 +253,7 @@ async def delete_appraisal_type(
     if not db_appraisal_type:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal type not found"
+            detail=APPRAISAL_TYPE_NOT_FOUND
         )
     
     await db.delete(db_appraisal_type)
@@ -275,7 +277,7 @@ async def create_appraisal_range(
     if not appraisal_type:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Appraisal type not found"
+            detail=APPRAISAL_TYPE_NOT_FOUND
         )
     
     # Check if appraisal type has ranges enabled
@@ -342,7 +344,7 @@ async def read_appraisal_range(
     if not appraisal_range:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal range not found"
+            detail=APPRAISAL_RANGE_NOT_FOUND
         )
     
     return appraisal_range
@@ -362,7 +364,7 @@ async def update_appraisal_range(
     if not db_appraisal_range:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal range not found"
+            detail=APPRAISAL_RANGE_NOT_FOUND
         )
     
     # Check if name already exists for this appraisal type if updating name
@@ -405,7 +407,7 @@ async def delete_appraisal_range(
     if not db_appraisal_range:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal range not found"
+            detail=APPRAISAL_RANGE_NOT_FOUND
         )
     
     await db.delete(db_appraisal_range)

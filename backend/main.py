@@ -13,7 +13,6 @@ from starlette.exceptions import HTTPException
 from app.db.database import engine, Base
 from app.routers import employees, appraisals, goals, appraisal_types, appraisal_goals
 from app.core.config import settings
-# from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,54 +31,11 @@ app = FastAPI(
     root_path=settings.BASE_PATH if settings.BASE_PATH != "/" else ""
 )
 
-# # Add HTTPS redirect middleware for production
-# if os.getenv("hibiz-tr-wsf-dev") or os.getenv("NODE_ENV") == "production":
-#     from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
-#     app.add_middleware(HTTPSRedirectMiddleware)
-
-# Improved Heroku headers middleware
-# @app.middleware("http")
-# async def handle_heroku_headers(request: Request, call_next):
-#     # Handle Heroku's forwarded headers properly
-#     forwarded_proto = request.headers.get("x-forwarded-proto")
-#     forwarded_host = request.headers.get("x-forwarded-host")
-#     forwarded_port = request.headers.get("x-forwarded-port")
-#     forwarded_for = request.headers.get("x-forwarded-for")
-    
-#     # Set correct scheme for URL generation
-#     if forwarded_proto:
-#         request.scope["scheme"] = forwarded_proto
-    
-#     # Set correct host and port
-#     if forwarded_host:
-#         port = 443 if forwarded_proto == "https" else (int(forwarded_port) if forwarded_port else 80)
-#         request.scope["server"] = (forwarded_host, port)
-    
-#     # Set real client IP for logging/rate limiting
-#     if forwarded_for:
-#         # Get the first IP (original client) from the chain
-#         client_ip = forwarded_for.split(",")[0].strip()
-#         request.scope["client"] = (client_ip, 0)
-    
-#     response = await call_next(request)
-    
-#     # Add security headers in production
-#     if forwarded_proto == "https":
-#         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-#         response.headers["X-Content-Type-Options"] = "nosniff"
-#         response.headers["X-Frame-Options"] = "DENY"
-#         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    
-    # return response
-
-
-# app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="herokuapp.com")
-
 # Configure CORS using settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS.split(",") if isinstance(settings.CORS_ORIGINS, str) else settings.CORS_ORIGINS,  # Ensure it's a list,  # It's already a list
-    # allow_origins=settings.CORS_ORIGINS,
+    # allow_origins=settings.CORS_ORIGINS.split(",") if isinstance(settings.CORS_ORIGINS, str) else settings.CORS_ORIGINS,  # Ensure it's a list,  # It's already a list
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -162,9 +118,7 @@ if FRONTEND_DIR.exists():
     #             status_code=500,
     #             content={"detail": "Error serving frontend"}
     #         )
-        
-
-        
+                
 
 #     @app.exception_handler(404)
 #     async def not_found_handler(request: Request, exc: HTTPException):

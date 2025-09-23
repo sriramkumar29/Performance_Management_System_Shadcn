@@ -16,8 +16,13 @@ from passlib.context import CryptContext
 from fastapi import Request
 from pydantic import BaseModel
 from app.core.config import settings
+from app.constants import (
+    EMPLOYEE_NOT_FOUND,
+    REPORTING_MANAGER_NOT_FOUND,
+    get_entity_not_found_message
+)
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -47,7 +52,7 @@ async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
         "sub": employee.emp_email,
         "emp_id": employee.emp_id,
         "type": "access",
-        "exp": datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     }
     access_token = jwt.encode(access_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     
@@ -56,7 +61,7 @@ async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
         "sub": employee.emp_email,
         "emp_id": employee.emp_id,
         "type": "refresh",
-        "exp": datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        "exp": datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     }
     refresh_token = jwt.encode(refresh_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     
@@ -80,14 +85,14 @@ async def refresh_token(data: RefreshRequest, db: AsyncSession = Depends(get_db)
         result = await db.execute(select(Employee).where(Employee.emp_email == email))
         employee = result.scalars().first()
         if not employee:
-            raise HTTPException(status_code=401, detail="Employee not found")
+            raise HTTPException(status_code=401, detail=EMPLOYEE_NOT_FOUND)
         
         # Create new access token
         access_payload = {
             "sub": employee.emp_email,
             "emp_id": employee.emp_id,
             "type": "access",
-            "exp": datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         }
         new_access_token = jwt.encode(access_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         
@@ -96,7 +101,7 @@ async def refresh_token(data: RefreshRequest, db: AsyncSession = Depends(get_db)
             "sub": employee.emp_email,
             "emp_id": employee.emp_id,
             "type": "refresh",
-            "exp": datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+            "exp": datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
         }
         new_refresh_token = jwt.encode(refresh_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         
@@ -144,10 +149,10 @@ async def create_employee(
                 manager = result.scalars().first()
                 
                 if not manager:
-                    print(f"Reporting manager with ID {manager_id} not found")
+                    print(get_entity_not_found_message("Reporting manager", manager_id))
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Reporting manager with ID {manager_id} not found"
+                        detail=get_entity_not_found_message("Reporting manager", manager_id)
                     )
             
             # Hash the password before storing
@@ -222,7 +227,7 @@ async def read_employee_by_email(
     if not employee:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Employee not found"
+            detail=EMPLOYEE_NOT_FOUND
         )
     return employee
 
@@ -261,7 +266,7 @@ async def read_employee(
     if not employee:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Employee not found"
+            detail=EMPLOYEE_NOT_FOUND
         )
     
     return employee
@@ -281,7 +286,7 @@ async def read_employee_with_subordinates(
     if not employee:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Employee not found"
+            detail=EMPLOYEE_NOT_FOUND
         )
     
     return employee
@@ -302,7 +307,7 @@ async def update_employee(
     if not db_employee:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Employee not found"
+            detail=EMPLOYEE_NOT_FOUND
         )
     
     # Check if email already exists if updating email
@@ -324,7 +329,7 @@ async def update_employee(
         if not manager:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Reporting manager not found"
+                detail=REPORTING_MANAGER_NOT_FOUND
             )
         
         # Prevent circular reporting relationship
@@ -359,7 +364,7 @@ async def delete_employee(
     if not db_employee:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Employee not found"
+            detail=EMPLOYEE_NOT_FOUND
         )
     
     await db.delete(db_employee)

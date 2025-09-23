@@ -22,6 +22,12 @@ from app.schemas.goal import (
 )
 
 from app.routers.auth import get_current_user
+from app.constants import (
+    GOAL_NOT_FOUND,
+    GOAL_TEMPLATE_NOT_FOUND, 
+    APPRAISAL_GOAL_NOT_FOUND,
+    get_entity_not_found_message
+)
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 
@@ -140,7 +146,7 @@ async def read_goal_template(
     if not goal_template:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Goal template not found"
+            detail=GOAL_TEMPLATE_NOT_FOUND
         )
     
     return goal_template
@@ -160,7 +166,7 @@ async def update_goal_template(
     if not db_goal_template:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Goal template not found"
+            detail=GOAL_TEMPLATE_NOT_FOUND
         )
     
     # Update goal template fields
@@ -204,7 +210,7 @@ async def delete_goal_template(
     if not db_goal_template:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Goal template not found"
+            detail=GOAL_TEMPLATE_NOT_FOUND
         )
     
     await db.delete(db_goal_template)
@@ -229,7 +235,7 @@ async def create_goal(
         if not goal_template:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Goal template not found"
+                detail=GOAL_TEMPLATE_NOT_FOUND
             )
     
     # Validate category if provided
@@ -240,7 +246,7 @@ async def create_goal(
         if not category:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Category not found: {goal.category_id}"
+                detail=get_entity_not_found_message("Category", goal.category_id)
             )
     
     # Create new goal
@@ -286,7 +292,7 @@ async def read_goal(
     if not goal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Goal not found"
+            detail=GOAL_NOT_FOUND
         )
     
     return goal
@@ -306,7 +312,7 @@ async def update_goal(
     if not db_goal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Goal not found"
+            detail=GOAL_NOT_FOUND
         )
     
     # Update goal
@@ -342,7 +348,7 @@ async def delete_goal(
     if not db_goal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Goal not found"
+            detail=GOAL_NOT_FOUND
         )
     
     # Do not allow deleting a goal that is linked to any appraisal
@@ -448,7 +454,7 @@ async def read_appraisal_goal(
     if not appraisal_goal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal goal not found"
+            detail=APPRAISAL_GOAL_NOT_FOUND
         )
     
     return appraisal_goal
@@ -468,7 +474,7 @@ async def update_appraisal_goal(
     if not db_appraisal_goal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal goal not found"
+            detail=APPRAISAL_GOAL_NOT_FOUND
         )
     
     # Update appraisal goal
@@ -495,7 +501,7 @@ async def delete_appraisal_goal(
     if not db_appraisal_goal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal goal not found"
+            detail=APPRAISAL_GOAL_NOT_FOUND
         )
     
     # Delete the link record first

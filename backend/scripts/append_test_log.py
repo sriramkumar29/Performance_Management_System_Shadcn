@@ -6,14 +6,14 @@ Usage (PowerShell, from repo root):
 The script will append a timestamped section to backend/TEST_UPDATE_LOG.md.
 """
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 LOG_PATH = Path(__file__).resolve().parents[1] / "TEST_UPDATE_LOG.md"
 
 
 def append_entry(title: str, summary: str, files: str, commands: str, results: str, notes: str):
-    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     files_list = [f"- {f.strip()}" for f in files.split(",")] if files else []
     commands_list = [f"- {c.strip()}" for c in commands.split(",")] if commands else []
     entry = []

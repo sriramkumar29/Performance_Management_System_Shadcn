@@ -1,47 +1,36 @@
 import { useEffect, useState } from "react";
-import {
-  AlertCircle,
-  CheckCircle2,
-  Pencil,
-  Trash2,
-  Plus,
-  ChevronDown,
-  ChevronUp,
-  ArrowLeft,
-  FolderOpen,
-  Save,
-  Send,
-  X,
-  Target,
-} from "lucide-react";
+import { ArrowLeft, Save, Send, X } from "lucide-react";
 import AddGoalModal from "../../features/goals/AddGoalModal";
 import EditGoalModal from "../../features/goals/EditGoalModal";
 import ImportFromTemplateModal from "../../features/goals/ImportFromTemplateModal";
 import { useAuth } from "../../contexts/AuthContext";
-import { apiFetch } from "../../utils/api";
+
 import type { Dayjs } from "dayjs";
-import dayjs from "dayjs";
+
+import { getAddGoalDisabledReason } from "./helpers/uiHelpers";
+import {
+  fetchEmployees,
+  fetchAppraisalTypes,
+  fetchRanges,
+} from "./helpers/dataHelpers";
+import {
+  loadAppraisal as loadAppraisalHelper,
+  syncGoalChanges as syncGoalChangesHelper,
+  saveAppraisal,
+  submitAppraisal,
+} from "./helpers/appraisalHelpers";
+import {
+  handleAddGoal,
+  handleEditGoal,
+  calculateTotalWeightage,
+} from "./helpers/goalHelpers";
 import { Button } from "../../components/ui/button";
-import { toast } from "sonner";
-import { Label } from "../../components/ui/label";
-import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
-import {
-  Select as UiSelect,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "../../components/ui/select";
+import { toast } from "sonner";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Card,
-  CardHeader,
-  CardContent,
-  CardTitle,
-  CardDescription,
-} from "../../components/ui/card";
-import { Progress } from "../../components/ui/progress";
+
+import { GoalsSection } from "./components/GoalsSection";
+import { AppraisalDetailsForm } from "./components/AppraisalDetailsForm";
 
 // Types (kept same as modal)
 
@@ -105,6 +94,12 @@ const CreateAppraisal = () => {
   const params = useParams();
   const routeAppraisalId = params.id ? Number(params.id) : undefined;
 
+  // Helper function to get save button labels
+  const getSaveButtonLabel = (loading: boolean, isNew: boolean) => {
+    if (loading) return "Saving...";
+    return isNew ? "Save Draft" : "Save Changes";
+  };
+
   // Controlled form state
   const [formValues, setFormValues] = useState<AppraisalFormValues>({
     appraisee_id: 0,
@@ -116,7 +111,6 @@ const CreateAppraisal = () => {
   const [loading, setLoading] = useState(false);
   const [isAppraisalDetailsCollapsed, setIsAppraisalDetailsCollapsed] =
     useState(false);
-  // const [isCustomPeriod, setIsCustomPeriod] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [appraisalTypes, setAppraisalTypes] = useState<AppraisalType[]>([]);
   const [ranges, setRanges] = useState<AppraisalRange[]>([]);
@@ -142,101 +136,8 @@ const CreateAppraisal = () => {
   const isLocked =
     createdAppraisalId !== null && createdAppraisalStatus !== "Draft";
 
-  // Auto-calc period based on type and range selections
-  const computePeriod = (
-    typeMeta: AppraisalType | undefined,
-    rangeMeta?: AppraisalRange
-  ): [Dayjs, Dayjs] | undefined => {
-    if (!typeMeta) return undefined;
-    const year = new Date().getFullYear();
-    const t = typeMeta.name.toLowerCase();
-
-    if (!typeMeta.has_range) {
-      const start = dayjs(new Date(year, 0, 1));
-      const end = dayjs(new Date(year, 11, 31));
-      return [start as Dayjs, end as Dayjs];
-    }
-
-    if (!rangeMeta) return undefined;
-    const r = rangeMeta.name.toLowerCase();
-
-    if (t.includes("half") || t.includes("semi")) {
-      if (r.includes("1st") || r.includes("first")) {
-        return [
-          dayjs(new Date(year, 0, 1)) as Dayjs,
-          dayjs(new Date(year, 5, 30)) as Dayjs,
-        ];
-      }
-      if (r.includes("2nd") || r.includes("second")) {
-        return [
-          dayjs(new Date(year, 6, 1)) as Dayjs,
-          dayjs(new Date(year, 11, 31)) as Dayjs,
-        ];
-      }
-      return undefined;
-    }
-
-    if (t.includes("quarter")) {
-      if (r.includes("1st") || r.includes("first")) {
-        return [
-          dayjs(new Date(year, 0, 1)) as Dayjs,
-          dayjs(new Date(year, 2, 31)) as Dayjs,
-        ];
-      }
-      if (r.includes("2nd") || r.includes("second")) {
-        return [
-          dayjs(new Date(year, 3, 1)) as Dayjs,
-          dayjs(new Date(year, 5, 30)) as Dayjs,
-        ];
-      }
-      if (r.includes("3rd") || r.includes("third")) {
-        return [
-          dayjs(new Date(year, 6, 1)) as Dayjs,
-          dayjs(new Date(year, 8, 30)) as Dayjs,
-        ];
-      }
-      if (r.includes("4th") || r.includes("fourth")) {
-        return [
-          dayjs(new Date(year, 9, 1)) as Dayjs,
-          dayjs(new Date(year, 11, 31)) as Dayjs,
-        ];
-      }
-      return undefined;
-    }
-
-    if (t.includes("tri")) {
-      if (r.includes("1st") || r.includes("first")) {
-        return [
-          dayjs(new Date(year, 0, 1)) as Dayjs,
-          dayjs(new Date(year, 3, 30)) as Dayjs,
-        ];
-      }
-      if (r.includes("2nd") || r.includes("second")) {
-        return [
-          dayjs(new Date(year, 4, 1)) as Dayjs,
-          dayjs(new Date(year, 7, 31)) as Dayjs,
-        ];
-      }
-      if (r.includes("3rd") || r.includes("third")) {
-        return [
-          dayjs(new Date(year, 8, 1)) as Dayjs,
-          dayjs(new Date(year, 11, 31)) as Dayjs,
-        ];
-      }
-      return undefined;
-    }
-
-    return [
-      dayjs(new Date(year, 0, 1)) as Dayjs,
-      dayjs(new Date(year, 11, 31)) as Dayjs,
-    ];
-  };
-
   // UI derivations
-  const totalWeightageUi = goals.reduce(
-    (sum, g) => sum + g.goal.goal_weightage,
-    0
-  );
+  const totalWeightageUi = calculateTotalWeightage(goals);
   const appraiseeSelected = !!formValues.appraisee_id;
   const reviewerSelected = !!formValues.reviewer_id;
   const typeSelected = !!formValues.appraisal_type_id;
@@ -269,19 +170,15 @@ const CreateAppraisal = () => {
   const statusLabel = createdAppraisalId
     ? createdAppraisalStatus || "Draft"
     : "New Draft";
-  const addGoalDisabledReason = !canAddGoals
-    ? isLocked
-      ? "Appraisal not in Draft"
-      : !appraiseeSelected
-      ? "Select an employee first"
-      : !reviewerSelected
-      ? "Select a reviewer first"
-      : !typeSelected || !periodSelected
-      ? "Select appraisal type (and range) to set period"
-      : totalWeightageUi >= 100
-      ? "Total weightage reached"
-      : ""
-    : "";
+  const addGoalDisabledReason = getAddGoalDisabledReason({
+    canAddGoals,
+    isLocked,
+    appraiseeSelected,
+    reviewerSelected,
+    typeSelected,
+    periodSelected,
+    totalWeightageUi,
+  });
   const eligibleAppraisees = employees.filter(
     (emp) =>
       (emp.emp_roles_level ?? -1) <= appraiserLevel &&
@@ -294,7 +191,7 @@ const CreateAppraisal = () => {
   );
 
   const handleGoalAdded = (appraisalGoal: AppraisalGoal) => {
-    setGoals((prev) => [...prev, appraisalGoal]);
+    handleAddGoal(appraisalGoal, goals, setGoals, setAddGoalModalOpen);
     // Always stage added goals (even when appraisal already exists).
     // Actual DB insertion happens in syncGoalChanges() on Save/Submit.
     setGoalChanges((prev) => {
@@ -345,9 +242,8 @@ const CreateAppraisal = () => {
     });
   };
 
-  const handleEditGoal = (goal: AppraisalGoal) => {
-    setEditingGoal(goal);
-    setEditGoalModalOpen(true);
+  const handleEditGoalLocal = (goal: AppraisalGoal) => {
+    handleEditGoal(goal, setEditingGoal, setEditGoalModalOpen);
   };
 
   const handleRemoveGoal = async (goalId: number) => {
@@ -398,93 +294,32 @@ const CreateAppraisal = () => {
         });
       }
       setGoals((prev) => prev.filter((g) => g.goal.goal_id !== goalId));
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Failed to remove goal:", error);
       toast.error("Failed to remove goal", {
-        description: "Please try again.",
+        description: error.message || "Please try again.",
       });
     }
   };
 
-  const fetchEmployees = async () => {
-    try {
-      const res = await apiFetch<Employee[]>("/api/employees/");
-      if (res.ok && res.data) {
-        setEmployees(res.data);
-      } else {
-        toast.error("Failed to fetch employees", {
-          description: res.error || "Please try again.",
-        });
-      }
-    } catch {
-      toast.error("Failed to fetch employees", {
-        description: "Please try again.",
-      });
-    }
-  };
-
-  const fetchAppraisalTypes = async () => {
-    try {
-      const res = await apiFetch<AppraisalType[]>("/api/appraisal-types/");
-      if (res.ok && res.data) {
-        setAppraisalTypes(res.data);
-      } else {
-        toast.error("Failed to fetch appraisal types", {
-          description: res.error || "Please try again.",
-        });
-      }
-    } catch {
-      toast.error("Failed to fetch appraisal types", {
-        description: "Please try again.",
-      });
-    }
-  };
-
-  const fetchRanges = async (typeId: number) => {
-    try {
-      const res = await apiFetch<AppraisalRange[]>(
-        `/api/appraisal-types/ranges?appraisal_type_id=${typeId}`
-      );
-      if (res.ok && res.data) {
-        setRanges(res.data);
-      } else {
-        toast.error("Failed to fetch ranges", {
-          description: res.error || "Please try again.",
-        });
-      }
-    } catch {
-      toast.error("Failed to fetch ranges", {
-        description: "Please try again.",
-      });
-    }
-  };
+  // Data fetching functions moved to dataHelpers.ts
 
   const loadAppraisal = async (id: number) => {
     try {
       setLoading(true);
-      const res = await apiFetch(`/api/appraisals/${id}`);
-      if (!res.ok || !res.data)
-        throw new Error(res.error || "Failed to load appraisal");
-      const data = res.data as any;
-      setCreatedAppraisalId(data.appraisal_id ?? id);
-      setCreatedAppraisalStatus(data.status as AppraisalStatus);
-      if (Array.isArray(data.appraisal_goals)) {
-        setGoals(data.appraisal_goals);
-        setOriginalGoals([...data.appraisal_goals]);
-      }
-      const typeId = data.appraisal_type_id as number;
+      const {
+        appraisalId,
+        status,
+        goals: loadedGoals,
+        typeId,
+        formValues,
+      } = await loadAppraisalHelper(id);
+      setCreatedAppraisalId(appraisalId);
+      setCreatedAppraisalStatus(status);
+      setGoals(loadedGoals);
+      setOriginalGoals([...loadedGoals]);
       setSelectedTypeId(typeId);
-      // Note: ranges will be automatically fetched by the useEffect that watches selectedTypeId
-
-      setFormValues({
-        appraisee_id: data.appraisee_id,
-        reviewer_id: data.reviewer_id,
-        appraisal_type_id: data.appraisal_type_id,
-        appraisal_type_range_id: data.appraisal_type_range_id ?? undefined,
-        period: [dayjs(data.start_date), dayjs(data.end_date)] as [
-          Dayjs,
-          Dayjs
-        ],
-      });
+      setFormValues(formValues);
     } catch (error: any) {
       toast.error("Failed to load appraisal", {
         description: error.message || "Please try again.",
@@ -497,7 +332,13 @@ const CreateAppraisal = () => {
   useEffect(() => {
     (async () => {
       try {
-        await Promise.all([fetchEmployees(), fetchAppraisalTypes()]);
+        const [employeesData, appraisalTypesData] = await Promise.all([
+          fetchEmployees(),
+          fetchAppraisalTypes(),
+        ]);
+        setEmployees(employeesData);
+        setAppraisalTypes(appraisalTypesData);
+
         if (routeAppraisalId) {
           await loadAppraisal(routeAppraisalId);
         } else {
@@ -513,97 +354,21 @@ const CreateAppraisal = () => {
 
   // Automatically fetch ranges when appraisal type changes or appraisal types are loaded
   useEffect(() => {
-    if (selectedTypeId && appraisalTypes.length > 0) {
-      const typeMeta = appraisalTypes.find((t) => t.id === selectedTypeId);
-      if (typeMeta?.has_range) {
-        fetchRanges(selectedTypeId);
-      } else {
-        setRanges([]);
+    (async () => {
+      if (selectedTypeId && appraisalTypes.length > 0) {
+        const typeMeta = appraisalTypes.find((t) => t.id === selectedTypeId);
+        if (typeMeta?.has_range) {
+          const rangesData = await fetchRanges(selectedTypeId);
+          setRanges(rangesData);
+        } else {
+          setRanges([]);
+        }
       }
-    }
+    })();
   }, [selectedTypeId, appraisalTypes]);
 
   const syncGoalChanges = async (appraisalId: number) => {
-    const { added, removed, updated } = goalChanges;
-    const currentTotalWeightage = goals.reduce(
-      (sum, g) => sum + g.goal.goal_weightage,
-      0
-    );
-    if (currentTotalWeightage > 100) {
-      throw new Error(
-        `Total weightage cannot exceed 100%. Current: ${currentTotalWeightage}%`
-      );
-    }
-
-    try {
-      for (const goalId of removed) {
-        const removeRes = await apiFetch(
-          `/api/appraisals/${appraisalId}/goals/${goalId}`,
-          { method: "DELETE" }
-        );
-        if (!removeRes.ok)
-          throw new Error(removeRes.error || `Failed to remove goal ${goalId}`);
-      }
-
-      for (const goalData of added) {
-        // Only skip if this goal was already on the server for this appraisal
-        const alreadyOnServer = originalGoals.some(
-          (g) => g.goal.goal_id === goalData.goal.goal_id
-        );
-        if (alreadyOnServer) continue;
-
-        const createGoalRes = await apiFetch("/api/goals/", {
-          method: "POST",
-          body: JSON.stringify({
-            goal_template_id: goalData.goal.goal_template_id,
-            goal_title: goalData.goal.goal_title,
-            goal_description: goalData.goal.goal_description,
-            goal_performance_factor: goalData.goal.goal_performance_factor,
-            goal_importance: goalData.goal.goal_importance,
-            goal_weightage: goalData.goal.goal_weightage,
-            category_id: goalData.goal.category_id,
-          }),
-        });
-        if (!createGoalRes.ok || !createGoalRes.data)
-          throw new Error(createGoalRes.error || "Failed to create goal");
-        const createdGoalId = (createGoalRes.data as any).goal_id;
-        const attachRes = await apiFetch(
-          `/api/appraisals/${appraisalId}/goals/${createdGoalId}`,
-          { method: "POST" }
-        );
-        if (!attachRes.ok) {
-          await apiFetch(`/api/goals/${createdGoalId}`, {
-            method: "DELETE",
-          }).catch(() => {});
-          throw new Error(
-            attachRes.error || "Failed to attach goal to appraisal"
-          );
-        }
-      }
-
-      for (const goalData of updated) {
-        const updateRes = await apiFetch(
-          `/api/goals/${goalData.goal.goal_id}`,
-          {
-            method: "PUT",
-            body: JSON.stringify({
-              goal_title: goalData.goal.goal_title,
-              goal_description: goalData.goal.goal_description,
-              goal_performance_factor: goalData.goal.goal_performance_factor,
-              goal_importance: goalData.goal.goal_importance,
-              goal_weightage: goalData.goal.goal_weightage,
-              category_id: goalData.goal.category_id,
-            }),
-          }
-        );
-        if (!updateRes.ok)
-          throw new Error(
-            updateRes.error || `Failed to update goal ${goalData.goal.goal_id}`
-          );
-      }
-    } catch (error: any) {
-      throw new Error(`Failed to sync goal changes: ${error.message}`);
-    }
+    await syncGoalChangesHelper(appraisalId, goalChanges, originalGoals);
   };
 
   const handleSubmit = async () => {
@@ -620,10 +385,7 @@ const CreateAppraisal = () => {
       return;
     }
 
-    const currentTotalWeightage = goals.reduce(
-      (sum, g) => sum + g.goal.goal_weightage,
-      0
-    );
+    const currentTotalWeightage = calculateTotalWeightage(goals);
     if (currentTotalWeightage > 100) {
       toast.error("Invalid weightage", {
         description: `Total is ${currentTotalWeightage}% (> 100%).`,
@@ -633,57 +395,35 @@ const CreateAppraisal = () => {
 
     try {
       setLoading(true);
-      const body = {
-        appraisee_id: formValues.appraisee_id,
-        appraiser_id: user.emp_id,
-        reviewer_id: formValues.reviewer_id,
-        appraisal_type_id: formValues.appraisal_type_id,
-        appraisal_type_range_id: formValues.appraisal_type_range_id ?? null,
-        start_date: formValues.period?.[0]?.format("YYYY-MM-DD"),
-        end_date: formValues.period?.[1]?.format("YYYY-MM-DD"),
-        status: "Draft" as AppraisalStatus,
-      };
+      const newId = await saveAppraisal(
+        formValues,
+        user.emp_id,
+        createdAppraisalId ?? undefined
+      );
 
       if (!createdAppraisalId) {
-        const res = await apiFetch("/api/appraisals/", {
-          method: "POST",
-          body: JSON.stringify(body),
-        });
-        if (!res.ok || !res.data)
-          throw new Error(res.error || "Could not save draft");
-        const newId = (res.data as any).appraisal_id ?? (res.data as any).id;
         setCreatedAppraisalId(newId);
         setCreatedAppraisalStatus("Draft");
-        // Persist current goal changes immediately after creating the appraisal
-        // so that backend has attached goals before any status transition
-        try {
-          await syncGoalChanges(newId);
-          setGoalChanges({ added: [], removed: [], updated: [] });
-          // Refresh to ensure goals in state reflect server IDs (replacing any pseudo goals)
-          await loadAppraisal(newId);
-        } catch (e: any) {
-          // If syncing goals fails, surface a descriptive error and stop here
-          throw new Error(
-            e?.message || "Failed to sync goals after creating appraisal"
-          );
-        }
-        toast.success("Draft saved", {
-          description: "Your draft appraisal has been created.",
-        });
-      } else {
-        const res = await apiFetch(`/api/appraisals/${createdAppraisalId}`, {
-          method: "PUT",
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) throw new Error(res.error || "Could not save changes");
-        await syncGoalChanges(createdAppraisalId);
-        // Refresh to ensure goals in state reflect server IDs (replacing any pseudo goals)
-        await loadAppraisal(createdAppraisalId);
-        setGoalChanges({ added: [], removed: [], updated: [] });
-        toast.success("Saved", {
-          description: "Your changes have been saved.",
-        });
       }
+
+      // Persist current goal changes
+      try {
+        await syncGoalChanges(newId);
+        setGoalChanges({ added: [], removed: [], updated: [] });
+        // Refresh to ensure goals in state reflect server IDs (replacing any pseudo goals)
+        await loadAppraisal(newId);
+      } catch (e: any) {
+        // If syncing goals fails, surface a descriptive error and stop here
+        throw new Error(
+          e?.message || "Failed to sync goals after saving appraisal"
+        );
+      }
+
+      toast.success(createdAppraisalId ? "Saved" : "Draft saved", {
+        description: createdAppraisalId
+          ? "Your changes have been saved."
+          : "Your draft appraisal has been created.",
+      });
     } catch (error: any) {
       toast.error("Save failed", {
         description: error.message || "Please try again.",
@@ -716,35 +456,16 @@ const CreateAppraisal = () => {
     try {
       setLoading(true);
       // Save latest changes before submitting
-      const saveBody = {
-        appraisee_id: formValues.appraisee_id,
-        appraiser_id: user.emp_id,
-        reviewer_id: formValues.reviewer_id,
-        appraisal_type_id: formValues.appraisal_type_id,
-        appraisal_type_range_id: formValues.appraisal_type_range_id ?? null,
-        start_date: formValues.period?.[0]?.format("YYYY-MM-DD"),
-        end_date: formValues.period?.[1]?.format("YYYY-MM-DD"),
-        status: "Draft" as AppraisalStatus,
-      };
-      const saveRes = await apiFetch(`/api/appraisals/${createdAppraisalId}`, {
-        method: "PUT",
-        body: JSON.stringify(saveBody),
-      });
-      if (!saveRes.ok)
-        throw new Error(saveRes.error || "Could not save latest changes");
+      await saveAppraisal(
+        formValues,
+        user.emp_id,
+        createdAppraisalId ?? undefined
+      );
       await syncGoalChanges(createdAppraisalId);
       setGoalChanges({ added: [], removed: [], updated: [] });
 
-      // Update status to Submitted
-      const res = await apiFetch(
-        `/api/appraisals/${createdAppraisalId}/status`,
-        {
-          method: "PUT",
-          body: JSON.stringify({ status: "Submitted" }),
-        }
-      );
-      if (!res.ok)
-        throw new Error(res.error || "Could not submit for acknowledgement");
+      // Submit for acknowledgement
+      await submitAppraisal(createdAppraisalId);
       setCreatedAppraisalStatus("Submitted");
       toast.success("Submitted", {
         description: "Sent to appraisee for acknowledgement.",
@@ -789,473 +510,39 @@ const CreateAppraisal = () => {
       </div>
 
       {/* Appraisal Details */}
-      <Card>
-        <CardHeader
-          className="cursor-pointer"
-          onClick={() =>
-            setIsAppraisalDetailsCollapsed(!isAppraisalDetailsCollapsed)
-          }
-          role="button"
-          aria-expanded={!isAppraisalDetailsCollapsed}
-          aria-controls="appraisal-details-content"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              setIsAppraisalDetailsCollapsed(!isAppraisalDetailsCollapsed);
-            }
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base sm:text-lg">
-                Appraisal Details
-              </CardTitle>
-              <CardDescription className="text-sm sm:text-base">
-                Configure the basic information for this appraisal.
-              </CardDescription>
-            </div>
-            {isAppraisalDetailsCollapsed ? (
-              <ChevronDown className="h-5 w-5 text-muted-foreground" />
-            ) : (
-              <ChevronUp className="h-5 w-5 text-muted-foreground" />
-            )}
-          </div>
-        </CardHeader>
-        <div
-          id="appraisal-details-content"
-          className={`grid transition-all motion-reduce:transition-none duration-300 ease-in-out ${
-            isAppraisalDetailsCollapsed
-              ? "grid-rows-[0fr] opacity-0"
-              : "grid-rows-[1fr] opacity-100"
-          }`}
-        >
-          <div
-            className="overflow-hidden"
-            aria-hidden={isAppraisalDetailsCollapsed}
-          >
-            <CardContent>
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* Employee */}
-                <div className="grid gap-2">
-                  <Label>Employee</Label>
-                  <UiSelect
-                    value={
-                      formValues.appraisee_id
-                        ? String(formValues.appraisee_id)
-                        : undefined
-                    }
-                    onValueChange={(val) =>
-                      setFormValues((v) => ({
-                        ...v,
-                        appraisee_id: Number(val),
-                        reviewer_id: 0,
-                      }))
-                    }
-                    disabled={isLocked}
-                  >
-                    <SelectTrigger aria-label="Employee" role="combobox">
-                      <SelectValue placeholder="Select employee to appraise" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {eligibleAppraisees.map((emp) => (
-                        <SelectItem key={emp.emp_id} value={String(emp.emp_id)}>
-                          {emp.emp_name} ({emp.emp_email}){" "}
-                          {emp.emp_roles ? `- ${emp.emp_roles}` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </UiSelect>
-                  <p className="text-xs text-muted-foreground">
-                    Must be same level or lower than you.
-                  </p>
-                </div>
-
-                {/* Reviewer */}
-                <div className="grid gap-2">
-                  <Label>Reviewer</Label>
-                  <UiSelect
-                    value={
-                      formValues.reviewer_id
-                        ? String(formValues.reviewer_id)
-                        : undefined
-                    }
-                    onValueChange={(val) =>
-                      setFormValues((v) => ({ ...v, reviewer_id: Number(val) }))
-                    }
-                    disabled={!appraiseeSelected || isLocked}
-                  >
-                    <SelectTrigger aria-label="Reviewer" role="combobox">
-                      <SelectValue placeholder="Select reviewer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {eligibleReviewers.map((emp) => (
-                        <SelectItem key={emp.emp_id} value={String(emp.emp_id)}>
-                          {emp.emp_name} ({emp.emp_email}){" "}
-                          {emp.emp_roles ? `- ${emp.emp_roles}` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </UiSelect>
-                  <p className="text-xs text-muted-foreground">
-                    Must be same level or higher than you.
-                  </p>
-                </div>
-
-                {/* Appraisal Type */}
-                <div className="grid gap-2">
-                  <Label>Appraisal Type</Label>
-                  <UiSelect
-                    value={
-                      formValues.appraisal_type_id
-                        ? String(formValues.appraisal_type_id)
-                        : undefined
-                    }
-                    onValueChange={(val) => {
-                      const id = Number(val);
-                      setSelectedTypeId(id);
-                      const meta = appraisalTypes.find((t) => t.id === id);
-                      if (meta?.has_range) {
-                        setFormValues((v) => ({
-                          ...v,
-                          appraisal_type_id: id,
-                          appraisal_type_range_id: undefined,
-                          period: undefined,
-                        }));
-                        fetchRanges(id);
-                      } else {
-                        setRanges([]);
-                        const p = computePeriod(meta);
-                        setFormValues((v) => ({
-                          ...v,
-                          appraisal_type_id: id,
-                          appraisal_type_range_id: undefined,
-                          period: p,
-                        }));
-                      }
-                    }}
-                    disabled={!reviewerSelected || isLocked}
-                  >
-                    <SelectTrigger aria-label="Appraisal Type" role="combobox">
-                      <SelectValue placeholder="Select appraisal type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {appraisalTypes.map((type) => (
-                        <SelectItem key={type.id} value={String(type.id)}>
-                          {type.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </UiSelect>
-                  <p className="text-xs text-muted-foreground">
-                    Type determines the period automatically. If the type has
-                    ranges, choose one next.
-                  </p>
-                </div>
-
-                {/* Range (only if type has range) */}
-                {(() => {
-                  const meta = appraisalTypes.find(
-                    (t) => t.id === selectedTypeId
-                  );
-                  if (!meta?.has_range) return null;
-                  return (
-                    <div className="grid gap-2">
-                      <Label>Range</Label>
-                      <UiSelect
-                        value={
-                          formValues.appraisal_type_range_id
-                            ? String(formValues.appraisal_type_range_id)
-                            : undefined
-                        }
-                        onValueChange={(val) => {
-                          const rangeId = Number(val);
-                          const tMeta = appraisalTypes.find(
-                            (t) => t.id === selectedTypeId!
-                          );
-                          const r = ranges.find((rg) => rg.id === rangeId);
-                          const p = computePeriod(tMeta, r);
-                          setFormValues((v) => ({
-                            ...v,
-                            appraisal_type_range_id: rangeId,
-                            period: p,
-                          }));
-                        }}
-                        disabled={isLocked}
-                      >
-                        <SelectTrigger aria-label="Range" role="combobox">
-                          <SelectValue placeholder="Select range" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ranges.map((range) => (
-                            <SelectItem key={range.id} value={String(range.id)}>
-                              {range.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </UiSelect>
-                      <p className="text-xs text-muted-foreground">
-                        Range sets the exact start and end dates.
-                      </p>
-                    </div>
-                  );
-                })()}
-
-                {/* Appraisal Period */}
-                <div className="md:col-span-2">
-                  <div className="grid gap-2">
-                    <Label>Appraisal Period</Label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Input
-                        type="date"
-                        disabled={isLocked}
-                        value={
-                          formValues.period
-                            ? formValues.period[0].format("YYYY-MM-DD")
-                            : ""
-                        }
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            const newStartDate = dayjs(e.target.value);
-                            setFormValues((v) => ({
-                              ...v,
-                              period: [newStartDate, v.period?.[1] || dayjs()],
-                            }));
-                          }
-                        }}
-                        placeholder="Start Date"
-                      />
-                      <Input
-                        type="date"
-                        disabled={isLocked}
-                        value={
-                          formValues.period
-                            ? formValues.period[1].format("YYYY-MM-DD")
-                            : ""
-                        }
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            const newEndDate = dayjs(e.target.value);
-                            setFormValues((v) => ({
-                              ...v,
-                              period: [v.period?.[0] || dayjs(), newEndDate],
-                            }));
-                          }
-                        }}
-                        placeholder="End Date"
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Automatically calculated from appraisal type and range.
-                      Click on dates to manually adjust if needed.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </div>
-        </div>
-      </Card>
+      <AppraisalDetailsForm
+        formValues={formValues}
+        setFormValues={setFormValues}
+        employees={eligibleAppraisees}
+        eligibleReviewers={eligibleReviewers}
+        appraisalTypes={appraisalTypes}
+        ranges={ranges}
+        setRanges={setRanges}
+        selectedTypeId={selectedTypeId}
+        setSelectedTypeId={setSelectedTypeId}
+        isCollapsed={isAppraisalDetailsCollapsed}
+        onToggleCollapse={() =>
+          setIsAppraisalDetailsCollapsed(!isAppraisalDetailsCollapsed)
+        }
+        isLocked={isLocked}
+        onFetchRanges={fetchRanges}
+      />
 
       {/* Goals Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base sm:text-lg">Goals</CardTitle>
-              <CardDescription className="text-sm sm:text-base">
-                Add goals, set importance and weightage. Total must be 100%.
-              </CardDescription>
-            </div>
-            <div className="hidden sm:flex gap-2">
-              <Button
-                size="sm"
-                onClick={() => setAddGoalModalOpen(true)}
-                disabled={!canAddGoals}
-                data-testid="add-goal-toolbar"
-                aria-label="Add goal"
-                title={addGoalDisabledReason}
-              >
-                <Plus className="h-4 w-4" />
-                <span className="ml-2">Add Goal</span>
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setImportFromTemplateOpen(true)}
-                disabled={!canAddGoals}
-                aria-label="Import from templates"
-                title={addGoalDisabledReason}
-              >
-                <FolderOpen className="h-4 w-4 text-icon" />
-                <span className="ml-2">Import from Templates</span>
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {goals.length > 0 ? (
-            <>
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Total weightage</span>
-                  <span className="font-medium">{totalWeightageUi}%</span>
-                </div>
-              </div>
-              <Progress value={totalWeightageUi} />
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {goals.map((record) => (
-                  <Card
-                    key={record.goal.goal_id}
-                    className="group relative overflow-hidden border shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <CardHeader className="h-full p-4 pr-4 flex flex-col">
-                      {/* Weightage badge */}
-                      <div className="absolute top-2 right-2 rounded-full bg-primary/10 text-primary text-xs font-medium px-2 py-0.5">
-                        {record.goal.goal_weightage}%
-                      </div>
-
-                      {/* Header with icon and text */}
-                      <div className="flex items-start gap-2">
-                        <div className="p-2 rounded-md bg-primary/10 text-primary">
-                          <Target className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0 space-y-0.5">
-                          <CardTitle
-                            className="text-sm font-semibold truncate"
-                            title={record.goal.goal_title}
-                          >
-                            {record.goal.goal_title}
-                          </CardTitle>
-                          {record.goal.goal_description && (
-                            <CardDescription
-                              className="text-xs text-muted-foreground line-clamp-5 leading-snug"
-                              title={record.goal.goal_description}
-                            >
-                              {record.goal.goal_description}
-                            </CardDescription>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Spacer to push meta to bottom */}
-                      <div className="flex-1" />
-
-                      {/* Meta row at bottom */}
-                      <div className="pt-2 mt-auto flex flex-wrap items-center gap-2 text-xs">
-                        {record.goal.category?.name ? (
-                          <Badge variant="outline">
-                            {record.goal.category.name}
-                          </Badge>
-                        ) : null}
-                        <Badge
-                          variant={
-                            record.goal.goal_importance === "High"
-                              ? "destructive"
-                              : record.goal.goal_importance === "Medium"
-                              ? "warning"
-                              : "success"
-                          }
-                          title="Importance"
-                        >
-                          {record.goal.goal_importance}
-                        </Badge>
-                      </div>
-
-                      {/* Action buttons bottom-right (show on hover on larger screens) */}
-                      <div className="absolute bottom-2 right-2 flex items-center gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          disabled={isLocked}
-                          onClick={() => handleEditGoal(record)}
-                          aria-label="Edit goal"
-                          title="Edit goal"
-                        >
-                          <Pencil className="h-4 w-4 text-icon" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="destructive"
-                          disabled={isLocked}
-                          onClick={() => handleRemoveGoal(record.goal.goal_id)}
-                          aria-label="Remove goal"
-                          title="Remove goal"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardHeader>
-                  </Card>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="py-10 text-muted-foreground border border-dashed border-border rounded-lg">
-              <div className="flex flex-col items-center">
-                <div className="text-center">No goals added yet.</div>
-                <div className="mt-4 space-y-1 text-sm">
-                  <div className="flex items-center gap-2">
-                    {appraiseeSelected ? (
-                      <CheckCircle2 className="h-4 w-4 text-[hsl(var(--success))]" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 text-[hsl(var(--warning))]" />
-                    )}
-                    <span>Employee selected</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {reviewerSelected ? (
-                      <CheckCircle2 className="h-4 w-4 text-[hsl(var(--success))]" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 text-[hsl(var(--warning))]" />
-                    )}
-                    <span>Reviewer selected</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {typeSelected && periodSelected ? (
-                      <CheckCircle2 className="h-4 w-4 text-[hsl(var(--success))]" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 text-[hsl(var(--warning))]" />
-                    )}
-                    <span>Appraisal type and period set</span>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4 flex items-center gap-2 flex-wrap justify-center">
-                <Button
-                  size="sm"
-                  onClick={() => setAddGoalModalOpen(true)}
-                  disabled={!canAddGoals}
-                  className="gap-2"
-                  data-testid="add-goal-empty"
-                  aria-label="Add goal"
-                  title={addGoalDisabledReason}
-                >
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline sm:ml-2">Add Goal</span>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setImportFromTemplateOpen(true)}
-                  disabled={!canAddGoals}
-                  aria-label="Import from templates"
-                  title={addGoalDisabledReason}
-                >
-                  <FolderOpen className="h-4 w-4" />
-                  <span className="hidden sm:inline sm:ml-2">
-                    Import from Templates
-                  </span>
-                </Button>
-              </div>
-              {!canAddGoals && addGoalDisabledReason ? (
-                <p className="mt-2 text-xs text-muted-foreground text-center">
-                  {addGoalDisabledReason}
-                </p>
-              ) : null}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <GoalsSection
+        goals={goals}
+        canAddGoals={canAddGoals}
+        isLocked={isLocked}
+        addGoalDisabledReason={addGoalDisabledReason}
+        appraiseeSelected={appraiseeSelected}
+        reviewerSelected={reviewerSelected}
+        typeSelected={typeSelected}
+        periodSelected={periodSelected}
+        onAddGoal={() => setAddGoalModalOpen(true)}
+        onImportFromTemplate={() => setImportFromTemplateOpen(true)}
+        onEditGoal={handleEditGoalLocal}
+        onRemoveGoal={handleRemoveGoal}
+      />
 
       {/* Footer Actions */}
       <div className="mt-6 grid grid-cols-2 gap-3 items-center sm:flex sm:flex-row sm:items-center sm:justify-between">
@@ -1274,12 +561,12 @@ const CreateAppraisal = () => {
               onClick={handleSubmit}
               disabled={!canSaveDraft || loading}
               data-testid="save-draft"
-              aria-label={loading ? "Saving" : "Save Draft"}
-              title={loading ? "Saving" : "Save Draft"}
+              aria-label={getSaveButtonLabel(loading, true)}
+              title={getSaveButtonLabel(loading, true)}
             >
               <Save className="h-4 w-4" />
               <span className="hidden sm:inline sm:ml-2">
-                {loading ? "Saving..." : "Save Draft"}
+                {getSaveButtonLabel(loading, true)}
               </span>
             </Button>
           )}
@@ -1287,12 +574,12 @@ const CreateAppraisal = () => {
             <Button
               onClick={handleSubmit}
               disabled={!canSaveDraft || loading}
-              aria-label={loading ? "Saving" : "Save changes"}
-              title={loading ? "Saving" : "Save changes"}
+              aria-label={getSaveButtonLabel(loading, false)}
+              title={getSaveButtonLabel(loading, false)}
             >
               <Save className="h-4 w-4" />
               <span className="hidden sm:inline sm:ml-2">
-                {loading ? "Saving..." : "Save Changes"}
+                {getSaveButtonLabel(loading, false)}
               </span>
             </Button>
           )}

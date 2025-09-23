@@ -19,45 +19,18 @@ let refreshPromise: Promise<boolean> | null = null;
 //     return '';
 //   }
   
-//   // Resolve lazily so test setup can mutate import.meta.env at runtime
-//   const envUrl = (import.meta as any)?.env?.VITE_API_BASE_URL || '';
-//   // Allow tests to override via window.__API_BASE_URL__
-//   const win = typeof window !== 'undefined' ? (window as any) : undefined;
-//   return (envUrl || (win && win.__API_BASE_URL__) || '') as string;
-// }
-
-
-// function getApiBaseUrl(): string {
-//   // Force empty string in production to use relative URLs and avoid mixed content
-//   if (import.meta.env.PROD) {
-//     return '';
-//   }
-  
-//   // In development, ensure we use HTTPS if we have a full URL
-//   const envUrl = (import.meta as any)?.env?.VITE_API_BASE_URL || '';
-//   const win = typeof window !== 'undefined' ? (window as any) : undefined;
-//   let result = (envUrl || (win && win.__API_BASE_URL__) || '') as string;
-  
-//   // Convert HTTP to HTTPS if it's a full URL
-//   if (result.startsWith('http://')) {
-//     result = result.replace('http://', 'https://');
-//   }
-
-//   return result;
-// }
-
 function getApiBaseUrl(): string {
   // Force empty string in production to use relative URLs and avoid mixed content
   if (import.meta.env.PROD || import.meta.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'production') {
     console.log('Production mode: using relative URLs');
-    return 'https://hibiz-tr-wsf-dev-1ac682fa9c0e.herokuapp.com';
+    return '';
   }
   
   // Resolve lazily so test setup can mutate import.meta.env at runtime
   const envUrl = (import.meta as any)?.env?.VITE_API_BASE_URL || '';
   // Allow tests to override via window.__API_BASE_URL__
   const win = typeof window !== 'undefined' ? (window as any) : undefined;
-  const result = (envUrl || (win && win.__API_BASE_URL__) || '') as string;
+  const result = (envUrl || win?.__API_BASE_URL__ || '') as string;
   
   console.log('Development mode - API Base URL:', result);
   return result;
@@ -65,6 +38,166 @@ function getApiBaseUrl(): string {
 
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT ?? 10000);
 const API_RETRIES = Number(import.meta.env.VITE_API_RETRIES ?? 3);
+
+// Helper functions to reduce cognitive complexity
+function buildApiUrl(path: string): string {
+  const isAbsolute = /^https?:\/\//i.test(path);
+  if (isAbsolute) return path;
+  
+  const cleanPath = path.replace(/^\/+/, '');
+  const apiPath = cleanPath.startsWith('api/') ? `/${cleanPath}` : `/api/${cleanPath}`;
+  return `${getApiBaseUrl()}${apiPath}`;
+}
+
+function buildRequestHeaders(init?: RequestInit): Record<string, string> {
+  const token = sessionStorage.getItem('auth_token');
+  const callerHeaders = new Headers(init?.headers as any);
+  const hasContentType = !!callerHeaders.get('Content-Type');
+  
+  const baseHeaders: Record<string, string> = {};
+  if (token) baseHeaders.Authorization = `Bearer ${token}`;
+  if (init?.body !== undefined && !(init?.body instanceof FormData) && !hasContentType) {
+    baseHeaders['Content-Type'] = 'application/json';
+  }
+  
+  return baseHeaders;
+}
+
+function setupAbortController(init?: RequestInit): { controller: AbortController; cleanup: () => void } {
+  const attemptController = new AbortController();
+  const timeoutId = setTimeout(() => attemptController.abort(), API_TIMEOUT);
+  let removeAbortListener: (() => void) | null = null;
+  
+  if (init?.signal) {
+    if (init.signal.aborted) {
+      attemptController.abort();
+    } else {
+      const onAbort = () => attemptController.abort();
+      init.signal.addEventListener('abort', onAbort);
+      removeAbortListener = () => init.signal?.removeEventListener('abort', onAbort);
+    }
+  }
+  
+  const cleanup = () => {
+    clearTimeout(timeoutId);
+    if (removeAbortListener) removeAbortListener();
+  };
+  
+  return { controller: attemptController, cleanup };
+}
+
+async function handleUnauthorized(path: string, token: string | null, baseHeaders: Record<string, string>): Promise<boolean> {
+  if (token && !path.includes('/refresh') && !path.includes('/login')) {
+    // Try to refresh token if we have one and this isn't a refresh/login request
+    if (!isRefreshing) {
+      isRefreshing = true;
+      refreshPromise = refreshTokens();
+    }
+    
+    const refreshSuccess = await refreshPromise;
+    isRefreshing = false;
+    refreshPromise = null;
+    
+    if (refreshSuccess) {
+      // Update token in headers for retry
+      const newToken = sessionStorage.getItem('auth_token');
+      if (newToken) {
+        baseHeaders.Authorization = `Bearer ${newToken}`;
+        return true; // Indicate retry should happen
+      }
+    } else {
+      // Refresh failed, emit unauthorized
+      emitUnauthorized();
+    }
+  } else if (token && !path.includes('/login')) {
+    // Token invalid/expired or unauthorized for login/refresh requests
+    emitUnauthorized();
+  }
+  
+  return false; // No retry needed
+}
+
+function shouldRetryError(status: number, attempt: number): boolean {
+  return status >= 500 && attempt < API_RETRIES;
+}
+
+function shouldRetryNetworkError(attempt: number): boolean {
+  return attempt < API_RETRIES;
+}
+
+async function processSuccessfulResponse<T>(res: Response): Promise<ApiResult<T>> {
+  if (res.status === 204) {
+    return { ok: true, status: res.status, headers: res.headers } as ApiResult<T>;
+  }
+
+  // Parse JSON; allow empty bodies
+  try {
+    const data = (await res.json()) as T;
+    return { ok: true, data, status: res.status, headers: res.headers };
+  } catch {
+    return { ok: true, status: res.status, headers: res.headers } as ApiResult<T>;
+  }
+}
+
+async function processFailedResponse<T>(res: Response): Promise<ApiResult<T>> {
+  const msg = await safeText(res);
+  return { ok: false, error: msg || res.statusText, status: res.status, headers: res.headers };
+}
+
+async function executeFetchAttempt<T>(
+  fullUrl: string, 
+  init: RequestInit | undefined, 
+  baseHeaders: Record<string, string>, 
+  path: string, 
+  token: string | null,
+  attempt: number
+): Promise<{ result?: ApiResult<T>; shouldRetry: boolean; newAttempt: number }> {
+  const { controller: attemptController, cleanup } = setupAbortController(init);
+
+  try {
+    const res = await fetch(fullUrl, {
+      ...init,
+      headers: {
+        ...baseHeaders,
+        ...(init?.headers || {}),
+      },
+      credentials: 'include', // Important for cookies/sessions
+      signal: attemptController.signal,
+    });
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        const shouldRetry = await handleUnauthorized(path, token, baseHeaders);
+        if (shouldRetry) {
+          return { shouldRetry: true, newAttempt: 0 }; // Reset attempt counter for retry
+        }
+      }
+      
+      // Retry only for 5xx responses
+      if (shouldRetryError(res.status, attempt)) {
+        await sleep(1000 * 2 ** attempt + Math.random() * 200);
+        return { shouldRetry: true, newAttempt: attempt + 1 };
+      }
+      const result = await processFailedResponse<T>(res);
+      return { result, shouldRetry: false, newAttempt: attempt };
+    }
+
+    const result = await processSuccessfulResponse<T>(res);
+    return { result, shouldRetry: false, newAttempt: attempt };
+  } catch (err: any) {
+    // Network error or abort; retry if attempts remain
+    if (shouldRetryNetworkError(attempt)) {
+      await sleep(1000 * 2 ** attempt + Math.random() * 200);
+      return { shouldRetry: true, newAttempt: attempt + 1 };
+    }
+    if (err?.name === 'AbortError') {
+      return { result: { ok: false, error: 'Request timed out' }, shouldRetry: false, newAttempt: attempt };
+    }
+    return { result: { ok: false, error: err?.message || 'Network error' }, shouldRetry: false, newAttempt: attempt };
+  } finally {
+    cleanup();
+  }
+}
 
 // Token refresh function
 async function refreshTokens(): Promise<boolean> {
@@ -101,138 +234,54 @@ async function refreshTokens(): Promise<boolean> {
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<ApiResult<T>> {
   let attempt = 0;
-
-  // Build URL with absolute URL passthrough; otherwise normalize to /api
-  const isAbsolute = /^https?:\/\//i.test(path);
-  const cleanPath = path.replace(/^\/+/, '');
-  const apiPath = cleanPath.startsWith('api/') ? `/${cleanPath}` : `/api/${cleanPath}`;
-  const fullUrl = isAbsolute ? path : `${getApiBaseUrl()}${apiPath}`;
+  const fullUrl = buildApiUrl(path);
+  const token = sessionStorage.getItem('auth_token');
+  const baseHeaders = buildRequestHeaders(init);
+  
   console.log('Final URL being used:', fullUrl);
   console.log('getApiBaseUrl() returned:', getApiBaseUrl());
 
-  // Get JWT token from sessionStorage
-  const token = sessionStorage.getItem('auth_token');
-
-  // Base headers: Authorization if token present. Only set JSON Content-Type when a body exists and it's not FormData,
-  // and caller hasn't already provided Content-Type.
-  const callerHeaders = new Headers(init?.headers as any);
-  const hasContentType = !!callerHeaders.get('Content-Type');
-  const baseHeaders: Record<string, string> = {};
-  if (token) baseHeaders.Authorization = `Bearer ${token}`;
-  if (init?.body !== undefined && !(init?.body instanceof FormData) && !hasContentType) {
-    baseHeaders['Content-Type'] = 'application/json';
-  }
-
   while (true) {
-    // Per-attempt timeout and merged AbortSignal
-    const attemptController = new AbortController();
-    const timeoutId = setTimeout(() => attemptController.abort(), API_TIMEOUT);
-    let removeAbortListener: (() => void) | null = null;
-    if (init?.signal) {
-      if (init.signal.aborted) {
-        attemptController.abort();
-      } else {
-        const onAbort = () => attemptController.abort();
-        init.signal.addEventListener('abort', onAbort);
-        removeAbortListener = () => init.signal && init.signal.removeEventListener('abort', onAbort);
-      }
+    const { result, shouldRetry, newAttempt } = await executeFetchAttempt<T>(
+      fullUrl, 
+      init, 
+      baseHeaders, 
+      path, 
+      token, 
+      attempt
+    );
+    
+    if (result) return result;
+    if (!shouldRetry) return { ok: false, error: 'Request failed' };
+    
+    attempt = newAttempt;
+  }
+}
+
+function extractMessageFromJsonObject(j: any): string {
+  if (typeof j === 'string') return j;
+  
+  if (j && typeof j === 'object') {
+    if (j.detail !== undefined) {
+      return typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail);
     }
-
-    try {
-      const res = await fetch(fullUrl, {
-        ...init,
-        headers: {
-          ...baseHeaders,
-          ...(init?.headers || {}),
-        },
-        credentials: 'include', // Important for cookies/sessions
-        signal: attemptController.signal,
-      });
-
-      if (res.status === 204) {
-        return { ok: true, status: res.status, headers: res.headers } as ApiResult<T>;
-      }
-
-      if (!res.ok) {
-        if (res.status === 401 && token && !path.includes('/refresh') && !path.includes('/login')) {
-          // Try to refresh token if we have one and this isn't a refresh/login request
-          if (!isRefreshing) {
-            isRefreshing = true;
-            refreshPromise = refreshTokens();
-          }
-          
-          const refreshSuccess = await refreshPromise;
-          isRefreshing = false;
-          refreshPromise = null;
-          
-          if (refreshSuccess) {
-            // Retry the original request with new token
-            const newToken = sessionStorage.getItem('auth_token');
-            if (newToken) {
-              baseHeaders.Authorization = `Bearer ${newToken}`;
-              attempt = 0; // Reset attempt counter for retry
-              continue;
-            }
-          } else {
-            // Refresh failed, emit unauthorized
-            emitUnauthorized();
-          }
-        } else if (res.status === 401) {
-          // Token invalid/expired or unauthorized for login/refresh requests
-          if (token && !path.includes('/login')) emitUnauthorized();
-        }
-        
-        // Retry only for 5xx responses
-        if (res.status >= 500 && attempt < API_RETRIES) {
-          attempt++;
-          await sleep(1000 * 2 ** attempt + Math.random() * 200);
-          continue;
-        }
-        const msg = await safeText(res);
-        return { ok: false, error: msg || res.statusText, status: res.status, headers: res.headers };
-      }
-
-      // Parse JSON; allow empty bodies
-      try {
-        const data = (await res.json()) as T;
-        return { ok: true, data, status: res.status, headers: res.headers };
-      } catch {
-        return { ok: true, status: res.status, headers: res.headers } as ApiResult<T>;
-      }
-    } catch (err: any) {
-      // Network error or abort; retry if attempts remain
-      if (attempt < API_RETRIES) {
-        attempt++;
-        await sleep(1000 * 2 ** attempt + Math.random() * 200);
-        continue;
-      }
-      if (err?.name === 'AbortError') {
-        return { ok: false, error: 'Request timed out' };
-      }
-      return { ok: false, error: err?.message || 'Network error' };
-    } finally {
-      clearTimeout(timeoutId);
-      if (removeAbortListener) removeAbortListener();
+    if (j.message !== undefined) {
+      return String(j.message);
     }
   }
+  
+  return JSON.stringify(j);
 }
 
 async function safeText(res: Response) {
   try {
-    const ct = res.headers.get('content-type') || '';
-    if (ct.includes('application/json')) {
-      const j: any = await res.json();
-      if (typeof j === 'string') return j;
-      if (j && typeof j === 'object') {
-        if (j.detail !== undefined) {
-          return typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail);
-        }
-        if (j.message !== undefined) {
-          return String(j.message);
-        }
-      }
-      return JSON.stringify(j);
+    const contentType = res.headers.get('content-type') || '';
+    
+    if (contentType.includes('application/json')) {
+      const jsonData = await res.json();
+      return extractMessageFromJsonObject(jsonData);
     }
+    
     return await res.text();
   } catch {
     return '';

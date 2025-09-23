@@ -23,8 +23,162 @@ from app.schemas.appraisal import (
 )
 
 from app.routers.auth import get_current_user
+from app.constants import (
+    APPRAISAL_NOT_FOUND,
+    APPRAISAL_TYPE_NOT_FOUND,
+    APPRAISAL_RANGE_NOT_FOUND,
+    APPRAISAL_RANGE_MISMATCH,
+    CANNOT_SUBMIT_WITHOUT_GOALS,
+    ROLE_APPRAISEE,
+    ROLE_APPRAISER,
+    ROLE_REVIEWER,
+    get_entity_not_found_message,
+    get_invalid_transition_message,
+    get_weightage_error_message,
+    get_goal_not_in_appraisal_message
+)
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
+
+
+async def _validate_employees(appraisal: AppraisalCreate, db: AsyncSession) -> None:
+    """Validate that all employees (appraisee, appraiser, reviewer) exist."""
+    employees_to_check = [
+        (appraisal.appraisee_id, ROLE_APPRAISEE),
+        (appraisal.appraiser_id, ROLE_APPRAISER),
+        (appraisal.reviewer_id, ROLE_REVIEWER)
+    ]
+    
+    for emp_id, role in employees_to_check:
+        result = await db.execute(select(Employee).where(Employee.emp_id == emp_id))
+        employee = result.scalars().first()
+        
+        if not employee:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=get_entity_not_found_message(role)
+            )
+
+
+async def _validate_appraisal_type_and_range(appraisal: AppraisalCreate, db: AsyncSession) -> None:
+    """Validate appraisal type exists and range belongs to the type if provided."""
+    # Check if appraisal type exists
+    result = await db.execute(select(AppraisalType).where(AppraisalType.id == appraisal.appraisal_type_id))
+    appraisal_type = result.scalars().first()
+    
+    if not appraisal_type:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=APPRAISAL_TYPE_NOT_FOUND
+        )
+    
+    # Check appraisal range if provided
+    if appraisal.appraisal_type_range_id:
+        result = await db.execute(select(AppraisalRange).where(AppraisalRange.id == appraisal.appraisal_type_range_id))
+        appraisal_range = result.scalars().first()
+        
+        if not appraisal_range:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=APPRAISAL_RANGE_NOT_FOUND
+            )
+        
+        # Check if range belongs to the selected type
+        if appraisal_range.appraisal_type_id != appraisal.appraisal_type_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=APPRAISAL_RANGE_MISMATCH
+            )
+
+
+async def _validate_and_get_goals(appraisal: AppraisalCreate, db: AsyncSession) -> List[Goal]:
+    """Validate goals exist and check weightage requirements for non-draft appraisals."""
+    goals = []
+    
+    if not appraisal.goal_ids:
+        return goals
+    
+    # Fetch all goals
+    for goal_id in appraisal.goal_ids:
+        result = await db.execute(select(Goal).where(Goal.goal_id == goal_id))
+        goal = result.scalars().first()
+        
+        if not goal:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=get_entity_not_found_message("Goal", goal_id)
+            )
+        
+        goals.append(goal)
+    
+    # Check weightage only for non-draft status
+    if goals and appraisal.status != AppraisalStatus.DRAFT:
+        total_weightage = sum(goal.goal_weightage for goal in goals)
+        if total_weightage != 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=get_weightage_error_message(total_weightage)
+            )
+    
+    return goals
+
+
+async def _validate_employee_updates(appraisal: AppraisalUpdate, db: AsyncSession) -> None:
+    """Validate that employees exist when updating appraisal employee fields."""
+    employee_checks = [
+        ("appraisee_id", appraisal.appraisee_id, ROLE_APPRAISEE),
+        ("appraiser_id", appraisal.appraiser_id, ROLE_APPRAISER),
+        ("reviewer_id", appraisal.reviewer_id, ROLE_REVIEWER)
+    ]
+    
+    for field, emp_id, role in employee_checks:
+        if getattr(appraisal, field) is not None:
+            result = await db.execute(select(Employee).where(Employee.emp_id == emp_id))
+            employee = result.scalars().first()
+            
+            if not employee:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=get_entity_not_found_message(role)
+                )
+
+
+async def _validate_appraisal_type_and_range_updates(
+    appraisal: AppraisalUpdate, 
+    db_appraisal: Appraisal, 
+    db: AsyncSession
+) -> None:
+    """Validate appraisal type and range updates with proper relationship checks."""
+    # Check if appraisal type exists if updating
+    if appraisal.appraisal_type_id is not None:
+        result = await db.execute(select(AppraisalType).where(AppraisalType.id == appraisal.appraisal_type_id))
+        appraisal_type = result.scalars().first()
+        
+        if not appraisal_type:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=APPRAISAL_TYPE_NOT_FOUND
+            )
+    
+    # Check if appraisal range exists if updating
+    if appraisal.appraisal_type_range_id is not None:
+        result = await db.execute(select(AppraisalRange).where(AppraisalRange.id == appraisal.appraisal_type_range_id))
+        appraisal_range = result.scalars().first()
+        
+        if not appraisal_range:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=APPRAISAL_RANGE_NOT_FOUND
+            )
+        
+        # Check if range belongs to the selected type
+        type_id = appraisal.appraisal_type_id if appraisal.appraisal_type_id is not None else db_appraisal.appraisal_type_id
+        if appraisal_range.appraisal_type_id != type_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=APPRAISAL_RANGE_MISMATCH
+            )
+
 
 @router.post("/", response_model=AppraisalWithGoals, status_code=status.HTTP_201_CREATED)
 async def create_appraisal(
@@ -33,73 +187,10 @@ async def create_appraisal(
 ):
     """Create a new appraisal."""
     
-    # Check if employees exist
-    for emp_id, role in [
-        (appraisal.appraisee_id, "Appraisee"),
-        (appraisal.appraiser_id, "Appraiser"),
-        (appraisal.reviewer_id, "Reviewer")
-    ]:
-        result = await db.execute(select(Employee).where(Employee.emp_id == emp_id))
-        employee = result.scalars().first()
-        
-        if not employee:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"{role} not found"
-            )
-    
-    # Check if appraisal type exists
-    result = await db.execute(select(AppraisalType).where(AppraisalType.id == appraisal.appraisal_type_id))
-    appraisal_type = result.scalars().first()
-    
-    if not appraisal_type:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Appraisal type not found"
-        )
-    
-    # Check if appraisal range exists if provided
-    if appraisal.appraisal_type_range_id:
-        result = await db.execute(select(AppraisalRange).where(AppraisalRange.id == appraisal.appraisal_type_range_id))
-        appraisal_range = result.scalars().first()
-        
-        if not appraisal_range:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Appraisal range not found"
-            )
-        
-        # Check if range belongs to the selected type
-        if appraisal_range.appraisal_type_id != appraisal.appraisal_type_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Appraisal range does not belong to the selected appraisal type"
-            )
-    
-    # Check if goals exist
-    goals = []
-    if appraisal.goal_ids:
-        for goal_id in appraisal.goal_ids:
-            result = await db.execute(select(Goal).where(Goal.goal_id == goal_id))
-            goal = result.scalars().first()
-            
-            if not goal:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Goal with ID {goal_id} not found"
-                )
-            
-            goals.append(goal)
-    
-    # Check if total weightage is 100% only when creating in a non-draft status
-    # Drafts are allowed to have incomplete weightage and even zero goals
-    if goals and appraisal.status != AppraisalStatus.DRAFT:
-        total_weightage = sum(goal.goal_weightage for goal in goals)
-        if total_weightage != 100:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Total weightage must be 100%, but got {total_weightage}%"
-            )
+    # Perform all validations using helper functions
+    await _validate_employees(appraisal, db)
+    await _validate_appraisal_type_and_range(appraisal, db)
+    goals = await _validate_and_get_goals(appraisal, db)
     
     # Create new appraisal
     db_appraisal = Appraisal(
@@ -125,6 +216,7 @@ async def create_appraisal(
         db.add(db_appraisal_goal)
     
     await db.commit()
+    
     # Re-select with eager-loaded nested relations
     result = await db.execute(
         select(Appraisal)
@@ -193,7 +285,7 @@ async def read_appraisal(
     if not appraisal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal not found"
+            detail=APPRAISAL_NOT_FOUND
         )
     
     return appraisal
@@ -213,54 +305,12 @@ async def update_appraisal(
     if not db_appraisal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal not found"
+            detail=APPRAISAL_NOT_FOUND
         )
     
-    # Check if employees exist if updating
-    for field, emp_id, role in [
-        ("appraisee_id", appraisal.appraisee_id, "Appraisee"),
-        ("appraiser_id", appraisal.appraiser_id, "Appraiser"),
-        ("reviewer_id", appraisal.reviewer_id, "Reviewer")
-    ]:
-        if getattr(appraisal, field) is not None:
-            result = await db.execute(select(Employee).where(Employee.emp_id == emp_id))
-            employee = result.scalars().first()
-            
-            if not employee:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"{role} not found"
-                )
-    
-    # Check if appraisal type exists if updating
-    if appraisal.appraisal_type_id is not None:
-        result = await db.execute(select(AppraisalType).where(AppraisalType.id == appraisal.appraisal_type_id))
-        appraisal_type = result.scalars().first()
-        
-        if not appraisal_type:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Appraisal type not found"
-            )
-    
-    # Check if appraisal range exists if updating
-    if appraisal.appraisal_type_range_id is not None:
-        result = await db.execute(select(AppraisalRange).where(AppraisalRange.id == appraisal.appraisal_type_range_id))
-        appraisal_range = result.scalars().first()
-        
-        if not appraisal_range:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Appraisal range not found"
-            )
-        
-        # Check if range belongs to the selected type
-        type_id = appraisal.appraisal_type_id if appraisal.appraisal_type_id is not None else db_appraisal.appraisal_type_id
-        if appraisal_range.appraisal_type_id != type_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Appraisal range does not belong to the selected appraisal type"
-            )
+    # Perform all validations using helper functions
+    await _validate_employee_updates(appraisal, db)
+    await _validate_appraisal_type_and_range_updates(appraisal, db_appraisal, db)
     
     # Update appraisal
     update_data = appraisal.model_dump(exclude_unset=True)
@@ -286,7 +336,7 @@ async def delete_appraisal(
     if not db_appraisal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal not found"
+            detail=APPRAISAL_NOT_FOUND
         )
     
     await db.delete(db_appraisal)
@@ -311,7 +361,7 @@ async def update_appraisal_status(
     if not db_appraisal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal not found"
+            detail=APPRAISAL_NOT_FOUND
         )
     
     # Validate status transition
@@ -331,7 +381,7 @@ async def update_appraisal_status(
     if new_status not in valid_transitions.get(current_status, []):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid status transition from {current_status} to {new_status}"
+            detail=get_invalid_transition_message(current_status, new_status)
         )
 
     # If transitioning to SUBMITTED, enforce goals exist and total weightage == 100
@@ -354,9 +404,7 @@ async def update_appraisal_status(
         if goal_count == 0 or total_weightage != 100:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    "Cannot submit appraisal: must have goals totalling 100% weightage"
-                ),
+                detail=CANNOT_SUBMIT_WITHOUT_GOALS
             )
 
     # Update status
@@ -381,7 +429,7 @@ async def update_self_assessment(
     if not db_appraisal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal not found"
+            detail=APPRAISAL_NOT_FOUND
         )
     
     # Check if appraisal is in the correct status
@@ -406,7 +454,7 @@ async def update_self_assessment(
         if not appraisal_goal:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Goal with ID {goal_id} not found in this appraisal"
+                detail=get_goal_not_in_appraisal_message(goal_id)
             )
         
         if "self_comment" in data:
@@ -444,7 +492,7 @@ async def update_appraiser_evaluation(
     if not db_appraisal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal not found"
+            detail=APPRAISAL_NOT_FOUND
         )
     
     # Check if appraisal is in the correct status
@@ -469,7 +517,7 @@ async def update_appraiser_evaluation(
         if not appraisal_goal:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Goal with ID {goal_id} not found in this appraisal"
+                detail=get_goal_not_in_appraisal_message(goal_id)
             )
         
         if "appraiser_comment" in data:
@@ -514,7 +562,7 @@ async def update_reviewer_evaluation(
     if not db_appraisal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appraisal not found"
+            detail=APPRAISAL_NOT_FOUND
         )
     
     # Check if appraisal is in the correct status
