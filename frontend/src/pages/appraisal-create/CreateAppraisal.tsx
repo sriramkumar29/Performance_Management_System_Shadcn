@@ -407,7 +407,7 @@ const CreateAppraisal = () => {
 
   const fetchEmployees = async () => {
     try {
-      const res = await apiFetch<Employee[]>("/api/employees");
+      const res = await apiFetch<Employee[]>("/api/employees/");
       if (res.ok && res.data) {
         setEmployees(res.data);
       } else {
@@ -473,9 +473,7 @@ const CreateAppraisal = () => {
       }
       const typeId = data.appraisal_type_id as number;
       setSelectedTypeId(typeId);
-      const typeMeta = appraisalTypes.find((t) => t.id === typeId);
-      if (typeMeta?.has_range) await fetchRanges(typeId);
-      else setRanges([]);
+      // Note: ranges will be automatically fetched by the useEffect that watches selectedTypeId
 
       setFormValues({
         appraisee_id: data.appraisee_id,
@@ -513,6 +511,18 @@ const CreateAppraisal = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeAppraisalId]);
 
+  // Automatically fetch ranges when appraisal type changes or appraisal types are loaded
+  useEffect(() => {
+    if (selectedTypeId && appraisalTypes.length > 0) {
+      const typeMeta = appraisalTypes.find((t) => t.id === selectedTypeId);
+      if (typeMeta?.has_range) {
+        fetchRanges(selectedTypeId);
+      } else {
+        setRanges([]);
+      }
+    }
+  }, [selectedTypeId, appraisalTypes]);
+
   const syncGoalChanges = async (appraisalId: number) => {
     const { added, removed, updated } = goalChanges;
     const currentTotalWeightage = goals.reduce(
@@ -542,7 +552,7 @@ const CreateAppraisal = () => {
         );
         if (alreadyOnServer) continue;
 
-        const createGoalRes = await apiFetch("/api/goals", {
+        const createGoalRes = await apiFetch("/api/goals/", {
           method: "POST",
           body: JSON.stringify({
             goal_template_id: goalData.goal.goal_template_id,
@@ -635,7 +645,7 @@ const CreateAppraisal = () => {
       };
 
       if (!createdAppraisalId) {
-        const res = await apiFetch("/api/appraisals", {
+        const res = await apiFetch("/api/appraisals/", {
           method: "POST",
           body: JSON.stringify(body),
         });

@@ -80,20 +80,20 @@ const TeamAppraisal = () => {
       const [aAppraiser, aReviewerActive, aReviewerCompleted, e, t] =
         await Promise.all([
           apiFetch<Appraisal[]>(
-            `/api/appraisals?appraiser_id=${encodeURIComponent(user.emp_id)}`
+            `/api/appraisals/?appraiser_id=${encodeURIComponent(user.emp_id)}`
           ),
           apiFetch<Appraisal[]>(
-            `/api/appraisals?reviewer_id=${encodeURIComponent(
+            `/api/appraisals/?reviewer_id=${encodeURIComponent(
               user.emp_id
             )}&status=${encodeURIComponent("Reviewer Evaluation")}`
           ),
           apiFetch<Appraisal[]>(
-            `/api/appraisals?reviewer_id=${encodeURIComponent(
+            `/api/appraisals/?reviewer_id=${encodeURIComponent(
               user.emp_id
             )}&status=${encodeURIComponent("Complete")}`
           ),
-          apiFetch<Employee[]>(`/api/employees`),
-          apiFetch<AppraisalType[]>(`/api/appraisal-types`),
+          apiFetch<Employee[]>(`/api/employees/`),
+          apiFetch<AppraisalType[]>(`/api/appraisal-types/`),
         ]);
       if (
         (aAppraiser.ok && aAppraiser.data) ||
