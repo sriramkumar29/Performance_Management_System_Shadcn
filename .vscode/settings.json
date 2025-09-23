@@ -1,3 +1,7 @@
 {
-  "codium.codeCompletion.enable": false
+  "codium.codeCompletion.enable": false,
+  "sonarlint.connectedMode.project": {
+    "connectionId": "sriramkumar29",
+    "projectKey": "sriramkumar29_Performance_Management_System_Shadcn"
+  }
 }
