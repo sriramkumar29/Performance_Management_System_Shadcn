@@ -1,7 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+"""
+Employee router for the Performance Management System.
+
+This module provides REST API endpoints for employee management
+with proper validation, error handling, and service layer integration.
+"""
+
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from typing import List
+from typing import List, Optional
 
 from app.db.database import get_db
 from app.models.employee import Employee
@@ -9,365 +15,301 @@ from app.schemas.employee import (
     EmployeeCreate,
     EmployeeUpdate,
     EmployeeResponse,
-    EmployeeWithSubordinates
+    EmployeeWithSubordinates,
+    LoginRequest,
+    TokenResponse,
+    RefreshRequest,
+    EmployeeProfile
 )
-from app.routers.auth import get_current_user
-from passlib.context import CryptContext
-from fastapi import Request
-from pydantic import BaseModel
-from app.core.config import settings
-from app.constants import (
-    EMPLOYEE_NOT_FOUND,
-    REPORTING_MANAGER_NOT_FOUND,
-    get_entity_not_found_message
+from app.services.employee_service import EmployeeService
+from app.services.auth_service import AuthService
+from app.routers.auth import get_current_user, get_current_active_user
+from app.dependencies import (
+    get_pagination_params,
+    get_search_params,
+    get_employee_by_id,
+    PaginationParams
 )
-import jwt
-from datetime import datetime, timedelta, timezone
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 router = APIRouter()
 
-class LoginRequest(BaseModel):
-    email: str
-    password: str
 
-class TokenResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
+def get_employee_service() -> EmployeeService:
+    """Dependency to get employee service instance."""
+    return EmployeeService()
 
-class RefreshRequest(BaseModel):
-    refresh_token: str
 
-@router.post("/login", response_model=TokenResponse)
-async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Employee).where(Employee.emp_email == data.email))
-    employee = result.scalars().first()
-    if not employee or not pwd_context.verify(data.password, employee.emp_password):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+def get_auth_service() -> AuthService:
+    """Dependency to get auth service instance."""
+    return AuthService()
 
-    # Create access token
-    access_payload = {
-        "sub": employee.emp_email,
-        "emp_id": employee.emp_id,
-        "type": "access",
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    }
-    access_token = jwt.encode(access_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+# Authentication endpoints
+@router.post("/login", response_model=TokenResponse, status_code=status.HTTP_200_OK)
+async def login(
+    data: LoginRequest,
+    db: AsyncSession = Depends(get_db),
+    auth_service: AuthService = Depends(get_auth_service)
+) -> TokenResponse:
+    """
+    Employee login endpoint.
     
-    # Create refresh token
-    refresh_payload = {
-        "sub": employee.emp_email,
-        "emp_id": employee.emp_id,
-        "type": "refresh",
-        "exp": datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    }
-    refresh_token = jwt.encode(refresh_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    Args:
+        data: Login credentials (email and password)
+        db: Database session
+        auth_service: Authentication service instance
+        
+    Returns:
+        TokenResponse: Access and refresh tokens
+        
+    Raises:
+        UnauthorizedError: If credentials are invalid
+    """
+    tokens = await auth_service.login(
+        db, 
+        email=data.email, 
+        password=data.password
+    )
     
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+    return TokenResponse(**tokens)
 
 
-@router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(data: RefreshRequest, db: AsyncSession = Depends(get_db)):
-    """Refresh access token using refresh token."""
-    try:
-        # Decode refresh token
-        payload = jwt.decode(data.refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        email = payload.get("sub")
-        emp_id = payload.get("emp_id")
-        token_type = payload.get("type")
+@router.post("/refresh", response_model=TokenResponse, status_code=status.HTTP_200_OK)
+async def refresh_token(
+    data: RefreshRequest,
+    db: AsyncSession = Depends(get_db),
+    auth_service: AuthService = Depends(get_auth_service)
+) -> TokenResponse:
+    """
+    Refresh access token using refresh token.
+    
+    Args:
+        data: Refresh token request
+        db: Database session
+        auth_service: Authentication service instance
         
-        if not email or not emp_id or token_type != "refresh":
-            raise HTTPException(status_code=401, detail="Invalid refresh token")
+    Returns:
+        TokenResponse: New access and refresh tokens
         
-        # Verify employee still exists
-        result = await db.execute(select(Employee).where(Employee.emp_email == email))
-        employee = result.scalars().first()
-        if not employee:
-            raise HTTPException(status_code=401, detail=EMPLOYEE_NOT_FOUND)
-        
-        # Create new access token
-        access_payload = {
-            "sub": employee.emp_email,
-            "emp_id": employee.emp_id,
-            "type": "access",
-            "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        }
-        new_access_token = jwt.encode(access_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-        
-        # Create new refresh token
-        refresh_payload = {
-            "sub": employee.emp_email,
-            "emp_id": employee.emp_id,
-            "type": "refresh",
-            "exp": datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-        }
-        new_refresh_token = jwt.encode(refresh_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-        
-        return TokenResponse(access_token=new_access_token, refresh_token=new_refresh_token)
-        
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Refresh token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    Raises:
+        UnauthorizedError: If refresh token is invalid or expired
+    """
+    tokens = await auth_service.refresh_access_token(
+        db, 
+        refresh_token=data.refresh_token
+    )
+    
+    return TokenResponse(**tokens)
 
 
+# Employee profile endpoints
+@router.get("/profile", response_model=EmployeeProfile, dependencies=[Depends(get_current_user)])
+async def get_current_employee_profile(
+    current_user: Employee = Depends(get_current_active_user)
+) -> EmployeeProfile:
+    """
+    Get current employee's profile.
+    
+    Args:
+        current_user: Current authenticated employee
+        
+    Returns:
+        EmployeeProfile: Current employee's profile data
+    """
+    return EmployeeProfile.model_validate(current_user)
+
+
+# Employee management endpoints (require authentication)
 @router.post("/", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED)
 async def create_employee(
-    employee: EmployeeCreate,
-    db: AsyncSession = Depends(get_db)
-):
-    """Create a new employee."""
-    try:
-        print(f"Received employee data: {employee.model_dump()}")
+    employee_data: EmployeeCreate,
+    db: AsyncSession = Depends(get_db),
+    employee_service: EmployeeService = Depends(get_employee_service),
+    current_user: Employee = Depends(get_current_user)
+) -> EmployeeResponse:
+    """
+    Create a new employee.
+    
+    Args:
+        employee_data: Employee creation data
+        db: Database session
+        employee_service: Employee service instance
+        current_user: Current authenticated user
         
-        # Start a transaction
-        async with db.begin():
-            # Check if email already exists
-            result = await db.execute(select(Employee).where(Employee.emp_email == employee.emp_email))
-            existing_employee = result.scalars().first()
-            
-            if existing_employee:
-                print(f"Email {employee.emp_email} already exists")
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Email already registered"
-                )
-            
-            # Handle reporting manager (convert 0 to None)
-            emp_data = employee.model_dump()
-            if emp_data.get('emp_reporting_manager_id') == 0:
-                emp_data['emp_reporting_manager_id'] = None
-                print("Converted reporting_manager_id 0 to None")
-            
-            # Check if reporting manager exists if provided
-            if emp_data.get('emp_reporting_manager_id'):
-                manager_id = emp_data['emp_reporting_manager_id']
-                print(f"Checking reporting manager with ID: {manager_id}")
-                result = await db.execute(select(Employee).where(Employee.emp_id == manager_id))
-                manager = result.scalars().first()
-                
-                if not manager:
-                    print(get_entity_not_found_message("Reporting manager", manager_id))
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=get_entity_not_found_message("Reporting manager", manager_id)
-                    )
-            
-            # Hash the password before storing
-            plain_password = emp_data.pop("password")
-            hashed_password = pwd_context.hash(plain_password)
-            emp_data["emp_password"] = hashed_password
-
-            # Create new employee
-            print(f"Creating employee with data: {emp_data}")
-            db_employee = Employee(**emp_data)
-            db.add(db_employee)
-            await db.flush()  # Flush to get the employee ID
-            
-            # Commit the transaction
-            await db.commit()
-            
-            # Refresh to get all fields including defaults
-            await db.refresh(db_employee)
-            
-            print(f"Successfully created employee with ID: {db_employee.emp_id}")
-            return db_employee
-            
-    except HTTPException as he:
-        # Re-raise HTTP exceptions
-        print(f"HTTP Exception: {str(he)}")
-        raise
-    except Exception as e:
-        # Log the full error for debugging
-        print(f"Unexpected error creating employee: {str(e)}")
-        print(f"Error type: {type(e).__name__}")
-        import traceback
-        traceback.print_exc()
+    Returns:
+        EmployeeResponse: Created employee data
         
-        # Rollback in case of error
-        if db.in_transaction():
-            await db.rollback()
-        
-        error_detail = str(e)
-        if "duplicate key value" in error_detail and "email" in error_detail:
-            error_detail = "Email already exists"
-        
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error creating employee: {error_detail}"
-        )
+    Raises:
+        DuplicateEntityError: If email already exists
+        EntityNotFoundError: If reporting manager not found
+        ValidationError: If validation fails
+    """
+    db_employee = await employee_service.create_employee(
+        db, 
+        employee_data=employee_data
+    )
+    
+    return EmployeeResponse.model_validate(db_employee)
 
 
 @router.get("/", response_model=List[EmployeeResponse])
-async def read_employees(
-    skip: int = 0,
-    limit: int = 100,
+async def get_employees(
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    """Get all employees."""
+    pagination: PaginationParams = Depends(get_pagination_params),
+    search_params: dict = Depends(get_search_params),
+    employee_service: EmployeeService = Depends(get_employee_service),
+    current_user: Employee = Depends(get_current_user)
+) -> List[EmployeeResponse]:
+    """
+    Get employees with filtering and search.
     
-    result = await db.execute(select(Employee).offset(skip).limit(limit))
-    employees = result.scalars().all()
+    Args:
+        db: Database session
+        pagination: Pagination parameters
+        search_params: Search and filter parameters
+        employee_service: Employee service instance
+        current_user: Current authenticated user
+        
+    Returns:
+        List[EmployeeResponse]: List of employees
+    """
+    employees = await employee_service.get_employees_with_filters(
+        db,
+        skip=pagination.skip,
+        limit=pagination.limit,
+        search=search_params.get("search"),
+        status=search_params.get("status")
+    )
     
-    return employees
-
-
-@router.get("/by-email", response_model=EmployeeResponse)
-async def read_employee_by_email(
-    email: str,
-    db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    """Get an employee by email."""
-    result = await db.execute(select(Employee).where(Employee.emp_email == email))
-    employee = result.scalars().first()
-    if not employee:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=EMPLOYEE_NOT_FOUND
-        )
-    return employee
+    return [EmployeeResponse.model_validate(emp) for emp in employees]
 
 
 @router.get("/managers", response_model=List[EmployeeResponse])
-async def read_managers(
-    skip: int = 0,
-    limit: int = 100,
+async def get_managers(
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    """Get all managers (employees with roles level >= 5)."""
+    pagination: PaginationParams = Depends(get_pagination_params),
+    employee_service: EmployeeService = Depends(get_employee_service),
+    current_user: Employee = Depends(get_current_user)
+) -> List[EmployeeResponse]:
+    """
+    Get employees who can be managers.
     
-    result = await db.execute(
-        select(Employee)
-        .where(Employee.emp_roles_level >= 5)
-        .offset(skip)
-        .limit(limit)
+    Args:
+        db: Database session
+        pagination: Pagination parameters
+        employee_service: Employee service instance
+        current_user: Current authenticated user
+        
+    Returns:
+        List[EmployeeResponse]: List of potential managers
+    """
+    managers = await employee_service.get_managers(
+        db,
+        skip=pagination.skip,
+        limit=pagination.limit
     )
-    managers = result.scalars().all()
     
-    return managers
+    return [EmployeeResponse.model_validate(mgr) for mgr in managers]
 
 
-@router.get("/{emp_id}", response_model=EmployeeResponse)
-async def read_employee(
-    emp_id: int,
+@router.get("/{employee_id}", response_model=EmployeeResponse)
+async def get_employee_by_id_endpoint(
+    employee: Employee = Depends(get_employee_by_id),
+    current_user: Employee = Depends(get_current_user)
+) -> EmployeeResponse:
+    """
+    Get employee by ID.
+    
+    Args:
+        employee: Employee found by ID (from dependency)
+        current_user: Current authenticated user
+        
+    Returns:
+        EmployeeResponse: Employee data
+    """
+    return EmployeeResponse.model_validate(employee)
+
+
+@router.get("/{employee_id}/subordinates", response_model=EmployeeWithSubordinates)
+async def get_employee_with_subordinates(
+    employee_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    """Get an employee by ID."""
+    employee_service: EmployeeService = Depends(get_employee_service),
+    current_user: Employee = Depends(get_current_user)
+) -> EmployeeWithSubordinates:
+    """
+    Get employee with their subordinates.
     
-    result = await db.execute(select(Employee).where(Employee.emp_id == emp_id))
-    employee = result.scalars().first()
+    Args:
+        employee_id: Employee ID
+        db: Database session
+        employee_service: Employee service instance
+        current_user: Current authenticated user
+        
+    Returns:
+        EmployeeWithSubordinates: Employee with subordinates
+    """
+    employee = await employee_service.get_employee_with_subordinates(
+        db, 
+        employee_id=employee_id
+    )
     
-    if not employee:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=EMPLOYEE_NOT_FOUND
-        )
-    
-    return employee
+    return EmployeeWithSubordinates.model_validate(employee)
 
 
-@router.get("/{emp_id}/subordinates", response_model=EmployeeWithSubordinates)
-async def read_employee_with_subordinates(
-    emp_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    """Get an employee with their subordinates."""
-    
-    result = await db.execute(select(Employee).where(Employee.emp_id == emp_id))
-    employee = result.scalars().first()
-    
-    if not employee:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=EMPLOYEE_NOT_FOUND
-        )
-    
-    return employee
-
-
-@router.put("/{emp_id}", response_model=EmployeeResponse)
+@router.put("/{employee_id}", response_model=EmployeeResponse)
 async def update_employee(
-    emp_id: int,
-    employee: EmployeeUpdate,
+    employee_id: int,
+    employee_data: EmployeeUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    """Update an employee."""
+    employee_service: EmployeeService = Depends(get_employee_service),
+    current_user: Employee = Depends(get_current_user)
+) -> EmployeeResponse:
+    """
+    Update an employee.
     
-    result = await db.execute(select(Employee).where(Employee.emp_id == emp_id))
-    db_employee = result.scalars().first()
-    
-    if not db_employee:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=EMPLOYEE_NOT_FOUND
-        )
-    
-    # Check if email already exists if updating email
-    if employee.emp_email and employee.emp_email != db_employee.emp_email:
-        result = await db.execute(select(Employee).where(Employee.emp_email == employee.emp_email))
-        existing_employee = result.scalars().first()
+    Args:
+        employee_id: Employee ID to update
+        employee_data: Employee update data
+        db: Database session
+        employee_service: Employee service instance
+        current_user: Current authenticated user
         
-        if existing_employee:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
-    
-    # Check if reporting manager exists if provided
-    if employee.emp_reporting_manager_id:
-        result = await db.execute(select(Employee).where(Employee.emp_id == employee.emp_reporting_manager_id))
-        manager = result.scalars().first()
+    Returns:
+        EmployeeResponse: Updated employee data
         
-        if not manager:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=REPORTING_MANAGER_NOT_FOUND
-            )
-        
-        # Prevent circular reporting relationship
-        if employee.emp_reporting_manager_id == emp_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Employee cannot report to themselves"
-            )
+    Raises:
+        EntityNotFoundError: If employee not found
+        DuplicateEntityError: If email already exists
+        ValidationError: If validation fails
+    """
+    db_employee = await employee_service.update_employee(
+        db,
+        employee_id=employee_id,
+        employee_data=employee_data
+    )
     
-    # Update employee
-    update_data = employee.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_employee, key, value)
-    
-    await db.commit()
-    await db.refresh(db_employee)
-    
-    return db_employee
+    return EmployeeResponse.model_validate(db_employee)
 
 
-@router.delete("/{emp_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_employee(
-    emp_id: int,
+@router.delete("/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def soft_delete_employee(
+    employee_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    """Delete an employee."""
+    employee_service: EmployeeService = Depends(get_employee_service),
+    current_user: Employee = Depends(get_current_user)
+) -> None:
+    """
+    Soft delete an employee (set status to inactive).
     
-    result = await db.execute(select(Employee).where(Employee.emp_id == emp_id))
-    db_employee = result.scalars().first()
-    
-    if not db_employee:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=EMPLOYEE_NOT_FOUND
-        )
-    
-    await db.delete(db_employee)
+    Args:
+        employee_id: Employee ID to delete
+        db: Database session
+        employee_service: Employee service instance
+        current_user: Current authenticated user
+        
+    Raises:
+        EntityNotFoundError: If employee not found
+    """
+    await employee_service.soft_delete(db, entity_id=employee_id)
     await db.commit()
-    
-    return None

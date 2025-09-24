@@ -1,191 +1,242 @@
-"""Employee service for handling employee-related business logic."""
+"""
+Employee service for the Performance Management System.
 
-from typing import List, Optional
+This module provides business logic for employee-related operations
+with proper validation and error handling.
+"""
+
+from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
-from fastapi import HTTPException, status
+from sqlalchemy import and_, or_
+from passlib.context import CryptContext
 
 from app.models.employee import Employee
-from app.schemas.employee import EmployeeCreate, EmployeeUpdate, EmployeeResponse
+from app.schemas.employee import EmployeeCreate, EmployeeUpdate
 from app.services.base_service import BaseService
-from app.services.auth_service import AuthService
+from app.exceptions import (
+    EntityNotFoundError,
+    DuplicateEntityError,
+    ValidationError,
+    BadRequestError
+)
 from app.constants import (
-    EMPLOYEE_NOT_FOUND,
-    REPORTING_MANAGER_NOT_FOUND,
-    get_entity_not_found_message,
+    EMAIL_ALREADY_EXISTS,
     CIRCULAR_REPORTING_RELATIONSHIP
 )
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
-    """Service for employee-related operations."""
+    """Service class for employee operations."""
     
     def __init__(self):
         super().__init__(Employee)
-        self.auth_service = AuthService()
     
-    async def get_by_id(self, db: AsyncSession, employee_id: int) -> Optional[Employee]:
-        """Get employee by ID."""
-        result = await db.execute(
-            select(Employee)
-            .where(Employee.emp_id == employee_id)
-            .options(selectinload(Employee.subordinates))
-        )
-        return result.scalars().first()
+    @property
+    def entity_name(self) -> str:
+        return "Employee"
     
-    async def get_by_email(self, db: AsyncSession, email: str) -> Optional[Employee]:
-        """Get employee by email."""
-        result = await db.execute(select(Employee).where(Employee.emp_email == email))
-        return result.scalars().first()
-    
-    async def get_all_employees(
-        self, 
-        db: AsyncSession,
-        skip: int = 0,
-        limit: int = 100,
-        include_inactive: bool = False
-    ) -> List[Employee]:
-        """Get all employees with pagination."""
-        query = select(Employee).options(selectinload(Employee.subordinates))
-        
-        if not include_inactive:
-            query = query.where(Employee.emp_status == True)
-        
-        query = query.offset(skip).limit(limit)
-        result = await db.execute(query)
-        return result.scalars().all()
-    
-    async def get_managers(self, db: AsyncSession) -> List[Employee]:
-        """Get all employees who can be managers (level >= 4)."""
-        result = await db.execute(
-            select(Employee)
-            .where(Employee.emp_roles_level >= 4)
-            .where(Employee.emp_status == True)
-        )
-        return result.scalars().all()
-    
-    async def get_subordinates(self, db: AsyncSession, manager_id: int) -> List[Employee]:
-        """Get all subordinates of a manager."""
-        result = await db.execute(
-            select(Employee)
-            .where(Employee.emp_reporting_manager_id == manager_id)
-            .where(Employee.emp_status == True)
-        )
-        return result.scalars().all()
+    @property
+    def id_field(self) -> str:
+        return "emp_id"
     
     async def create_employee(
-        self, 
-        db: AsyncSession, 
+        self,
+        db: AsyncSession,
+        *,
         employee_data: EmployeeCreate
     ) -> Employee:
-        """Create a new employee with validation."""
-        async with db.begin():
-            # Validate create data
-            await self.validate_create(db, employee_data)
-            
-            # Prepare employee data
-            emp_data = employee_data.model_dump()
-            
-            # Handle reporting manager (convert 0 to None)
-            if emp_data.get('emp_reporting_manager_id') == 0:
-                emp_data['emp_reporting_manager_id'] = None
-            
-            # Hash password
-            plain_password = emp_data.pop("password")
-            emp_data["emp_password"] = self.auth_service.hash_password(plain_password)
-            
-            # Create employee
-            db_employee = Employee(**emp_data)
-            db.add(db_employee)
-            await db.flush()
-            
-            # Refresh to get all fields
-            await db.refresh(db_employee)
-            return db_employee
-    
-    async def update_employee(
-        self, 
-        db: AsyncSession, 
-        employee_id: int, 
-        employee_update: EmployeeUpdate
-    ) -> Employee:
-        """Update an existing employee."""
-        async with db.begin():
-            # Get existing employee
-            db_employee = await self.get_by_id_or_404(db, employee_id)
-            
-            # Validate update data
-            await self.validate_update(db, db_employee, employee_update)
-            
-            # Update employee
-            updated_employee = await self.update(db, db_employee, employee_update, commit=False)
-            await db.refresh(updated_employee)
-            
-            return updated_employee
-    
-    async def deactivate_employee(self, db: AsyncSession, employee_id: int) -> Employee:
-        """Deactivate an employee (soft delete)."""
-        async with db.begin():
-            db_employee = await self.get_by_id_or_404(db, employee_id)
-            db_employee.emp_status = False
-            db.add(db_employee)
-            await db.refresh(db_employee)
-            return db_employee
-    
-    async def validate_create(self, db: AsyncSession, obj_in: EmployeeCreate) -> None:
-        """Validate employee creation data."""
-        # Check email uniqueness
-        await self.auth_service.validate_email_unique(db, obj_in.emp_email)
+        """Create a new employee with proper validation."""
+        # Validate email uniqueness
+        await self._validate_email_unique(db, employee_data.emp_email)
         
         # Validate reporting manager if provided
-        if obj_in.emp_reporting_manager_id and obj_in.emp_reporting_manager_id != 0:
-            await self._validate_reporting_manager(db, obj_in.emp_reporting_manager_id)
+        if employee_data.emp_reporting_manager_id and employee_data.emp_reporting_manager_id != 0:
+            await self._validate_reporting_manager(db, employee_data.emp_reporting_manager_id)
+        else:
+            employee_data.emp_reporting_manager_id = None
+        
+        # Hash password
+        obj_data = employee_data.model_dump()
+        plain_password = obj_data.pop("password")
+        hashed_password = pwd_context.hash(plain_password)
+        obj_data["emp_password"] = hashed_password
+        
+        # Create employee
+        db_employee = Employee(**obj_data)
+        db.add(db_employee)
+        await db.flush()
+        await db.refresh(db_employee)
+        
+        return db_employee
     
-    async def validate_update(self, db: AsyncSession, db_obj: Employee, obj_in: EmployeeUpdate) -> None:
-        """Validate employee update data."""
-        # Check email uniqueness if email is being updated
-        if obj_in.emp_email and obj_in.emp_email != db_obj.emp_email:
-            await self.auth_service.validate_email_unique(db, obj_in.emp_email)
+    async def update_employee(
+        self,
+        db: AsyncSession,
+        *,
+        employee_id: int,
+        employee_data: EmployeeUpdate
+    ) -> Employee:
+        """Update an existing employee with validation."""
+        db_employee = await self.get_by_id_or_404(db, employee_id)
+        
+        # Validate email uniqueness if being updated
+        if employee_data.emp_email:
+            await self._validate_email_unique(
+                db, 
+                employee_data.emp_email, 
+                exclude_id=employee_id
+            )
         
         # Validate reporting manager if being updated
-        if obj_in.emp_reporting_manager_id is not None:
-            if obj_in.emp_reporting_manager_id == 0:
-                # Converting to no manager is allowed
-                pass
+        if employee_data.emp_reporting_manager_id is not None:
+            if employee_data.emp_reporting_manager_id == 0:
+                employee_data.emp_reporting_manager_id = None
+            elif employee_data.emp_reporting_manager_id == employee_id:
+                raise ValidationError(CIRCULAR_REPORTING_RELATIONSHIP)
             else:
-                # Validate new reporting manager
-                await self._validate_reporting_manager(db, obj_in.emp_reporting_manager_id)
-                
-                # Check for circular reference
-                if obj_in.emp_reporting_manager_id == db_obj.emp_id:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=CIRCULAR_REPORTING_RELATIONSHIP
-                    )
+                await self._validate_reporting_manager(db, employee_data.emp_reporting_manager_id)
+        
+        # Update employee
+        return await self.update(db=db, db_obj=db_employee, obj_in=employee_data)
     
-    async def _validate_reporting_manager(self, db: AsyncSession, manager_id: int) -> None:
-        """Validate that reporting manager exists and is active."""
-        result = await db.execute(
-            select(Employee).where(
-                Employee.emp_id == manager_id,
-                Employee.emp_status == True
+    async def get_employees_with_filters(
+        self,
+        db: AsyncSession,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        search: Optional[str] = None,
+        status: Optional[bool] = None,
+        department: Optional[str] = None,
+        role: Optional[str] = None
+    ) -> List[Employee]:
+        """Get employees with filtering and search."""
+        filters = []
+        
+        if status is not None:
+            filters.append(Employee.emp_status == status)
+        
+        if department:
+            filters.append(Employee.emp_department.ilike(f"%{department}%"))
+        
+        if role:
+            filters.append(Employee.emp_roles.ilike(f"%{role}%"))
+        
+        # Add search filters
+        if search:
+            search_filters = self._build_search_filters(
+                search, 
+                ["emp_name", "emp_email", "emp_department", "emp_roles"]
             )
+            filters.extend(search_filters)
+        
+        return await self.get_multi(
+            db=db,
+            skip=skip,
+            limit=limit,
+            filters=filters,
+            order_by=Employee.emp_name
         )
-        manager = result.scalars().first()
+    
+    async def get_managers(
+        self,
+        db: AsyncSession,
+        *,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Employee]:
+        """Get employees who can be managers (active employees)."""
+        filters = [Employee.emp_status == True]
+        
+        return await self.get_multi(
+            db=db,
+            skip=skip,
+            limit=limit,
+            filters=filters,
+            order_by=Employee.emp_name
+        )
+    
+    async def get_employee_with_subordinates(
+        self,
+        db: AsyncSession,
+        *,
+        employee_id: int
+    ) -> Employee:
+        """Get employee with their subordinates."""
+        return await self.get_by_id_or_404(
+            db,
+            employee_id,
+            load_relationships=["subordinates"]
+        )
+    
+    async def verify_password(
+        self,
+        plain_password: str,
+        hashed_password: str
+    ) -> bool:
+        """Verify a password against its hash."""
+        return pwd_context.verify(plain_password, hashed_password)
+    
+    async def get_employee_by_email(
+        self,
+        db: AsyncSession,
+        *,
+        email: str
+    ) -> Optional[Employee]:
+        """Get employee by email address."""
+        result = await db.execute(
+            select(Employee).where(Employee.emp_email == email)
+        )
+        return result.scalars().first()
+    
+    async def _validate_email_unique(
+        self,
+        db: AsyncSession,
+        email: str,
+        exclude_id: Optional[int] = None
+    ) -> None:
+        """Validate that email is unique."""
+        query = select(Employee).where(Employee.emp_email == email)
+        
+        if exclude_id:
+            query = query.where(Employee.emp_id != exclude_id)
+        
+        result = await db.execute(query)
+        existing_employee = result.scalars().first()
+        
+        if existing_employee:
+            raise DuplicateEntityError("Employee", "email")
+    
+    async def _validate_reporting_manager(
+        self,
+        db: AsyncSession,
+        manager_id: int
+    ) -> Employee:
+        """Validate that reporting manager exists and is active."""
+        manager = await self.get_by_id(db, manager_id)
         
         if not manager:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=get_entity_not_found_message("Reporting manager", manager_id)
-            )
+            raise EntityNotFoundError("Reporting manager", manager_id)
+        
+        if not manager.emp_status:
+            raise ValidationError("Reporting manager must be an active employee")
+        
+        return manager
     
-    async def get_by_id_or_404(self, db: AsyncSession, employee_id: int) -> Employee:
-        """Get employee by ID or raise 404 error."""
-        employee = await self.get_by_id(db, employee_id)
-        if not employee:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=get_entity_not_found_message("Employee", employee_id)
+    async def _validate_unique_constraints(
+        self,
+        db: AsyncSession,
+        obj_data: Dict[str, Any],
+        exclude_id: Optional[int] = None
+    ) -> None:
+        """Validate unique constraints for employee."""
+        if "emp_email" in obj_data:
+            await self._validate_email_unique(
+                db, 
+                obj_data["emp_email"], 
+                exclude_id=exclude_id
             )
-        return employee

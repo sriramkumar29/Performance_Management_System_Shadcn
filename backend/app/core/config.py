@@ -20,10 +20,10 @@ class Settings(BaseSettings):
     """Application settings."""
 
     # Database settings - defaults to development, overridden by env files
-    DATABASE_URL: str = "postgresql+asyncpg://--@hibiz-as-ai-commissioning.postgres.database.azure.com:5432/hibiz_appraisal"
+    DATABASE_URL: str = "postgresql+asyncpg://hibizaiadmin:Haiadmin123@hibiz-as-ai-commissioning.postgres.database.azure.com:5432/hibiz_appraisal"
 
     # Security settings
-    SECRET_KEY: str = "--"  # Change in production
+    SECRET_KEY: str = "60b2c32eac0fe0b3b026b112ab8f7d6c996b88a9d20467bd1c7a5681d46e0e09"  # Change in production
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7

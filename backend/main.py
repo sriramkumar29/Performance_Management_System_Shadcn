@@ -1,3 +1,10 @@
+"""
+Main FastAPI application for the Performance Management System.
+
+This module sets up the FastAPI application with proper middleware,
+exception handling, routing, and static file serving.
+"""
+
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,10 +16,19 @@ from pathlib import Path
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
 from starlette.exceptions import HTTPException
+import logging
 
 from app.db.database import engine, Base
 from app.routers import employees, appraisals, goals, appraisal_types, appraisal_goals
 from app.core.config import settings
+from app.core.exception_handlers import setup_exception_handlers
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -25,29 +41,164 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Performance Appraisal Management System",
-    description="API for managing employee performance appraisals",
+    description="""
+    A comprehensive REST API for managing employee performance appraisals.
+    
+    Features:
+    - Employee management with role-based access
+    - Goal setting and tracking
+    - Multi-stage appraisal workflow
+    - JWT-based authentication
+    - Comprehensive validation and error handling
+    """,
     version="1.0.0",
     lifespan=lifespan,
-    root_path=settings.BASE_PATH if settings.BASE_PATH != "/" else ""
+    root_path=settings.BASE_PATH if settings.BASE_PATH != "/" else "",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
 )
 
-# Configure CORS using settings
+# Set up global exception handlers
+setup_exception_handlers(app)
+
+# Request logging middleware for debugging
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log incoming requests for debugging purposes."""
+    # Log all requests to API endpoints for debugging
+    if request.url.path.startswith('/api/'):
+        logger.info(f"API Request: {request.method} {request.url.path}")
+        if request.path_params:
+            logger.info(f"Path params: {request.path_params}")
+        
+        # Special logging for employee-related requests
+        if 'employees' in request.url.path:
+            logger.info(f"Employee endpoint accessed: {request.method} {request.url.path}")
+    
+    response = await call_next(request)
+    return response
+
+# Configure CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    # allow_origins=settings.CORS_ORIGINS.split(",") if isinstance(settings.CORS_ORIGINS, str) else settings.CORS_ORIGINS,  # Ensure it's a list,  # It's already a list
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["Content-Length", "X-Total-Count"],
 )
 
-# Include routers
-app.include_router(employees.router, prefix="/api/employees", tags=["Employees"])
-app.include_router(appraisals.router, prefix="/api/appraisals", tags=["Appraisals"])
-app.include_router(appraisal_goals.router, prefix="/api/appraisals", tags=["Appraisal Goals"])
-app.include_router(goals.router, prefix="/api/goals", tags=["Goals"])
-app.include_router(appraisal_types.router, prefix="/api/appraisal-types", tags=["Appraisal Types"])
+# Include API routers with proper versioning and organization
+api_prefix = "/api"
+
+app.include_router(
+    employees.router, 
+    prefix=f"{api_prefix}/employees", 
+    tags=["Authentication & Employees"],
+    responses={
+        401: {"description": "Unauthorized"},
+        403: {"description": "Forbidden"},
+        404: {"description": "Not Found"},
+        422: {"description": "Validation Error"}
+    }
+)
+
+app.include_router(
+    appraisals.router, 
+    prefix=f"{api_prefix}/appraisals", 
+    tags=["Appraisals"],
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Not Found"},
+        422: {"description": "Validation Error"}
+    }
+)
+
+app.include_router(
+    appraisal_goals.router, 
+    prefix=f"{api_prefix}/appraisals", 
+    tags=["Appraisal Goals"],
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Not Found"},
+        422: {"description": "Validation Error"}
+    }
+)
+
+app.include_router(
+    goals.router, 
+    prefix=f"{api_prefix}/goals", 
+    tags=["Goals & Templates"],
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Not Found"},
+        422: {"description": "Validation Error"}
+    }
+)
+
+app.include_router(
+    appraisal_types.router, 
+    prefix=f"{api_prefix}/appraisal-types", 
+    tags=["Appraisal Types"],
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Not Found"},
+        422: {"description": "Validation Error"}
+    }
+)
+
+# Health check and API info endpoints
+@app.get("/health", tags=["System"], summary="Health Check")
+async def health_check():
+    """
+    Health check endpoint for monitoring and load balancers.
+    
+    Returns:
+        dict: System health status and information
+    """
+    return {
+        "status": "healthy",
+        "service": "Performance Management System API",
+        "version": "1.0.0",
+        "timestamp": "2025-01-01T00:00:00Z"
+    }
+
+
+@app.get(f"{api_prefix}/info", tags=["System"], summary="API Information")
+async def api_info():
+    """
+    Get API information and available endpoints.
+    
+    Returns:
+        dict: API information and metadata
+    """
+    return {
+        "name": "Performance Management System API",
+        "version": "1.0.0",
+        "description": "REST API for managing employee performance appraisals",
+        "features": [
+            "JWT Authentication",
+            "Role-based Access Control",
+            "Comprehensive Validation",
+            "Multi-stage Appraisal Workflow",
+            "Goal Management",
+            "Employee Management"
+        ],
+        "endpoints": {
+            "authentication": "/api/employees/login",
+            "employees": "/api/employees",
+            "appraisals": "/api/appraisals",
+            "goals": "/api/goals",
+            "templates": "/api/goals/templates",
+            "appraisal-types": "/api/appraisal-types"
+        },
+        "documentation": {
+            "swagger": "/docs",
+            "redoc": "/redoc",
+            "openapi": "/openapi.json"
+        }
+    }
 
 # Define the path to your React build directory
 FRONTEND_DIR = Path(__file__).parent / "dist"

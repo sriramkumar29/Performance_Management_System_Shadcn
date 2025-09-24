@@ -90,14 +90,13 @@ export const handlers = [
     )
   }),
 
-  http.get(`${API_BASE}/employees/by-email`, ({ request }) => {
-    const url = new URL(request.url)
-    const email = url.searchParams.get('email')
+  http.get(`${API_BASE}/employees/profile`, () => {
+    // Return the current authenticated user profile
+    // In a real app, this would be determined by the JWT token
+    const currentUser = mockEmployees[0] // For testing, return first employee
     
-    const employee = mockEmployees.find(emp => emp.emp_email === email)
-    
-    if (employee) {
-      return HttpResponse.json(employee)
+    if (currentUser) {
+      return HttpResponse.json(currentUser)
     }
     
     return HttpResponse.json(

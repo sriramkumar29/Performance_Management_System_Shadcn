@@ -13,9 +13,12 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     testTimeout: 30000, // Increase to 30 seconds for complex tests
-    setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['node_modules', 'dist', 'e2e', 'src/**/*.integration.test.{ts,tsx}'],
+    setupFiles: ['./src/test/utils/setup.ts'],
+    include: [
+      'src/test/unit/**/*.{test,spec}.{ts,tsx}',
+      'src/**/*.{test,spec}.{ts,tsx}'
+    ],
+    exclude: ['node_modules', 'dist', 'e2e', 'src/test/integration/**/*.{test,spec}.{ts,tsx}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

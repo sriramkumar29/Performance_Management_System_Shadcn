@@ -62,7 +62,7 @@ export const testApiWithRefresh = async () => {
   
   try {
     // Make a test API call that requires authentication
-    const response = await fetch('/api/employees/by-email?email=test@example.com', {
+    const response = await fetch('/api/employees/profile', {
       headers: {
         'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
       },

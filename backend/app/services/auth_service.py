@@ -1,145 +1,195 @@
-"""Authentication service for handling auth-related business logic."""
+"""
+Authentication service for the Performance Management System.
 
+This module provides authentication and authorization logic
+with proper JWT handling and security.
+"""
+
+from typing import Optional, Dict, Any
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Tuple
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from fastapi import HTTPException, status
-from passlib.context import CryptContext
 import jwt
+from jwt import InvalidTokenError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.employee import Employee
-from app.schemas.employee import EmployeeCreate
+from app.services.employee_service import EmployeeService
 from app.core.config import settings
+from app.exceptions import UnauthorizedError, EntityNotFoundError
 from app.constants import (
-    INVALID_EMAIL_OR_PASSWORD, 
-    EMPLOYEE_NOT_FOUND,
+    INVALID_EMAIL_OR_PASSWORD,
     INVALID_REFRESH_TOKEN,
     REFRESH_TOKEN_EXPIRED,
-    EMAIL_ALREADY_REGISTERED
+    EMPLOYEE_NOT_FOUND
 )
 
 
 class AuthService:
-    """Service for authentication and authorization operations."""
+    """Service class for authentication operations."""
     
     def __init__(self):
-        self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        self.employee_service = EmployeeService()
     
-    def hash_password(self, password: str) -> str:
-        """Hash a plain text password."""
-        return self.pwd_context.hash(password)
+    async def authenticate_user(
+        self,
+        db: AsyncSession,
+        *,
+        email: str,
+        password: str
+    ) -> Employee:
+        """Authenticate user with email and password."""
+        employee = await self.employee_service.get_employee_by_email(db, email=email)
+        
+        if not employee:
+            raise UnauthorizedError(INVALID_EMAIL_OR_PASSWORD)
+        
+        if not employee.emp_status:
+            raise UnauthorizedError("Account is disabled")
+        
+        if not await self.employee_service.verify_password(password, employee.emp_password):
+            raise UnauthorizedError(INVALID_EMAIL_OR_PASSWORD)
+        
+        return employee
     
-    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """Verify a password against its hash."""
-        return self.pwd_context.verify(plain_password, hashed_password)
-    
-    def create_tokens(self, employee: Employee) -> Tuple[str, str]:
-        """Create access and refresh tokens for an employee."""
-        # Create access token
-        access_payload = {
+    def create_access_token(
+        self,
+        *,
+        employee: Employee,
+        expires_delta: Optional[timedelta] = None
+    ) -> str:
+        """Create JWT access token."""
+        if expires_delta:
+            expire = datetime.now(timezone.utc) + expires_delta
+        else:
+            expire = datetime.now(timezone.utc) + timedelta(
+                minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+            )
+        
+        payload = {
             "sub": employee.emp_email,
             "emp_id": employee.emp_id,
             "type": "access",
-            "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+            "exp": expire,
+            "iat": datetime.now(timezone.utc)
         }
-        access_token = jwt.encode(access_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         
-        # Create refresh token
-        refresh_payload = {
+        return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    
+    def create_refresh_token(
+        self,
+        *,
+        employee: Employee,
+        expires_delta: Optional[timedelta] = None
+    ) -> str:
+        """Create JWT refresh token."""
+        if expires_delta:
+            expire = datetime.now(timezone.utc) + expires_delta
+        else:
+            expire = datetime.now(timezone.utc) + timedelta(
+                days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+            )
+        
+        payload = {
             "sub": employee.emp_email,
             "emp_id": employee.emp_id,
             "type": "refresh",
-            "exp": datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+            "exp": expire,
+            "iat": datetime.now(timezone.utc)
         }
-        refresh_token = jwt.encode(refresh_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         
-        return access_token, refresh_token
+        return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     
-    def decode_token(self, token: str) -> dict:
-        """Decode and validate a JWT token."""
+    def verify_token(
+        self,
+        token: str,
+        token_type: str = "access"
+    ) -> Dict[str, Any]:
+        """Verify JWT token and return payload."""
         try:
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            payload = jwt.decode(
+                token, 
+                settings.SECRET_KEY, 
+                algorithms=[settings.ALGORITHM]
+            )
+            
+            # Verify token type
+            if payload.get("type") != token_type:
+                raise UnauthorizedError(INVALID_REFRESH_TOKEN if token_type == "refresh" else "Invalid access token")
+            
+            # Verify required fields
+            if not payload.get("sub") or not payload.get("emp_id"):
+                raise UnauthorizedError(INVALID_REFRESH_TOKEN if token_type == "refresh" else "Invalid access token")
+            
             return payload
+            
         except jwt.ExpiredSignatureError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=REFRESH_TOKEN_EXPIRED
-            )
-        except jwt.InvalidTokenError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=INVALID_REFRESH_TOKEN
-            )
+            raise UnauthorizedError(REFRESH_TOKEN_EXPIRED if token_type == "refresh" else "Access token expired")
+        except InvalidTokenError:
+            raise UnauthorizedError(INVALID_REFRESH_TOKEN if token_type == "refresh" else "Invalid access token")
     
-    async def authenticate_user(self, db: AsyncSession, email: str, password: str) -> Employee:
-        """Authenticate user with email and password."""
-        result = await db.execute(select(Employee).where(Employee.emp_email == email))
-        employee = result.scalars().first()
-        
-        if not employee or not self.verify_password(password, employee.emp_password):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=INVALID_EMAIL_OR_PASSWORD
-            )
-        
-        return employee
-    
-    async def get_current_user(self, db: AsyncSession, token: str) -> Employee:
+    async def get_current_user_from_token(
+        self,
+        db: AsyncSession,
+        *,
+        token: str
+    ) -> Employee:
         """Get current user from access token."""
-        payload = self.decode_token(token)
+        payload = self.verify_token(token, "access")
         email = payload.get("sub")
-        token_type = payload.get("type")
         
-        if not email or token_type != "access":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=INVALID_REFRESH_TOKEN
-            )
-        
-        result = await db.execute(select(Employee).where(Employee.emp_email == email))
-        employee = result.scalars().first()
+        employee = await self.employee_service.get_employee_by_email(db, email=email)
         
         if not employee:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=EMPLOYEE_NOT_FOUND
-            )
+            raise EntityNotFoundError("Employee")
+        
+        if not employee.emp_status:
+            raise UnauthorizedError("Account is disabled")
         
         return employee
     
-    async def refresh_tokens(self, db: AsyncSession, refresh_token: str) -> Tuple[str, str]:
-        """Refresh access and refresh tokens."""
-        payload = self.decode_token(refresh_token)
+    async def refresh_access_token(
+        self,
+        db: AsyncSession,
+        *,
+        refresh_token: str
+    ) -> Dict[str, str]:
+        """Refresh access token using refresh token."""
+        payload = self.verify_token(refresh_token, "refresh")
         email = payload.get("sub")
-        emp_id = payload.get("emp_id")
-        token_type = payload.get("type")
         
-        if not email or not emp_id or token_type != "refresh":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=INVALID_REFRESH_TOKEN
-            )
-        
-        # Verify employee still exists
-        result = await db.execute(select(Employee).where(Employee.emp_email == email))
-        employee = result.scalars().first()
+        # Verify employee still exists and is active
+        employee = await self.employee_service.get_employee_by_email(db, email=email)
         
         if not employee:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=EMPLOYEE_NOT_FOUND
-            )
+            raise EntityNotFoundError("Employee")
         
-        return self.create_tokens(employee)
+        if not employee.emp_status:
+            raise UnauthorizedError("Account is disabled")
+        
+        # Create new tokens
+        new_access_token = self.create_access_token(employee=employee)
+        new_refresh_token = self.create_refresh_token(employee=employee)
+        
+        return {
+            "access_token": new_access_token,
+            "refresh_token": new_refresh_token,
+            "token_type": "bearer"
+        }
     
-    async def validate_email_unique(self, db: AsyncSession, email: str) -> None:
-        """Validate that email is unique."""
-        result = await db.execute(select(Employee).where(Employee.emp_email == email))
-        existing_employee = result.scalars().first()
+    async def login(
+        self,
+        db: AsyncSession,
+        *,
+        email: str,
+        password: str
+    ) -> Dict[str, str]:
+        """Complete login process with token generation."""
+        employee = await self.authenticate_user(db, email=email, password=password)
         
-        if existing_employee:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=EMAIL_ALREADY_REGISTERED
-            )
+        access_token = self.create_access_token(employee=employee)
+        refresh_token = self.create_refresh_token(employee=employee)
+        
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer"
+        }
