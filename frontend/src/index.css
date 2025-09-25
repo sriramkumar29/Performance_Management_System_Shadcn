@@ -1,0 +1,291 @@
+@import "tailwindcss";
+
+/* Respect reduced-motion globally */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@custom-variant dark (&:is(.dark *));
+@layer base, components, utilities;
+
+/* Tailwind v4: map CSS variables to Tailwind tokens used by Shadcn (bg-background, text-foreground, etc.) */
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+}
+
+/* Optional animations used by Shadcn components */
+@plugin "tailwindcss-animate";
+
+/* Tailwind v4 provides preflight/reset and utilities. Project-specific styles are defined below. */
+/* Map Tailwind v4 color tokens to our CSS variables (moved from @theme for lint compatibility) */
+
+/* Force style persistence during navigation */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Global smooth scroll; turned off for reduced motion */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent style flashing during navigation */
+* {
+  box-sizing: border-box;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 239 84% 67%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 239 84% 67%;
+    --radius: 0.75rem;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 98%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 98%;
+    /* Icon tokens: tuned for light mode */
+    --icon: 240 4% 46%;
+    --icon-strong: 240 6% 20%;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    /* Slightly lighter than background for clearer separation */
+    --card: 240 8% 6.5%;
+    --card-foreground: 0 0% 98%;
+    /* Keep popovers close to card but distinct */
+    --popover: 240 8% 6%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 239 84% 67%;
+    --primary-foreground: 240 10% 3.9%;
+    /* Subtle elevated surfaces */
+    --secondary: 240 4% 12%;
+    --secondary-foreground: 0 0% 98%;
+    /* Muted surfaces for toolbars/stripes */
+    --muted: 240 4% 14%;
+    --muted-foreground: 240 5% 64.9%;
+    /* Accent surfaces slightly brighter than muted */
+    --accent: 240 5% 16%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    /* Stronger border/input for clearer outlines */
+    --border: 240 5% 20%;
+    --input: 240 5% 20%;
+    --ring: 239 84% 67%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 98%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 98%;
+    /* Icon tokens: brighter for dark mode */
+    --icon: 240 5% 70%;
+    --icon-strong: 0 0% 98%;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    /* Replace Tailwind @apply (from-primary) with raw CSS to avoid unknown utility errors */
+    background-image: linear-gradient(
+      to right,
+      hsl(var(--primary)),
+      hsl(var(--accent))
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Theme-aware icon utilities */
+  .text-icon {
+    color: hsl(var(--icon));
+  }
+
+  .text-icon-strong {
+    color: hsl(var(--icon-strong));
+  }
+
+  /* Category-specific icon colors (theme-aware via tokens) */
+  .icon-appraisal-type {
+    color: hsl(var(--info));
+  }
+
+  .icon-due-date {
+    color: hsl(var(--warning));
+  }
+
+  .icon-overall-progress {
+    color: hsl(var(--success));
+  }
+
+  .icon-my-appraisals {
+    color: hsl(var(--primary));
+  }
+
+  .icon-team-members {
+    color: hsl(var(--info));
+  }
+
+  .icon-drafts {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .icon-active {
+    color: hsl(var(--success));
+  }
+
+  .icon-team-appraisals {
+    color: hsl(var(--primary));
+  }
+
+  .glass-effect {
+    /* Theme-aware glass using design tokens */
+    background-color: hsl(var(--background) / 0.65);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid hsl(var(--border) / 0.6);
+  }
+
+  .shadow-soft {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  .shadow-medium {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  /* Subtle, theme-aware custom scrollbar */
+  .nice-scrollbar {
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    /* Firefox */
+    scrollbar-color: hsla(var(--muted-foreground), 0.35) transparent;
+    /* Firefox */
+  }
+
+  .nice-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .nice-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .nice-scrollbar::-webkit-scrollbar-thumb {
+    background-color: hsla(var(--muted-foreground), 0.35);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .nice-scrollbar:hover::-webkit-scrollbar-thumb {
+    background-color: hsla(var(--primary), 0.6);
+  }
+
+  /* Multi-line clamp utilities without plugin */
+  .line-clamp-5 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 5;
+    line-clamp: 5; /* Standard property for newer engines */
+    overflow: hidden;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
