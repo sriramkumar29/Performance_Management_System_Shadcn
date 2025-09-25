@@ -13,6 +13,12 @@ class CategoryCreate(CategoryBase):
     pass
 
 
+class CategoryUpdate(BaseModel):
+    """Schema for updating a Category."""
+    
+    name: str
+
+
 class CategoryResponse(CategoryBase):
     """Schema for Category response."""
     

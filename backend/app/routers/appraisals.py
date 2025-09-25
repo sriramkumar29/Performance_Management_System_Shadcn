@@ -218,7 +218,8 @@ async def update_appraisal_status(
     db_appraisal = await appraisal_service.update_appraisal_status(
         db,
         appraisal_id=appraisal_id,
-        new_status=status_update.status
+        new_status=status_update.status,
+        user_id=current_user.emp_id
     )
     
     return AppraisalResponse.model_validate(db_appraisal)
@@ -378,7 +379,7 @@ async def add_goals_to_appraisal(
     
     Args:
         appraisal_id: Appraisal ID
-        goal_ids: List of goal IDs to add
+        request: Request containing goal IDs to add
         db: Database session
         appraisal_service: Appraisal service instance
         current_user: Current authenticated user
@@ -390,43 +391,13 @@ async def add_goals_to_appraisal(
         EntityNotFoundError: If appraisal or goals not found
         ValidationError: If goal IDs are invalid
     """
-    from sqlalchemy.future import select
-    from sqlalchemy.orm import selectinload  
-    from app.models.goal import AppraisalGoal, Goal, Category
-    from app.exceptions import EntityNotFoundError
-    
-    # Add each goal to the appraisal if it doesn't already exist
-    for goal_id in request.goal_ids:
-        existing_check = await db.execute(
-            select(AppraisalGoal).where(
-                AppraisalGoal.appraisal_id == appraisal_id,
-                AppraisalGoal.goal_id == goal_id
-            )
-        )
-        
-        if not existing_check.scalars().first():
-            appraisal_goal = AppraisalGoal(
-                appraisal_id=appraisal_id,
-                goal_id=goal_id
-            )
-            db.add(appraisal_goal)
-    
-    await db.commit()
-    
-    # Get the updated appraisal with relationships
-    result = await db.execute(
-        select(Appraisal)
-        .where(Appraisal.appraisal_id == appraisal_id)
-        .options(
-            selectinload(Appraisal.appraisal_goals)
-            .selectinload(AppraisalGoal.goal)
-            .selectinload(Goal.category)
-        )
+    # ✅ FIXED: Use service layer instead of direct database operations
+    db_appraisal = await appraisal_service.add_goals_to_appraisal(
+        db,
+        appraisal_id=appraisal_id,
+        goal_ids=request.goal_ids
     )
-    db_appraisal = result.scalars().first()
-    
-    if not db_appraisal:
-        raise EntityNotFoundError("Appraisal", appraisal_id)
+    await db.commit()
     
     return AppraisalWithGoals.model_validate(db_appraisal)
 
@@ -455,42 +426,13 @@ async def add_single_goal_to_appraisal(
     Raises:
         EntityNotFoundError: If appraisal or goal not found
     """
-    from sqlalchemy.future import select
-    from sqlalchemy.orm import selectinload
-    from app.models.goal import AppraisalGoal, Goal, Category
-    from app.exceptions import EntityNotFoundError
-    
-    # Check if the goal already exists for this appraisal
-    existing_check = await db.execute(
-        select(AppraisalGoal).where(
-            AppraisalGoal.appraisal_id == appraisal_id,
-            AppraisalGoal.goal_id == goal_id
-        )
+    # ✅ FIXED: Use service layer instead of direct database operations
+    db_appraisal = await appraisal_service.add_single_goal_to_appraisal(
+        db,
+        appraisal_id=appraisal_id,
+        goal_id=goal_id
     )
-    
-    if not existing_check.scalars().first():
-        # Add the goal to the appraisal
-        appraisal_goal = AppraisalGoal(
-            appraisal_id=appraisal_id,
-            goal_id=goal_id
-        )
-        db.add(appraisal_goal)
-        await db.commit()
-    
-    # Get the updated appraisal with relationships
-    result = await db.execute(
-        select(Appraisal)
-        .where(Appraisal.appraisal_id == appraisal_id)
-        .options(
-            selectinload(Appraisal.appraisal_goals)
-            .selectinload(AppraisalGoal.goal)
-            .selectinload(Goal.category)
-        )
-    )
-    db_appraisal = result.scalars().first()
-    
-    if not db_appraisal:
-        raise EntityNotFoundError("Appraisal", appraisal_id)
+    await db.commit()
     
     return AppraisalWithGoals.model_validate(db_appraisal)
 
@@ -500,6 +442,7 @@ async def remove_goal_from_appraisal(
     appraisal_id: int = Path(..., gt=0),
     goal_id: int = Path(..., gt=0),
     db: AsyncSession = Depends(get_db),
+    appraisal_service: AppraisalService = Depends(get_appraisal_service),
     current_user: Employee = Depends(get_current_active_user)
 ) -> None:
     """
@@ -509,28 +452,18 @@ async def remove_goal_from_appraisal(
         appraisal_id: Appraisal ID
         goal_id: Goal ID to remove
         db: Database session
+        appraisal_service: Appraisal service instance
         current_user: Current authenticated user
         
     Raises:
         EntityNotFoundError: If appraisal goal not found
     """
-    from sqlalchemy.future import select
-    from app.models.goal import AppraisalGoal
-    from app.exceptions import EntityNotFoundError
-    
-    # Find the appraisal goal to delete
-    result = await db.execute(
-        select(AppraisalGoal).where(
-            AppraisalGoal.appraisal_id == appraisal_id,
-            AppraisalGoal.goal_id == goal_id
-        )
+    # ✅ FIXED: Use service layer instead of direct database operations
+    await appraisal_service.remove_goal_from_appraisal(
+        db,
+        appraisal_id=appraisal_id,
+        goal_id=goal_id
     )
-    appraisal_goal = result.scalars().first()
-    
-    if not appraisal_goal:
-        raise EntityNotFoundError("Appraisal Goal", f"appraisal_id={appraisal_id}, goal_id={goal_id}")
-    
-    await db.delete(appraisal_goal)
     await db.commit()
 
 

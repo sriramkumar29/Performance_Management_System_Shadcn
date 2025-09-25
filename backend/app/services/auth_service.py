@@ -12,6 +12,7 @@ from jwt import InvalidTokenError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.employee import Employee
+from app.repositories.user_repository import UserRepository
 from app.services.employee_service import EmployeeService
 from app.core.config import settings
 from app.exceptions import UnauthorizedError, EntityNotFoundError
@@ -30,6 +31,7 @@ class AuthService:
     """Service class for authentication operations."""
     
     def __init__(self):
+        self.user_repository = UserRepository()
         self.employee_service = EmployeeService()
     
     async def authenticate_user(
@@ -40,15 +42,12 @@ class AuthService:
         password: str
     ) -> Employee:
         """Authenticate user with email and password."""
-        employee = await self.employee_service.get_employee_by_email(db, email=email)
+        employee = await self.user_repository.get_active_user_by_email(db, email)
         
         if not employee:
             raise UnauthorizedError(INVALID_EMAIL_OR_PASSWORD)
         
-        if not employee.emp_status:
-            raise UnauthorizedError(ACCOUNT_DISABLED)
-        
-        if not await self.employee_service.verify_password(password, employee.emp_password):
+        if not self.employee_service.verify_password(password, employee.emp_password):
             raise UnauthorizedError(INVALID_EMAIL_OR_PASSWORD)
         
         return employee
@@ -160,12 +159,9 @@ class AuthService:
         email = payload.get("sub")
         
         # Verify employee still exists and is active
-        employee = await self.employee_service.get_employee_by_email(db, email=email)
+        employee = await self.user_repository.get_active_user_by_email(db, email)
         
         if not employee:
-            raise EntityNotFoundError("Employee")
-        
-        if not employee.emp_status:
             raise UnauthorizedError(ACCOUNT_DISABLED)
         
         # Create new tokens

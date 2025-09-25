@@ -2,21 +2,19 @@
 Appraisal service for the Performance Management System.
 
 This module provides business logic for appraisal-related operations
-with proper validation and status transition management.
+with proper validation and status transition management using Repository pattern.
 """
 
 from typing import List, Optional, Dict, Any
+from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
-from sqlalchemy import and_
 
 from app.models.appraisal import Appraisal, AppraisalStatus
 from app.models.employee import Employee
-from app.models.goal import Goal, AppraisalGoal
-from app.models.appraisal_type import AppraisalType, AppraisalRange
 from app.schemas.appraisal import AppraisalCreate, AppraisalUpdate
-from app.services.base_service import BaseService
+from app.repositories.appraisal_repository import AppraisalRepository
+from app.repositories.employee_repository import EmployeeRepository
+from app.repositories.goal_repository import AppraisalGoalRepository
 from app.exceptions import (
     EntityNotFoundError,
     ValidationError,
@@ -35,11 +33,14 @@ from app.constants import (
 )
 
 
-class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate]):
-    """Service class for appraisal operations."""
+class AppraisalService:
+    """Service class for appraisal operations using Repository pattern."""
     
     def __init__(self):
-        super().__init__(Appraisal)
+        self.repository = AppraisalRepository()
+        self.employee_repository = EmployeeRepository()
+        self.appraisal_goal_repository = AppraisalGoalRepository()
+        
         self._valid_transitions = {
             AppraisalStatus.DRAFT: [AppraisalStatus.SUBMITTED],
             AppraisalStatus.SUBMITTED: [AppraisalStatus.APPRAISEE_SELF_ASSESSMENT],
@@ -49,89 +50,384 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
             AppraisalStatus.COMPLETE: []  # No transitions from complete
         }
     
-    @property
-    def entity_name(self) -> str:
-        return "Appraisal"
-    
-    @property
-    def id_field(self) -> str:
-        return "appraisal_id"
-    
     async def create_appraisal(
         self,
         db: AsyncSession,
         *,
         appraisal_data: AppraisalCreate
     ) -> Appraisal:
-        """Create a new appraisal with comprehensive validation."""
-        # Validate all employees exist
-        await self._validate_employees(db, appraisal_data)
+        """Create a new appraisal with validation."""
+        # Validate participants exist and are active
+        await self._validate_participants(
+            db,
+            appraisal_data.appraisee_id,
+            appraisal_data.appraiser_id,
+            appraisal_data.reviewer_id
+        )
         
-        # Validate appraisal type and range
-        await self._validate_appraisal_type_and_range(db, appraisal_data)
+        # Check for overlapping appraisals
+        if await self.repository.exists_for_employee_in_period(
+            db,
+            appraisal_data.appraisee_id,
+            appraisal_data.start_date,
+            appraisal_data.end_date
+        ):
+            raise ValidationError("Employee already has an appraisal in this period")
         
-        # Validate goals exist and belong to appraisee
-        await self._validate_and_get_goals(db, appraisal_data)
+        # Validate date range
+        if appraisal_data.start_date >= appraisal_data.end_date:
+            raise ValidationError("Start date must be before end date")
         
-        # Create appraisal
-        obj_data = appraisal_data.model_dump()
-        goal_ids = obj_data.pop("goal_ids", [])
-        
-        db_appraisal = Appraisal(**obj_data)
-        db.add(db_appraisal)
-        await db.flush()
-        
-        # Add goals to appraisal
-        if goal_ids:
-            await self._add_goals_to_appraisal(db, db_appraisal, goal_ids)
-        
-        await db.refresh(db_appraisal)
-        return db_appraisal
+        appraisal_dict = appraisal_data.dict()
+        return await self.repository.create(db, appraisal_dict)
     
-    async def update_appraisal_status(
+    async def update_appraisal(
         self,
         db: AsyncSession,
         *,
         appraisal_id: int,
-        new_status: AppraisalStatus
+        appraisal_data: AppraisalUpdate
     ) -> Appraisal:
-        """Update appraisal status with validation."""
-        from sqlalchemy import select
-        from app.models.goal import Goal, AppraisalGoal
-        from fastapi import HTTPException, status
+        """Update an existing appraisal with validation."""
+        db_appraisal = await self.repository.get_by_id(db, appraisal_id, load_relationships=True)
+        if not db_appraisal:
+            raise EntityNotFoundError("Appraisal", appraisal_id)
         
-        # Get appraisal by ID with relationships
-        db_appraisal = await self.get_by_id_or_404(
-            db, 
-            appraisal_id,
-            load_relationships=["appraisal_type"]
-        )
+        # Validate status transitions if status is being updated
+        if appraisal_data.status and appraisal_data.status != db_appraisal.status:
+            self._validate_status_transition(db_appraisal.status, appraisal_data.status)
         
-        # Validate status transition
-        current_status = db_appraisal.status
-        
-        # Allow idempotent updates (same status can be set again)
-        if current_status == new_status:
-            # No change needed, return current appraisal
-            return db_appraisal
-        
-        # Check if transition is valid
-        if new_status not in self._valid_transitions.get(current_status, []):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid status transition from {current_status} to {new_status}"
+        # Validate participants if being updated
+        update_data = appraisal_data.dict(exclude_unset=True)
+        if any(key in update_data for key in ['appraisee_id', 'appraiser_id', 'reviewer_id']):
+            await self._validate_participants(
+                db,
+                update_data.get('appraisee_id', db_appraisal.appraisee_id),
+                update_data.get('appraiser_id', db_appraisal.appraiser_id),
+                update_data.get('reviewer_id', db_appraisal.reviewer_id)
             )
         
-        # Special validation for SUBMITTED status
+        # Check for period overlap if dates are being updated
+        if 'start_date' in update_data or 'end_date' in update_data:
+            new_start = update_data.get('start_date', db_appraisal.start_date)
+            new_end = update_data.get('end_date', db_appraisal.end_date)
+            appraisee_id = update_data.get('appraisee_id', db_appraisal.appraisee_id)
+            
+            if new_start >= new_end:
+                raise ValidationError("Start date must be before end date")
+            
+            if await self.repository.exists_for_employee_in_period(
+                db, appraisee_id, new_start, new_end, exclude_id=appraisal_id
+            ):
+                raise ValidationError("Employee already has an appraisal in this period")
+        
+        return await self.repository.update(db, db_appraisal, update_data)
+    
+    async def get_appraisal_by_id(
+        self,
+        db: AsyncSession,
+        appraisal_id: int,
+        load_relationships: bool = True
+    ) -> Optional[Appraisal]:
+        """Get appraisal by ID."""
+        return await self.repository.get_by_id(
+            db, appraisal_id, load_relationships=load_relationships
+        )
+    
+    async def get_appraisals_by_employee(
+        self,
+        db: AsyncSession,
+        employee_id: int,
+        role: str = ROLE_APPRAISEE,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Appraisal]:
+        """Get appraisals by employee role."""
+        if role == ROLE_APPRAISEE:
+            return await self.repository.get_by_appraisee(
+                db, employee_id, skip=skip, limit=limit, load_relationships=True
+            )
+        elif role == ROLE_APPRAISER:
+            return await self.repository.get_by_appraiser(
+                db, employee_id, skip=skip, limit=limit, load_relationships=True
+            )
+        elif role == ROLE_REVIEWER:
+            return await self.repository.get_by_reviewer(
+                db, employee_id, skip=skip, limit=limit, load_relationships=True
+            )
+        else:
+            raise ValidationError(f"Invalid role: {role}")
+    
+    async def get_pending_appraisals(
+        self,
+        db: AsyncSession,
+        employee_id: int,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Appraisal]:
+        """Get pending appraisals for an employee."""
+        return await self.repository.get_pending_appraisals(
+            db, employee_id, skip=skip, limit=limit, load_relationships=True
+        )
+    
+    async def get_appraisals_by_status(
+        self,
+        db: AsyncSession,
+        status: AppraisalStatus,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Appraisal]:
+        """Get appraisals by status."""
+        return await self.repository.get_by_status(
+            db, status, skip=skip, limit=limit, load_relationships=True
+        )
+    
+    async def get_appraisals_by_date_range(
+        self,
+        db: AsyncSession,
+        start_date: date,
+        end_date: date,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Appraisal]:
+        """Get appraisals within date range."""
+        return await self.repository.get_by_date_range(
+            db, start_date, end_date, skip=skip, limit=limit, load_relationships=True
+        )
+    
+    async def get_employee_appraisals_by_year(
+        self,
+        db: AsyncSession,
+        employee_id: int,
+        year: int
+    ) -> List[Appraisal]:
+        """Get all appraisals for an employee in a specific year."""
+        return await self.repository.get_employee_appraisals_by_year(
+            db, employee_id, year, load_relationships=True
+        )
+    
+    async def get_overdue_appraisals(
+        self,
+        db: AsyncSession,
+        current_date: Optional[date] = None,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Appraisal]:
+        """Get overdue appraisals."""
+        if current_date is None:
+            current_date = date.today()
+        
+        return await self.repository.get_overdue_appraisals(
+            db, current_date, skip=skip, limit=limit, load_relationships=True
+        )
+    
+    async def get_appraisal_statistics(
+        self,
+        db: AsyncSession,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None
+    ) -> Dict[str, int]:
+        """Get appraisal statistics grouped by status."""
+        return await self.repository.get_statistics_by_status(
+            db, start_date=start_date, end_date=end_date
+        )
+    
+    async def transition_status(
+        self,
+        db: AsyncSession,
+        appraisal_id: int,
+        new_status: AppraisalStatus,
+        user_id: int
+    ) -> Appraisal:
+        """Transition appraisal to new status with validation."""
+        appraisal = await self.repository.get_by_id(db, appraisal_id, load_relationships=True)
+        if not appraisal:
+            raise EntityNotFoundError("Appraisal", appraisal_id)
+        
+        # Validate status transition
+        self._validate_status_transition(appraisal.status, new_status)
+        
+        # Validate user has permission for this transition
+        await self._validate_user_permission(db, appraisal, new_status, user_id)
+        
+        # Perform status-specific validations
         if new_status == AppraisalStatus.SUBMITTED:
-            await self._validate_submission_requirements_direct(db, appraisal_id)
+            await self._validate_submission(db, appraisal)
         
-        # Update status
-        db_appraisal.status = new_status
-        await db.commit()
-        await db.refresh(db_appraisal)
+        return await self.repository.update(
+            db, appraisal, {"status": new_status}
+        )
+    
+    async def submit_self_assessment(
+        self,
+        db: AsyncSession,
+        appraisal_id: int,
+        user_id: int
+    ) -> Appraisal:
+        """Submit self-assessment and transition to next status."""
+        return await self.transition_status(
+            db, appraisal_id, AppraisalStatus.APPRAISEE_SELF_ASSESSMENT, user_id
+        )
+    
+    async def complete_appraiser_evaluation(
+        self,
+        db: AsyncSession,
+        appraisal_id: int,
+        user_id: int,
+        overall_rating: Optional[int] = None,
+        overall_comments: Optional[str] = None
+    ) -> Appraisal:
+        """Complete appraiser evaluation."""
+        appraisal = await self.repository.get_by_id(db, appraisal_id)
+        if not appraisal:
+            raise EntityNotFoundError("Appraisal", appraisal_id)
         
-        return db_appraisal
+        update_data = {"status": AppraisalStatus.APPRAISER_EVALUATION}
+        if overall_rating is not None:
+            if not (1 <= overall_rating <= 5):
+                raise ValidationError("Overall rating must be between 1 and 5")
+            update_data["appraiser_overall_rating"] = overall_rating
+        
+        if overall_comments:
+            update_data["appraiser_overall_comments"] = overall_comments
+        
+        return await self.repository.update(db, appraisal, update_data)
+    
+    async def complete_reviewer_evaluation(
+        self,
+        db: AsyncSession,
+        appraisal_id: int,
+        user_id: int,
+        overall_rating: Optional[int] = None,
+        overall_comments: Optional[str] = None
+    ) -> Appraisal:
+        """Complete reviewer evaluation."""
+        appraisal = await self.repository.get_by_id(db, appraisal_id)
+        if not appraisal:
+            raise EntityNotFoundError("Appraisal", appraisal_id)
+        
+        update_data = {"status": AppraisalStatus.COMPLETE}
+        if overall_rating is not None:
+            if not (1 <= overall_rating <= 5):
+                raise ValidationError("Overall rating must be between 1 and 5")
+            update_data["reviewer_overall_rating"] = overall_rating
+        
+        if overall_comments:
+            update_data["reviewer_overall_comments"] = overall_comments
+        
+        return await self.repository.update(db, appraisal, update_data)
+    
+    async def delete_appraisal(
+        self,
+        db: AsyncSession,
+        appraisal_id: int
+    ) -> bool:
+        """Delete appraisal if in valid state."""
+        appraisal = await self.repository.get_by_id(db, appraisal_id)
+        if not appraisal:
+            raise EntityNotFoundError("Appraisal", appraisal_id)
+        
+        # Only allow deletion of draft appraisals
+        if appraisal.status != AppraisalStatus.DRAFT:
+            raise ValidationError("Can only delete draft appraisals")
+        
+        return await self.repository.delete(db, appraisal_id)
+    
+    def _validate_status_transition(
+        self,
+        current_status: AppraisalStatus,
+        new_status: AppraisalStatus
+    ) -> None:
+        """Validate status transition is allowed."""
+        if new_status not in self._valid_transitions.get(current_status, []):
+            raise StatusTransitionError(
+                f"Cannot transition from {current_status.value} to {new_status.value}"
+            )
+    
+    async def _validate_participants(
+        self,
+        db: AsyncSession,
+        appraisee_id: int,
+        appraiser_id: int,
+        reviewer_id: int
+    ) -> None:
+        """Validate all participants exist and are active."""
+        for emp_id, role in [
+            (appraisee_id, "Appraisee"),
+            (appraiser_id, "Appraiser"),
+            (reviewer_id, "Reviewer")
+        ]:
+            employee = await self.employee_repository.get_by_id(db, emp_id)
+            if not employee:
+                raise EntityNotFoundError(f"{role} employee", emp_id)
+            if not employee.emp_status:
+                raise ValidationError(f"{role} must be an active employee")
+        
+        # Validate that participants are different
+        if len(set([appraisee_id, appraiser_id, reviewer_id])) != 3:
+            raise ValidationError("Appraisee, appraiser, and reviewer must be different employees")
+    
+    async def _validate_submission(
+        self,
+        db: AsyncSession,
+        appraisal: Appraisal
+    ) -> None:
+        """Validate appraisal can be submitted."""
+        # Check if appraisal has goals
+        goals = await self.appraisal_goal_repository.get_by_appraisal(
+            db, appraisal.appraisal_id
+        )
+        if not goals:
+            raise ValidationError(CANNOT_SUBMIT_WITHOUT_GOALS)
+    
+    async def _validate_user_permission(
+        self,
+        db: AsyncSession,
+        appraisal: Appraisal,
+        new_status: AppraisalStatus,
+        user_id: int
+    ) -> None:
+        """Validate user has permission for status transition."""
+        if new_status == AppraisalStatus.SUBMITTED:
+            # Only appraisee can submit
+            if user_id != appraisal.appraisee_id:
+                raise ValidationError("Only appraisee can submit appraisal")
+        elif new_status == AppraisalStatus.APPRAISEE_SELF_ASSESSMENT:
+            # Only appraisee can complete self-assessment
+            if user_id != appraisal.appraisee_id:
+                raise ValidationError("Only appraisee can complete self-assessment")
+        elif new_status == AppraisalStatus.APPRAISER_EVALUATION:
+            # Only appraiser can complete evaluation
+            if user_id != appraisal.appraiser_id:
+                raise ValidationError("Only appraiser can complete evaluation")
+        elif new_status == AppraisalStatus.REVIEWER_EVALUATION:
+            # Only reviewer can complete review
+            if user_id != appraisal.reviewer_id:
+                raise ValidationError("Only reviewer can complete review")
+        elif new_status == AppraisalStatus.COMPLETE:
+            # Only reviewer can mark as complete
+            if user_id != appraisal.reviewer_id:
+                raise ValidationError("Only reviewer can mark appraisal as complete")
+    
+    # Backward compatibility methods for routers
+    async def create(self, db: AsyncSession, *, obj_in: AppraisalCreate) -> Appraisal:
+        """Backward compatibility method for create_appraisal."""
+        return await self.create_appraisal(db, appraisal_data=obj_in)
+    
+    async def get_by_id_or_404(self, db: AsyncSession, entity_id: int) -> Appraisal:
+        """Backward compatibility method - get by ID or raise 404."""
+        appraisal = await self.get_appraisal_by_id(db, entity_id)
+        if not appraisal:
+            raise EntityNotFoundError("Appraisal", entity_id)
+        return appraisal
+    
+    async def update(self, db: AsyncSession, *, db_obj: Appraisal, obj_in: AppraisalUpdate) -> Appraisal:
+        """Backward compatibility method for update."""
+        return await self.update_appraisal(db, appraisal_id=db_obj.appraisal_id, appraisal_data=obj_in)
+    
+    async def delete(self, db: AsyncSession, *, entity_id: int) -> bool:
+        """Backward compatibility method for delete."""
+        return await self.delete_appraisal(db, entity_id)
     
     async def get_appraisals_with_filters(
         self,
@@ -145,377 +441,128 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
         reviewer_id: Optional[int] = None,
         appraisal_type_id: Optional[int] = None
     ) -> List[Appraisal]:
-        """Get appraisals with filtering."""
-        filters = []
-        
+        """Get appraisals with various filters - backward compatibility."""
         if status:
-            filters.append(Appraisal.status == status)
-        
-        if appraisee_id:
-            filters.append(Appraisal.appraisee_id == appraisee_id)
-        
-        if appraiser_id:
-            filters.append(Appraisal.appraiser_id == appraiser_id)
-        
-        if reviewer_id:
-            filters.append(Appraisal.reviewer_id == reviewer_id)
-        
-        if appraisal_type_id:
-            filters.append(Appraisal.appraisal_type_id == appraisal_type_id)
-        
-        # Use explicit query with selectinload to ensure appraisal_type is loaded
-        from sqlalchemy.orm import selectinload
-        from sqlalchemy import and_
-        
-        query = select(Appraisal).options(
-            selectinload(Appraisal.appraisal_goals),
-            selectinload(Appraisal.appraisal_type)
-        )
-        
-        if filters:
-            query = query.where(and_(*filters))
-        
-        query = query.order_by(Appraisal.created_at.desc()).offset(skip).limit(limit)
-        
-        result = await db.execute(query)
-        return result.scalars().all()
+            return await self.get_appraisals_by_status(db, status, skip=skip, limit=limit)
+        elif appraisee_id:
+            return await self.get_appraisals_by_employee(db, appraisee_id, role=ROLE_APPRAISEE, skip=skip, limit=limit)
+        elif appraiser_id:
+            return await self.get_appraisals_by_employee(db, appraiser_id, role=ROLE_APPRAISER, skip=skip, limit=limit)
+        elif reviewer_id:
+            return await self.get_appraisals_by_employee(db, reviewer_id, role=ROLE_REVIEWER, skip=skip, limit=limit)
+        else:
+            # Return all appraisals with pagination
+            return await self.repository.get_multi(db, skip=skip, limit=limit, load_relationships=True)
     
-    async def add_goals_to_appraisal(
+    async def get_appraisal_with_goals(self, db: AsyncSession, appraisal_id: int) -> Optional[Appraisal]:
+        """Get appraisal with goals loaded - backward compatibility."""
+        return await self.get_appraisal_by_id(db, appraisal_id, load_relationships=True)
+    
+    async def update_appraisal_status(
         self,
         db: AsyncSession,
-        *,
         appraisal_id: int,
-        goal_ids: List[int]
+        new_status: AppraisalStatus,
+        user_id: int
     ) -> Appraisal:
-        """Add goals to an existing appraisal."""
-        db_appraisal = await self.get_by_id_or_404(
-            db, 
-            appraisal_id,
-            load_relationships=["appraisal_goals"]
-        )
-        
-        # Validate goals exist and belong to appraisee
-        await self._validate_goal_ids(db, goal_ids)
-        
-        # Add goals to appraisal
-        await self._add_goals_to_appraisal(db, db_appraisal, goal_ids)
-        
-        await db.refresh(db_appraisal)
-        return db_appraisal
+        """Update appraisal status - backward compatibility."""
+        return await self.transition_status(db, appraisal_id, new_status, user_id)
     
     async def update_self_assessment(
         self,
         db: AsyncSession,
-        *,
         appraisal_id: int,
-        goals_data: Dict[int, Dict[str, Any]]
+        user_id: int
     ) -> Appraisal:
-        """Update self assessment for appraisal goals."""
-        db_appraisal = await self.get_by_id_or_404(
-            db, 
-            appraisal_id,
-            load_relationships=["appraisal_goals"]
-        )
+        """Submit self assessment - backward compatibility."""
+        return await self.submit_self_assessment(db, appraisal_id, user_id)
+    
+    # Goal management methods
+    async def add_goals_to_appraisal(
+        self,
+        db: AsyncSession,
+        appraisal_id: int,
+        goal_ids: List[int]
+    ) -> Appraisal:
+        """Add multiple goals to an appraisal with validation."""
+        # Verify appraisal exists
+        appraisal = await self.repository.get_by_id(db, appraisal_id)
+        if not appraisal:
+            raise EntityNotFoundError("Appraisal", appraisal_id)
         
-        # Validate appraisal is in correct status
-        if db_appraisal.status != AppraisalStatus.APPRAISEE_SELF_ASSESSMENT:
-            raise ValidationError("Appraisal must be in 'Appraisee Self Assessment' status")
-        
-        # Update goal assessments
-        for goal_id, goal_data in goals_data.items():
-            appraisal_goal = next(
-                (ag for ag in db_appraisal.appraisal_goals if ag.goal_id == goal_id),
-                None
-            )
-            
-            if not appraisal_goal:
+        # Validate goals exist and add them
+        for goal_id in goal_ids:
+            # Check goal exists
+            goal = await self.appraisal_goal_repository.get_goal_by_id(db, goal_id)
+            if not goal:
                 raise EntityNotFoundError("Goal", goal_id)
             
-            if "self_comment" in goal_data:
-                appraisal_goal.self_comment = goal_data["self_comment"]
-            
-            if "self_rating" in goal_data:
-                rating = goal_data["self_rating"]
-                if rating is not None and not 1 <= rating <= 5:
-                    raise ValidationError("Rating must be between 1 and 5")
-                appraisal_goal.self_rating = rating
+            # Add goal if not already linked
+            await self.appraisal_goal_repository.add_goal_to_appraisal(
+                db, appraisal_id, goal_id
+            )
         
-        await db.flush()
-        
-        # Reload with all necessary relationships for the response
-        return await self.get_appraisal_with_goals(db, appraisal_id)
+        return await self.repository.get_by_id(db, appraisal_id, load_relationships=True)
     
+    async def add_single_goal_to_appraisal(
+        self,
+        db: AsyncSession,
+        appraisal_id: int,
+        goal_id: int
+    ) -> Appraisal:
+        """Add a single goal to an appraisal with validation."""
+        return await self.add_goals_to_appraisal(db, appraisal_id, [goal_id])
+    
+    async def remove_goal_from_appraisal(
+        self,
+        db: AsyncSession,
+        appraisal_id: int,
+        goal_id: int
+    ) -> bool:
+        """Remove a goal from an appraisal with validation."""
+        # Verify appraisal goal exists
+        if not await self.appraisal_goal_repository.goal_exists_in_appraisal(
+            db, appraisal_id, goal_id
+        ):
+            raise EntityNotFoundError("Appraisal Goal", f"appraisal_id={appraisal_id}, goal_id={goal_id}")
+        
+        return await self.appraisal_goal_repository.remove_goal_from_appraisal(
+            db, appraisal_id, goal_id
+        )
+
     async def update_appraiser_evaluation(
         self,
         db: AsyncSession,
-        *,
         appraisal_id: int,
-        goals_data: Dict[int, Dict[str, Any]],
-        appraiser_overall_comments: Optional[str] = None,
-        appraiser_overall_rating: Optional[int] = None
+        user_id: int,
+        overall_rating: Optional[int] = None,
+        overall_comments: Optional[str] = None
     ) -> Appraisal:
-        """Update appraiser evaluation for appraisal goals and overall assessment."""
-        db_appraisal = await self.get_by_id_or_404(
-            db, 
-            appraisal_id,
-            load_relationships=["appraisal_goals"]
+        """Complete appraiser evaluation - backward compatibility."""
+        return await self.complete_appraiser_evaluation(
+            db, appraisal_id, user_id, overall_rating, overall_comments
         )
-        
-        # Validate appraisal is in correct status
-        if db_appraisal.status != AppraisalStatus.APPRAISER_EVALUATION:
-            raise ValidationError("Appraisal must be in 'Appraiser Evaluation' status")
-        
-        # Update goal evaluations
-        for goal_id, goal_data in goals_data.items():
-            appraisal_goal = next(
-                (ag for ag in db_appraisal.appraisal_goals if ag.goal_id == goal_id),
-                None
-            )
-            
-            if not appraisal_goal:
-                raise EntityNotFoundError("Goal", goal_id)
-            
-            if "appraiser_comment" in goal_data:
-                appraisal_goal.appraiser_comment = goal_data["appraiser_comment"]
-            
-            if "appraiser_rating" in goal_data:
-                rating = goal_data["appraiser_rating"]
-                if rating is not None and not 1 <= rating <= 5:
-                    raise ValidationError("Rating must be between 1 and 5")
-                appraisal_goal.appraiser_rating = rating
-        
-        # Update overall appraiser evaluation
-        if appraiser_overall_comments is not None:
-            db_appraisal.appraiser_overall_comments = appraiser_overall_comments
-        
-        if appraiser_overall_rating is not None:
-            if not 1 <= appraiser_overall_rating <= 5:
-                raise ValidationError("Overall rating must be between 1 and 5")
-            db_appraisal.appraiser_overall_rating = appraiser_overall_rating
-        
-        await db.flush()
-        
-        # Reload with all necessary relationships for the response
-        return await self.get_appraisal_with_goals(db, appraisal_id)
     
     async def update_reviewer_evaluation(
         self,
         db: AsyncSession,
-        *,
         appraisal_id: int,
-        reviewer_overall_comments: Optional[str] = None,
-        reviewer_overall_rating: Optional[int] = None
+        user_id: int,
+        overall_rating: Optional[int] = None,
+        overall_comments: Optional[str] = None
     ) -> Appraisal:
-        """Update reviewer evaluation for overall assessment."""
-        db_appraisal = await self.get_by_id_or_404(
-            db, 
-            appraisal_id,
-            load_relationships=["appraisal_goals"]
+        """Complete reviewer evaluation - backward compatibility."""
+        return await self.complete_reviewer_evaluation(
+            db, appraisal_id, user_id, overall_rating, overall_comments
         )
-        
-        # Validate appraisal is in correct status
-        if db_appraisal.status != AppraisalStatus.REVIEWER_EVALUATION:
-            raise ValidationError("Appraisal must be in 'Reviewer Evaluation' status")
-        
-        # Update overall reviewer evaluation
-        if reviewer_overall_comments is not None:
-            db_appraisal.reviewer_overall_comments = reviewer_overall_comments
-        
-        if reviewer_overall_rating is not None:
-            if not 1 <= reviewer_overall_rating <= 5:
-                raise ValidationError("Overall rating must be between 1 and 5")
-            db_appraisal.reviewer_overall_rating = reviewer_overall_rating
-        
-        await db.flush()
-        
-        # Reload with all necessary relationships for the response
-        return await self.get_appraisal_with_goals(db, appraisal_id)
     
-    async def _validate_employees(
+    async def get_multi(
         self,
         db: AsyncSession,
-        appraisal_data: AppraisalCreate
-    ) -> None:
-        """Validate that all employees exist."""
-        employees_to_check = [
-            (appraisal_data.appraisee_id, ROLE_APPRAISEE),
-            (appraisal_data.appraiser_id, ROLE_APPRAISER),
-            (appraisal_data.reviewer_id, ROLE_REVIEWER)
-        ]
-        
-        for emp_id, role in employees_to_check:
-            result = await db.execute(select(Employee).where(Employee.emp_id == emp_id))
-            employee = result.scalars().first()
-            
-            if not employee:
-                raise EntityNotFoundError(role, emp_id)
-            
-            if not employee.emp_status:
-                raise ValidationError(f"{role} must be an active employee")
-    
-    async def _validate_appraisal_type_and_range(
-        self,
-        db: AsyncSession,
-        appraisal_data: AppraisalCreate
-    ) -> None:
-        """Validate appraisal type and range."""
-        # Check appraisal type exists
-        result = await db.execute(
-            select(AppraisalType).where(AppraisalType.id == appraisal_data.appraisal_type_id)
-        )
-        appraisal_type = result.scalars().first()
-        
-        if not appraisal_type:
-            raise EntityNotFoundError("Appraisal type", appraisal_data.appraisal_type_id)
-        
-        # Check appraisal range if provided
-        if appraisal_data.appraisal_type_range_id:
-            result = await db.execute(
-                select(AppraisalRange).where(AppraisalRange.id == appraisal_data.appraisal_type_range_id)
-            )
-            appraisal_range = result.scalars().first()
-            
-            if not appraisal_range:
-                raise EntityNotFoundError("Appraisal range", appraisal_data.appraisal_type_range_id)
-            
-            # Check if range belongs to the type
-            if appraisal_range.appraisal_type_id != appraisal_data.appraisal_type_id:
-                raise ValidationError(APPRAISAL_RANGE_MISMATCH)
-    
-    async def _validate_and_get_goals(
-        self,
-        db: AsyncSession,
-        appraisal_data: AppraisalCreate
-    ) -> List[Goal]:
-        """Validate goals and check weightage requirements."""
-        if not appraisal_data.goal_ids:
-            return []
-        
-        goals = await self._validate_goal_ids(db, appraisal_data.goal_ids)
-        
-        # Check weightage for non-draft status
-        if appraisal_data.status != AppraisalStatus.DRAFT:
-            total_weightage = sum(goal.goal_weightage for goal in goals)
-            if total_weightage != 100:
-                raise WeightageValidationError(total_weightage)
-        
-        return goals
-    
-    async def _validate_goal_ids(
-        self,
-        db: AsyncSession,
-        goal_ids: List[int]
-    ) -> List[Goal]:
-        """Validate that all goal IDs exist and return the goals."""
-        goals = []
-        
-        for goal_id in goal_ids:
-            result = await db.execute(select(Goal).where(Goal.goal_id == goal_id))
-            goal = result.scalars().first()
-            
-            if not goal:
-                raise EntityNotFoundError("Goal", goal_id)
-            
-            goals.append(goal)
-        
-        return goals
-    
-    async def _add_goals_to_appraisal(
-        self,
-        db: AsyncSession,
-        appraisal: Appraisal,
-        goal_ids: List[int]
-    ) -> None:
-        """Add goals to appraisal as AppraisalGoal records."""
-        for goal_id in goal_ids:
-            # Check if goal is already added
-            existing = await db.execute(
-                select(AppraisalGoal).where(
-                    and_(
-                        AppraisalGoal.appraisal_id == appraisal.appraisal_id,
-                        AppraisalGoal.goal_id == goal_id
-                    )
-                )
-            )
-            
-            if not existing.scalars().first():
-                appraisal_goal = AppraisalGoal(
-                    appraisal_id=appraisal.appraisal_id,
-                    goal_id=goal_id
-                )
-                db.add(appraisal_goal)
-        
-        await db.flush()
-    
-    async def _validate_submission_requirements(
-        self,
-        db: AsyncSession,
-        appraisal: Appraisal
-    ) -> None:
-        """Validate requirements for submitting an appraisal."""
-        if not appraisal.appraisal_goals:
-            raise ValidationError(CANNOT_SUBMIT_WITHOUT_GOALS)
-        
-        # Check total weightage
-        total_weightage = sum(
-            ag.goal.goal_weightage for ag in appraisal.appraisal_goals
-        )
-        
-        if total_weightage != 100:
-            raise WeightageValidationError(total_weightage)
-    
-    async def _validate_submission_requirements_direct(
-        self,
-        db: AsyncSession,
-        appraisal_id: int
-    ) -> None:
-        """Validate requirements for submitting an appraisal using direct queries."""
-        from sqlalchemy import select, func
-        from app.models.goal import Goal, AppraisalGoal
-        from fastapi import HTTPException, status
-        
-        # Sum goal weightage for this appraisal
-        total_res = await db.execute(
-            select(func.coalesce(func.sum(Goal.goal_weightage), 0))
-            .select_from(AppraisalGoal)
-            .join(Goal, AppraisalGoal.goal_id == Goal.goal_id)
-            .where(AppraisalGoal.appraisal_id == appraisal_id)
-        )
-        total_weightage = total_res.scalar() or 0
-
-        count_res = await db.execute(
-            select(func.count(AppraisalGoal.id))
-            .where(AppraisalGoal.appraisal_id == appraisal_id)
-        )
-        goal_count = count_res.scalar() or 0
-
-        if goal_count == 0 or total_weightage != 100:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot submit appraisal: must have goals totalling 100% weightage"
-            )
-    
-    async def get_appraisal_with_goals(
-        self,
-        db: AsyncSession,
-        appraisal_id: int
-    ) -> Appraisal:
-        """Get an appraisal with all its goals and nested relationships loaded."""
-        query = (
-            select(Appraisal)
-            .where(Appraisal.appraisal_id == appraisal_id)
-            .options(
-                selectinload(Appraisal.appraisal_goals)
-                .selectinload(AppraisalGoal.goal)
-                .selectinload(Goal.category),
-                selectinload(Appraisal.appraisal_type)
-            )
-        )
-        
-        result = await db.execute(query)
-        appraisal = result.scalars().first()
-        
-        if not appraisal:
-            raise EntityNotFoundError(self.entity_name, appraisal_id)
-        
-        return appraisal
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        filters: Optional[Dict] = None
+    ) -> List[Appraisal]:
+        """Get multiple appraisals - backward compatibility."""
+        return await self.repository.get_multi(db, skip=skip, limit=limit, load_relationships=True)
