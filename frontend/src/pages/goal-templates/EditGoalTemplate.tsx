@@ -38,6 +38,12 @@ interface GoalTemplateDto {
   categories: CategoryDto[];
 }
 
+const getButtonText = (saving: boolean, isEdit: boolean) => {
+  if (saving) return "Saving...";
+  if (isEdit) return "Save Changes";
+  return "Create Template";
+};
+
 const EditGoalTemplate = () => {
   const navigate = useNavigate();
   const params = useParams();
@@ -392,11 +398,7 @@ const EditGoalTemplate = () => {
               className="w-full sm:w-auto px-6"
               data-testid="save-template"
             >
-              {saving
-                ? "Saving..."
-                : isEdit
-                ? "Save Changes"
-                : "Create Template"}
+              {getButtonText(saving, isEdit)}
             </Button>
           </div>
         </CardContent>

@@ -19,7 +19,10 @@ from app.constants import (
     INVALID_EMAIL_OR_PASSWORD,
     INVALID_REFRESH_TOKEN,
     REFRESH_TOKEN_EXPIRED,
-    EMPLOYEE_NOT_FOUND
+    EMPLOYEE_NOT_FOUND,
+    ACCOUNT_DISABLED,
+    INVALID_ACCESS_TOKEN,
+    ACCESS_TOKEN_EXPIRED
 )
 
 
@@ -43,7 +46,7 @@ class AuthService:
             raise UnauthorizedError(INVALID_EMAIL_OR_PASSWORD)
         
         if not employee.emp_status:
-            raise UnauthorizedError("Account is disabled")
+            raise UnauthorizedError(ACCOUNT_DISABLED)
         
         if not await self.employee_service.verify_password(password, employee.emp_password):
             raise UnauthorizedError(INVALID_EMAIL_OR_PASSWORD)
@@ -113,18 +116,18 @@ class AuthService:
             
             # Verify token type
             if payload.get("type") != token_type:
-                raise UnauthorizedError(INVALID_REFRESH_TOKEN if token_type == "refresh" else "Invalid access token")
+                raise UnauthorizedError(INVALID_REFRESH_TOKEN if token_type == "refresh" else INVALID_ACCESS_TOKEN)
             
             # Verify required fields
             if not payload.get("sub") or not payload.get("emp_id"):
-                raise UnauthorizedError(INVALID_REFRESH_TOKEN if token_type == "refresh" else "Invalid access token")
+                raise UnauthorizedError(INVALID_REFRESH_TOKEN if token_type == "refresh" else INVALID_ACCESS_TOKEN)
             
             return payload
             
         except jwt.ExpiredSignatureError:
-            raise UnauthorizedError(REFRESH_TOKEN_EXPIRED if token_type == "refresh" else "Access token expired")
+            raise UnauthorizedError(REFRESH_TOKEN_EXPIRED if token_type == "refresh" else ACCESS_TOKEN_EXPIRED)
         except InvalidTokenError:
-            raise UnauthorizedError(INVALID_REFRESH_TOKEN if token_type == "refresh" else "Invalid access token")
+            raise UnauthorizedError(INVALID_REFRESH_TOKEN if token_type == "refresh" else INVALID_ACCESS_TOKEN)
     
     async def get_current_user_from_token(
         self,
@@ -142,7 +145,7 @@ class AuthService:
             raise EntityNotFoundError("Employee")
         
         if not employee.emp_status:
-            raise UnauthorizedError("Account is disabled")
+            raise UnauthorizedError(ACCOUNT_DISABLED)
         
         return employee
     
@@ -163,7 +166,7 @@ class AuthService:
             raise EntityNotFoundError("Employee")
         
         if not employee.emp_status:
-            raise UnauthorizedError("Account is disabled")
+            raise UnauthorizedError(ACCOUNT_DISABLED)
         
         # Create new tokens
         new_access_token = self.create_access_token(employee=employee)

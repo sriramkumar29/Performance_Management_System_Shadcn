@@ -70,8 +70,8 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
         # Validate appraisal type and range
         await self._validate_appraisal_type_and_range(db, appraisal_data)
         
-        # Validate and get goals
-        goals = await self._validate_and_get_goals(db, appraisal_data)
+        # Validate goals exist and belong to appraisee
+        await self._validate_and_get_goals(db, appraisal_data)
         
         # Create appraisal
         obj_data = appraisal_data.model_dump()
@@ -96,22 +96,39 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
         new_status: AppraisalStatus
     ) -> Appraisal:
         """Update appraisal status with validation."""
+        from sqlalchemy import select
+        from app.models.goal import Goal, AppraisalGoal
+        from fastapi import HTTPException, status
+        
+        # Get appraisal by ID with relationships
         db_appraisal = await self.get_by_id_or_404(
             db, 
             appraisal_id,
-            load_relationships=["appraisal_goals"]
+            load_relationships=["appraisal_type"]
         )
         
         # Validate status transition
-        if new_status not in self._valid_transitions.get(db_appraisal.status, []):
-            raise StatusTransitionError(db_appraisal.status.value, new_status.value)
+        current_status = db_appraisal.status
+        
+        # Allow idempotent updates (same status can be set again)
+        if current_status == new_status:
+            # No change needed, return current appraisal
+            return db_appraisal
+        
+        # Check if transition is valid
+        if new_status not in self._valid_transitions.get(current_status, []):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid status transition from {current_status} to {new_status}"
+            )
         
         # Special validation for SUBMITTED status
         if new_status == AppraisalStatus.SUBMITTED:
-            await self._validate_submission_requirements(db, db_appraisal)
+            await self._validate_submission_requirements_direct(db, appraisal_id)
         
+        # Update status
         db_appraisal.status = new_status
-        await db.flush()
+        await db.commit()
         await db.refresh(db_appraisal)
         
         return db_appraisal
@@ -146,14 +163,22 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
         if appraisal_type_id:
             filters.append(Appraisal.appraisal_type_id == appraisal_type_id)
         
-        return await self.get_multi(
-            db=db,
-            skip=skip,
-            limit=limit,
-            filters=filters,
-            order_by=Appraisal.created_at.desc(),
-            load_relationships=["appraisal_goals"]
+        # Use explicit query with selectinload to ensure appraisal_type is loaded
+        from sqlalchemy.orm import selectinload
+        from sqlalchemy import and_
+        
+        query = select(Appraisal).options(
+            selectinload(Appraisal.appraisal_goals),
+            selectinload(Appraisal.appraisal_type)
         )
+        
+        if filters:
+            query = query.where(and_(*filters))
+        
+        query = query.order_by(Appraisal.created_at.desc()).offset(skip).limit(limit)
+        
+        result = await db.execute(query)
+        return result.scalars().all()
     
     async def add_goals_to_appraisal(
         self,
@@ -169,8 +194,8 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
             load_relationships=["appraisal_goals"]
         )
         
-        # Validate goals exist
-        goals = await self._validate_goal_ids(db, goal_ids)
+        # Validate goals exist and belong to appraisee
+        await self._validate_goal_ids(db, goal_ids)
         
         # Add goals to appraisal
         await self._add_goals_to_appraisal(db, db_appraisal, goal_ids)
@@ -207,18 +232,104 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
                 raise EntityNotFoundError("Goal", goal_id)
             
             if "self_comment" in goal_data:
-                appraisal_goal.appraisee_self_comment = goal_data["self_comment"]
+                appraisal_goal.self_comment = goal_data["self_comment"]
             
             if "self_rating" in goal_data:
                 rating = goal_data["self_rating"]
                 if rating is not None and not 1 <= rating <= 5:
                     raise ValidationError("Rating must be between 1 and 5")
-                appraisal_goal.appraisee_self_rating = rating
+                appraisal_goal.self_rating = rating
         
         await db.flush()
-        await db.refresh(db_appraisal)
         
-        return db_appraisal
+        # Reload with all necessary relationships for the response
+        return await self.get_appraisal_with_goals(db, appraisal_id)
+    
+    async def update_appraiser_evaluation(
+        self,
+        db: AsyncSession,
+        *,
+        appraisal_id: int,
+        goals_data: Dict[int, Dict[str, Any]],
+        appraiser_overall_comments: Optional[str] = None,
+        appraiser_overall_rating: Optional[int] = None
+    ) -> Appraisal:
+        """Update appraiser evaluation for appraisal goals and overall assessment."""
+        db_appraisal = await self.get_by_id_or_404(
+            db, 
+            appraisal_id,
+            load_relationships=["appraisal_goals"]
+        )
+        
+        # Validate appraisal is in correct status
+        if db_appraisal.status != AppraisalStatus.APPRAISER_EVALUATION:
+            raise ValidationError("Appraisal must be in 'Appraiser Evaluation' status")
+        
+        # Update goal evaluations
+        for goal_id, goal_data in goals_data.items():
+            appraisal_goal = next(
+                (ag for ag in db_appraisal.appraisal_goals if ag.goal_id == goal_id),
+                None
+            )
+            
+            if not appraisal_goal:
+                raise EntityNotFoundError("Goal", goal_id)
+            
+            if "appraiser_comment" in goal_data:
+                appraisal_goal.appraiser_comment = goal_data["appraiser_comment"]
+            
+            if "appraiser_rating" in goal_data:
+                rating = goal_data["appraiser_rating"]
+                if rating is not None and not 1 <= rating <= 5:
+                    raise ValidationError("Rating must be between 1 and 5")
+                appraisal_goal.appraiser_rating = rating
+        
+        # Update overall appraiser evaluation
+        if appraiser_overall_comments is not None:
+            db_appraisal.appraiser_overall_comments = appraiser_overall_comments
+        
+        if appraiser_overall_rating is not None:
+            if not 1 <= appraiser_overall_rating <= 5:
+                raise ValidationError("Overall rating must be between 1 and 5")
+            db_appraisal.appraiser_overall_rating = appraiser_overall_rating
+        
+        await db.flush()
+        
+        # Reload with all necessary relationships for the response
+        return await self.get_appraisal_with_goals(db, appraisal_id)
+    
+    async def update_reviewer_evaluation(
+        self,
+        db: AsyncSession,
+        *,
+        appraisal_id: int,
+        reviewer_overall_comments: Optional[str] = None,
+        reviewer_overall_rating: Optional[int] = None
+    ) -> Appraisal:
+        """Update reviewer evaluation for overall assessment."""
+        db_appraisal = await self.get_by_id_or_404(
+            db, 
+            appraisal_id,
+            load_relationships=["appraisal_goals"]
+        )
+        
+        # Validate appraisal is in correct status
+        if db_appraisal.status != AppraisalStatus.REVIEWER_EVALUATION:
+            raise ValidationError("Appraisal must be in 'Reviewer Evaluation' status")
+        
+        # Update overall reviewer evaluation
+        if reviewer_overall_comments is not None:
+            db_appraisal.reviewer_overall_comments = reviewer_overall_comments
+        
+        if reviewer_overall_rating is not None:
+            if not 1 <= reviewer_overall_rating <= 5:
+                raise ValidationError("Overall rating must be between 1 and 5")
+            db_appraisal.reviewer_overall_rating = reviewer_overall_rating
+        
+        await db.flush()
+        
+        # Reload with all necessary relationships for the response
+        return await self.get_appraisal_with_goals(db, appraisal_id)
     
     async def _validate_employees(
         self,
@@ -352,3 +463,59 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
         
         if total_weightage != 100:
             raise WeightageValidationError(total_weightage)
+    
+    async def _validate_submission_requirements_direct(
+        self,
+        db: AsyncSession,
+        appraisal_id: int
+    ) -> None:
+        """Validate requirements for submitting an appraisal using direct queries."""
+        from sqlalchemy import select, func
+        from app.models.goal import Goal, AppraisalGoal
+        from fastapi import HTTPException, status
+        
+        # Sum goal weightage for this appraisal
+        total_res = await db.execute(
+            select(func.coalesce(func.sum(Goal.goal_weightage), 0))
+            .select_from(AppraisalGoal)
+            .join(Goal, AppraisalGoal.goal_id == Goal.goal_id)
+            .where(AppraisalGoal.appraisal_id == appraisal_id)
+        )
+        total_weightage = total_res.scalar() or 0
+
+        count_res = await db.execute(
+            select(func.count(AppraisalGoal.id))
+            .where(AppraisalGoal.appraisal_id == appraisal_id)
+        )
+        goal_count = count_res.scalar() or 0
+
+        if goal_count == 0 or total_weightage != 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot submit appraisal: must have goals totalling 100% weightage"
+            )
+    
+    async def get_appraisal_with_goals(
+        self,
+        db: AsyncSession,
+        appraisal_id: int
+    ) -> Appraisal:
+        """Get an appraisal with all its goals and nested relationships loaded."""
+        query = (
+            select(Appraisal)
+            .where(Appraisal.appraisal_id == appraisal_id)
+            .options(
+                selectinload(Appraisal.appraisal_goals)
+                .selectinload(AppraisalGoal.goal)
+                .selectinload(Goal.category),
+                selectinload(Appraisal.appraisal_type)
+            )
+        )
+        
+        result = await db.execute(query)
+        appraisal = result.scalars().first()
+        
+        if not appraisal:
+            raise EntityNotFoundError(self.entity_name, appraisal_id)
+        
+        return appraisal

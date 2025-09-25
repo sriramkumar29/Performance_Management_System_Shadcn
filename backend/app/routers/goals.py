@@ -27,68 +27,16 @@ from app.schemas.goal import (
 from app.routers.auth import get_current_user, get_current_active_user
 from app.dependencies import (
     get_pagination_params,
-    validate_positive_integer,
     PaginationParams
 )
-
-# Import the base service for basic CRUD operations
-from app.services.base_service import BaseService
-from app.models.goal import GoalTemplate, Goal, Category, AppraisalGoal
+from app.services.goal_service import (
+    GoalService,
+    GoalTemplateService, 
+    CategoryService,
+    AppraisalGoalService
+)
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
-
-
-# Simple service classes for goals - can be moved to separate service files later
-class GoalTemplateService(BaseService[GoalTemplate, GoalTemplateCreate, GoalTemplateUpdate]):
-    def __init__(self):
-        super().__init__(GoalTemplate)
-    
-    @property
-    def entity_name(self) -> str:
-        return "Goal Template"
-    
-    @property
-    def id_field(self) -> str:
-        return "template_id"
-
-
-class GoalService(BaseService[Goal, GoalCreate, GoalUpdate]):
-    def __init__(self):
-        super().__init__(Goal)
-    
-    @property
-    def entity_name(self) -> str:
-        return "Goal"
-    
-    @property
-    def id_field(self) -> str:
-        return "goal_id"
-
-
-class CategoryService(BaseService[Category, CategoryCreate, None]):
-    def __init__(self):
-        super().__init__(Category)
-    
-    @property
-    def entity_name(self) -> str:
-        return "Category"
-    
-    @property
-    def id_field(self) -> str:
-        return "category_id"
-
-
-class AppraisalGoalService(BaseService[AppraisalGoal, AppraisalGoalCreate, AppraisalGoalUpdate]):
-    def __init__(self):
-        super().__init__(AppraisalGoal)
-    
-    @property
-    def entity_name(self) -> str:
-        return "Appraisal Goal"
-    
-    @property
-    def id_field(self) -> str:
-        return "appraisal_goal_id"
 
 
 # Dependency providers
@@ -184,45 +132,57 @@ async def create_goal_template(
         current_user: Current authenticated user
         
     Returns:
-        GoalTemplateResponse: Created goal template data
+        GoalTemplateResponse: Created goal template data with categories
+        
+    Raises:
+        ValidationError: If template data is invalid
     """
-    db_template = await template_service.create(db, obj_in=goal_template)
+    db_template = await template_service.create_template_with_categories(
+        db, 
+        template_data=goal_template
+    )
     await db.commit()
     
     return GoalTemplateResponse.model_validate(db_template)
 
 
 @router.get("/templates", response_model=List[GoalTemplateResponse])
-async def get_goal_templates(
+async def read_goal_templates(
+    skip: int = 0,
+    limit: int = 100,
     db: AsyncSession = Depends(get_db),
-    pagination: PaginationParams = Depends(get_pagination_params),
-    template_service: GoalTemplateService = Depends(get_goal_template_service),
     current_user: Employee = Depends(get_current_active_user)
 ) -> List[GoalTemplateResponse]:
     """
     Get all goal templates.
     
     Args:
+        skip: Number of records to skip
+        limit: Number of records to return
         db: Database session
-        pagination: Pagination parameters
-        template_service: Goal template service instance
         current_user: Current authenticated user
         
     Returns:
-        List[GoalTemplateResponse]: List of goal templates
+        List[GoalTemplateResponse]: List of goal templates with categories
     """
-    templates = await template_service.get_multi(
-        db,
-        skip=pagination.skip,
-        limit=pagination.limit
-    )
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    from app.models.goal import GoalTemplate
     
-    return [GoalTemplateResponse.model_validate(template) for template in templates]
+    result = await db.execute(
+        select(GoalTemplate)
+        .options(selectinload(GoalTemplate.categories))
+        .offset(skip)
+        .limit(limit)
+    )
+    goal_templates = result.scalars().all()
+    
+    return [GoalTemplateResponse.model_validate(template) for template in goal_templates]
 
 
 @router.get("/templates/{template_id}", response_model=GoalTemplateResponse)
-async def get_goal_template(
-    template_id: int = Depends(validate_positive_integer),
+async def read_goal_template(
+    template_id: int,
     db: AsyncSession = Depends(get_db),
     template_service: GoalTemplateService = Depends(get_goal_template_service),
     current_user: Employee = Depends(get_current_active_user)
@@ -237,20 +197,19 @@ async def get_goal_template(
         current_user: Current authenticated user
         
     Returns:
-        GoalTemplateResponse: Goal template data
+        GoalTemplateResponse: Goal template data with categories
         
     Raises:
         EntityNotFoundError: If goal template not found
     """
-    db_template = await template_service.get_by_id_or_404(db, template_id)
-    
+    db_template = await template_service.get_template_with_categories(db, template_id)
     return GoalTemplateResponse.model_validate(db_template)
 
 
 @router.put("/templates/{template_id}", response_model=GoalTemplateResponse)
 async def update_goal_template(
-    template_id: int = Depends(validate_positive_integer),
-    goal_template: GoalTemplateUpdate = ...,
+    template_id: int,
+    goal_template: GoalTemplateUpdate,
     db: AsyncSession = Depends(get_db),
     template_service: GoalTemplateService = Depends(get_goal_template_service),
     current_user: Employee = Depends(get_current_active_user)
@@ -266,16 +225,15 @@ async def update_goal_template(
         current_user: Current authenticated user
         
     Returns:
-        GoalTemplateResponse: Updated goal template data
+        GoalTemplateResponse: Updated goal template data with categories
         
     Raises:
         EntityNotFoundError: If goal template not found
     """
-    db_template = await template_service.get_by_id_or_404(db, template_id)
-    updated_template = await template_service.update(
-        db, 
-        db_obj=db_template, 
-        obj_in=goal_template
+    updated_template = await template_service.update_template_with_categories(
+        db,
+        template_id=template_id,
+        template_data=goal_template
     )
     await db.commit()
     
@@ -284,7 +242,7 @@ async def update_goal_template(
 
 @router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_goal_template(
-    template_id: int = Depends(validate_positive_integer),
+    template_id: int,
     db: AsyncSession = Depends(get_db),
     template_service: GoalTemplateService = Depends(get_goal_template_service),
     current_user: Employee = Depends(get_current_active_user)
@@ -327,8 +285,22 @@ async def create_goal(
     """
     db_goal = await goal_service.create(db, obj_in=goal)
     await db.commit()
+    await db.refresh(db_goal)
     
-    return GoalResponse.model_validate(db_goal)
+    # For now, create response without loading category relationship
+    response_data = GoalResponse(
+        goal_id=db_goal.goal_id,
+        goal_template_id=db_goal.goal_template_id,
+        category_id=db_goal.category_id,
+        goal_title=db_goal.goal_title,
+        goal_description=db_goal.goal_description,
+        goal_performance_factor=db_goal.goal_performance_factor,
+        goal_importance=db_goal.goal_importance,
+        goal_weightage=db_goal.goal_weightage,
+        category=None  # Set to None for now to avoid relationship loading issues
+    )
+    
+    return response_data
 
 
 @router.get("/", response_model=List[GoalResponse])
@@ -361,7 +333,7 @@ async def get_goals(
 
 @router.get("/{goal_id}", response_model=GoalResponse)
 async def get_goal(
-    goal_id: int = Depends(validate_positive_integer),
+    goal_id: int,
     db: AsyncSession = Depends(get_db),
     goal_service: GoalService = Depends(get_goal_service),
     current_user: Employee = Depends(get_current_active_user)
@@ -388,8 +360,8 @@ async def get_goal(
 
 @router.put("/{goal_id}", response_model=GoalResponse)
 async def update_goal(
-    goal_id: int = Depends(validate_positive_integer),
-    goal: GoalUpdate = ...,
+    goal_id: int,
+    goal: GoalUpdate,
     db: AsyncSession = Depends(get_db),
     goal_service: GoalService = Depends(get_goal_service),
     current_user: Employee = Depends(get_current_active_user)
@@ -419,7 +391,7 @@ async def update_goal(
 
 @router.delete("/{goal_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_goal(
-    goal_id: int = Depends(validate_positive_integer),
+    goal_id: int,
     db: AsyncSession = Depends(get_db),
     goal_service: GoalService = Depends(get_goal_service),
     current_user: Employee = Depends(get_current_active_user)

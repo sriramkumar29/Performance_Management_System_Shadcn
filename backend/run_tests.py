@@ -17,7 +17,7 @@ def run_command(command, description):
     print('='*60)
     
     try:
-        result = subprocess.run(command, check=True, capture_output=False)
+        subprocess.run(command, check=True, capture_output=False)
         print(f"\n✅ {description} completed successfully!")
         return True
     except subprocess.CalledProcessError as e:

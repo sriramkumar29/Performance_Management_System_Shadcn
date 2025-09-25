@@ -13,16 +13,9 @@ let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
 
 // Get base URL from environment or use empty string for relative paths
-// function getApiBaseUrl(): string {
-//   // Force empty string in production to use relative URLs and avoid mixed content
-//   if (import.meta.env.PROD) {
-//     return '';
-//   }
-  
 function getApiBaseUrl(): string {
   // Force empty string in production to use relative URLs and avoid mixed content
   if (import.meta.env.PROD || import.meta.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'production') {
-    console.log('Production mode: using relative URLs');
     return '';
   }
   
@@ -32,7 +25,10 @@ function getApiBaseUrl(): string {
   const win = typeof window !== 'undefined' ? (window as any) : undefined;
   const result = (envUrl || win?.__API_BASE_URL__ || '') as string;
   
-  console.log('Development mode - API Base URL:', result);
+  // Only log in development mode for debugging
+  if (import.meta.env.DEV) {
+    console.log('Development mode - API Base URL:', result);
+  }
   return result;
 }
 
@@ -175,7 +171,7 @@ async function executeFetchAttempt<T>(
       
       // Retry only for 5xx responses
       if (shouldRetryError(res.status, attempt)) {
-        await sleep(1000 * 2 ** attempt + Math.random() * 200);
+        await sleep(1000 * 2 ** attempt + getSecureRandomJitter());
         return { shouldRetry: true, newAttempt: attempt + 1 };
       }
       const result = await processFailedResponse<T>(res);
@@ -187,7 +183,7 @@ async function executeFetchAttempt<T>(
   } catch (err: any) {
     // Network error or abort; retry if attempts remain
     if (shouldRetryNetworkError(attempt)) {
-      await sleep(1000 * 2 ** attempt + Math.random() * 200);
+      await sleep(1000 * 2 ** attempt + getSecureRandomJitter());
       return { shouldRetry: true, newAttempt: attempt + 1 };
     }
     if (err?.name === 'AbortError') {
@@ -225,7 +221,9 @@ async function refreshTokens(): Promise<boolean> {
     sessionStorage.setItem('refresh_token', data.refresh_token);
     return true;
   } catch (error) {
-    console.error('Token refresh failed:', error);
+    if (import.meta.env.DEV) {
+      console.error('Token refresh failed:', error);
+    }
     sessionStorage.removeItem('auth_token');
     sessionStorage.removeItem('refresh_token');
     return false;
@@ -238,8 +236,11 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
   const token = sessionStorage.getItem('auth_token');
   const baseHeaders = buildRequestHeaders(init);
   
-  console.log('Final URL being used:', fullUrl);
-  console.log('getApiBaseUrl() returned:', getApiBaseUrl());
+  // Debug logging only in development
+  if (import.meta.env.DEV) {
+    console.log('Final URL being used:', fullUrl);
+    console.log('getApiBaseUrl() returned:', getApiBaseUrl());
+  }
 
   while (true) {
     const { result, shouldRetry, newAttempt } = await executeFetchAttempt<T>(
@@ -289,6 +290,18 @@ async function safeText(res: Response) {
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Secure random jitter for retry delays (0-200ms)
+function getSecureRandomJitter(): number {
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    // Use crypto-secure random for better security
+    const array = new Uint32Array(1);
+    crypto.getRandomValues(array);
+    return (array[0] / (2 ** 32)) * 200; // Scale to 0-200ms
+  }
+  // Fallback for environments without crypto (like some test environments)
+  return Math.random() * 200;
+}
 
 // API client with common methods
 export const api = {

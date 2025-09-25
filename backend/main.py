@@ -22,11 +22,17 @@ from app.db.database import engine, Base
 from app.routers import employees, appraisals, goals, appraisal_types, appraisal_goals
 from app.core.config import settings
 from app.core.exception_handlers import setup_exception_handlers
+from app.constants import (
+    NOT_FOUND, UNAUTHORIZED_HTTP, FORBIDDEN, VALIDATION_ERROR,
+    FILE_NOT_FOUND, API_ENDPOINT_NOT_FOUND, ROUTE_NOT_FOUND,
+    FRONTEND_NOT_FOUND, API_RUNNING_FRONTEND_NOT_FOUND
+)
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%d-%m-%Y %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
 
@@ -97,10 +103,10 @@ app.include_router(
     prefix=f"{api_prefix}/employees", 
     tags=["Authentication & Employees"],
     responses={
-        401: {"description": "Unauthorized"},
-        403: {"description": "Forbidden"},
-        404: {"description": "Not Found"},
-        422: {"description": "Validation Error"}
+        401: {"description": UNAUTHORIZED_HTTP},
+        403: {"description": FORBIDDEN},
+        404: {"description": NOT_FOUND},
+        422: {"description": VALIDATION_ERROR}
     }
 )
 
@@ -109,9 +115,9 @@ app.include_router(
     prefix=f"{api_prefix}/appraisals", 
     tags=["Appraisals"],
     responses={
-        401: {"description": "Unauthorized"},
-        404: {"description": "Not Found"},
-        422: {"description": "Validation Error"}
+        401: {"description": UNAUTHORIZED_HTTP},
+        404: {"description": NOT_FOUND},
+        422: {"description": VALIDATION_ERROR}
     }
 )
 
@@ -120,9 +126,9 @@ app.include_router(
     prefix=f"{api_prefix}/appraisals", 
     tags=["Appraisal Goals"],
     responses={
-        401: {"description": "Unauthorized"},
-        404: {"description": "Not Found"},
-        422: {"description": "Validation Error"}
+        401: {"description": UNAUTHORIZED_HTTP},
+        404: {"description": NOT_FOUND},
+        422: {"description": VALIDATION_ERROR}
     }
 )
 
@@ -131,9 +137,9 @@ app.include_router(
     prefix=f"{api_prefix}/goals", 
     tags=["Goals & Templates"],
     responses={
-        401: {"description": "Unauthorized"},
-        404: {"description": "Not Found"},
-        422: {"description": "Validation Error"}
+        401: {"description": UNAUTHORIZED_HTTP},
+        404: {"description": NOT_FOUND},
+        422: {"description": VALIDATION_ERROR}
     }
 )
 
@@ -142,9 +148,9 @@ app.include_router(
     prefix=f"{api_prefix}/appraisal-types", 
     tags=["Appraisal Types"],
     responses={
-        401: {"description": "Unauthorized"},
-        404: {"description": "Not Found"},
-        422: {"description": "Validation Error"}
+        401: {"description": UNAUTHORIZED_HTTP},
+        404: {"description": NOT_FOUND},
+        422: {"description": VALIDATION_ERROR}
     }
 )
 
@@ -215,7 +221,7 @@ if FRONTEND_DIR.exists():
         file_location = FRONTEND_DIR / "assets" / file_path
         if file_location.exists():
             return FileResponse(file_location)
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(status_code=404, detail=FILE_NOT_FOUND)
 
     # Catch-all route to serve React app for client-side routing
     # This MUST be defined AFTER all API routes to avoid conflicts
@@ -227,18 +233,18 @@ if FRONTEND_DIR.exists():
         """
         # Explicitly exclude API routes - they should never reach here
         if full_path.startswith("api"):
-            raise HTTPException(status_code=404, detail="API endpoint not found")
+            raise HTTPException(status_code=404, detail=API_ENDPOINT_NOT_FOUND)
         
         # Exclude FastAPI built-in routes
         if full_path in ["docs", "redoc", "openapi.json"]:
-            raise HTTPException(status_code=404, detail="Route not found")
+            raise HTTPException(status_code=404, detail=ROUTE_NOT_FOUND)
         
         # Serve index.html for all other routes (React client-side routing)
         index_file = FRONTEND_DIR / "index.html"
         if index_file.exists():
             return FileResponse(index_file)
         else:
-            raise HTTPException(status_code=404, detail="Frontend not found. Make sure to build your React app first.")
+            raise HTTPException(status_code=404, detail=FRONTEND_NOT_FOUND)
 
     # Root route to serve React app
     @app.get("/")
@@ -248,7 +254,7 @@ if FRONTEND_DIR.exists():
         if index_file.exists():
             return FileResponse(index_file)
         else:
-            raise HTTPException(status_code=404, detail="Frontend not found. Make sure to build your React app first.")
+            raise HTTPException(status_code=404, detail=FRONTEND_NOT_FOUND)
         
     # # Root route to serve React app
     # @app.get("/", response_class=HTMLResponse)
@@ -315,4 +321,4 @@ if FRONTEND_DIR.exists():
     
     @app.get("/")
     async def read_root():
-        return {"message": "API is running. Frontend not found - build your React app first."}
+        return {"message": API_RUNNING_FRONTEND_NOT_FOUND}

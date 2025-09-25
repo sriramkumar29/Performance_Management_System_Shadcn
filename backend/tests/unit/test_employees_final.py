@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from main import app
 from app.db.database import get_db
 from app.routers.auth import get_current_user
+from app.constants import EMPLOYEE_NOT_FOUND
 
 client = TestClient(app)
 
@@ -156,7 +157,7 @@ class TestEmployeesRouter:
             
             assert response.status_code == 404
             data = response.json()
-            assert data["detail"] == "Employee not found"
+            assert data["detail"] == EMPLOYEE_NOT_FOUND
         finally:
             self._clear_overrides()
     

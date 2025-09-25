@@ -88,9 +88,6 @@ class GoalTemplateResponse(GoalTemplateBase):
     
     class Config:
         from_attributes = True
-    
-    class Config:
-        from_attributes = True
 
 
 class GoalBase(BaseModel):

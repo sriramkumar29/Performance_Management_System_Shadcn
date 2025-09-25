@@ -7,6 +7,7 @@ from app.models.appraisal import AppraisalStatus
 from main import app
 from app.db.database import get_db
 from app.routers.auth import get_current_user
+from app.constants import APPRAISAL_NOT_FOUND
 
 client = TestClient(app)
 
@@ -119,7 +120,7 @@ class TestAppraisalsRouter:
             assert response.status_code == 201
             body = response.json()
             assert body["appraisal_id"] == 1
-            assert body["status"] == "Draft"  # AppraisalStatus.DRAFT = "Draft"
+            assert body["status"] == "Draft"
         finally:
             self._clear_overrides()
 
@@ -154,7 +155,7 @@ class TestAppraisalsRouter:
             data = response.json()
             assert isinstance(data, list)
             assert len(data) == 1
-            assert data[0]["status"] == "Draft"  # AppraisalStatus.DRAFT = "Draft"
+            assert data[0]["status"] == "Draft"
         finally:
             self._clear_overrides()
 
@@ -189,7 +190,7 @@ class TestAppraisalsRouter:
             assert response.status_code == 200
             data = response.json()
             assert data["appraisal_id"] == 1
-            assert data["status"] == "Draft"  # AppraisalStatus.DRAFT = "Draft"
+            assert data["status"] == "Draft"
         finally:
             self._clear_overrides()
 
@@ -209,7 +210,7 @@ class TestAppraisalsRouter:
             response = client.get('/api/appraisals/999')
             assert response.status_code == 404
             data = response.json()
-            assert "Appraisal not found" in data["detail"]
+            assert APPRAISAL_NOT_FOUND in data["detail"]
         finally:
             self._clear_overrides()
 
@@ -247,7 +248,7 @@ class TestAppraisalsRouter:
             response = client.put('/api/appraisals/1/status', json={"status": "Submitted"})
             assert response.status_code == 200
             data = response.json()
-            assert data["status"] == "Submitted"  # AppraisalStatus.SUBMITTED = "Submitted"
+            assert data["status"] == "Submitted"
         finally:
             self._clear_overrides()
 

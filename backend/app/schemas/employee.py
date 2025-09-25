@@ -1,12 +1,14 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, List
 
+from app.constants import EMPLOYEE_EMAIL_ADDRESS_DESC
+
 
 class EmployeeBase(BaseModel):
     """Base schema for Employee."""
     
     emp_name: str = Field(..., min_length=2, max_length=100, description="Employee full name")
-    emp_email: EmailStr = Field(..., description="Employee email address")
+    emp_email: EmailStr = Field(..., description=EMPLOYEE_EMAIL_ADDRESS_DESC)
     emp_department: str = Field(..., min_length=2, max_length=50, description="Employee department")
     emp_roles: str = Field(..., min_length=2, max_length=50, description="Employee role")
     emp_roles_level: int = Field(..., ge=1, le=10, description="Role level (1-10)")
@@ -52,7 +54,7 @@ class EmployeeUpdate(BaseModel):
     """Schema for updating an Employee."""
     
     emp_name: Optional[str] = Field(None, min_length=2, max_length=100, description="Employee full name")
-    emp_email: Optional[EmailStr] = Field(None, description="Employee email address")
+    emp_email: Optional[EmailStr] = Field(None, description=EMPLOYEE_EMAIL_ADDRESS_DESC)
     emp_department: Optional[str] = Field(None, min_length=2, max_length=50, description="Employee department")
     emp_roles: Optional[str] = Field(None, min_length=2, max_length=50, description="Employee role")
     emp_roles_level: Optional[int] = Field(None, ge=1, le=10, description="Role level (1-10)")
@@ -103,7 +105,7 @@ class EmployeeWithSubordinates(EmployeeResponse):
 class LoginRequest(BaseModel):
     """Schema for login request."""
     
-    email: EmailStr = Field(..., description="Employee email address")
+    email: EmailStr = Field(..., description=EMPLOYEE_EMAIL_ADDRESS_DESC)
     password: str = Field(..., min_length=1, description="Employee password")
 
 

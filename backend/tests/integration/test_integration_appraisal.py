@@ -12,6 +12,7 @@ from datetime import date, timedelta
 from app.models.appraisal import Appraisal
 from app.models.employee import Employee
 from app.models.appraisal_type import AppraisalType
+from app.constants import APPRAISAL_NOT_FOUND
 
 
 @pytest.mark.integration
@@ -206,7 +207,7 @@ class TestAppraisalIntegration:
     ):
         response = await async_client.get("/api/appraisals/999999", headers=auth_headers)
         assert response.status_code == 404
-        assert "Appraisal not found" in response.json().get("detail", "")
+        assert APPRAISAL_NOT_FOUND in response.json().get("detail", "")
 
     @pytest.mark.asyncio
     async def test_delete_appraisal_not_found_returns_404(
@@ -216,7 +217,7 @@ class TestAppraisalIntegration:
     ):
         response = await async_client.delete("/api/appraisals/999999", headers=auth_headers)
         assert response.status_code == 404
-        assert "Appraisal not found" in response.json().get("detail", "")
+        assert APPRAISAL_NOT_FOUND in response.json().get("detail", "")
 
     @pytest.mark.asyncio
     async def test_self_assessment_wrong_status_returns_400(

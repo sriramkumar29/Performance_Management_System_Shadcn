@@ -32,6 +32,8 @@ import {
 } from "../../components/ui/select";
 import { Input } from "../../components/ui/input";
 
+type AppraisalType = { id: number; name: string; has_range?: boolean };
+
 type Appraisal = {
   appraisal_id: number;
   appraisal_setting_id?: number | null;
@@ -49,6 +51,7 @@ type Appraisal = {
   reviewer_overall_rating?: number | null;
   created_at?: string;
   updated_at?: string;
+  appraisal_type?: AppraisalType; // Include the embedded appraisal type data
 };
 
 type AppraisalGoal = {
@@ -62,7 +65,6 @@ type AppraisalWithGoals = Appraisal & {
   appraisal_goals: AppraisalGoal[];
 };
 
-type AppraisalType = { id: number; name: string; has_range?: boolean };
 type FilterType = "Active" | "Completed" | "All";
 
 // Helper function to load appraisal types
@@ -76,7 +78,7 @@ const useAppraisalTypes = () => {
     let cancelled = false;
     const loadTypes = async () => {
       setTypesStatus("loading");
-      const result = await api.get<AppraisalType[]>("/appraisal-types");
+      const result = await api.get<AppraisalType[]>("/appraisal-types/");
       if (cancelled) return;
 
       if (result.ok) {
@@ -143,7 +145,7 @@ const useAppraisalFiltering = (
   period: Period,
   searchTypeId: string,
   searchName: string,
-  typeNameById: (id: number) => string
+  typeNameById: (id: number, appraisal?: Appraisal) => string
 ) => {
   const appraisalsInPeriod = useMemo(() => {
     if (!period.startDate || !period.endDate) return appraisals;
@@ -186,7 +188,7 @@ const useAppraisalFiltering = (
           ? true
           : a.appraisal_type_id === Number(searchTypeId);
       const matchQuery = q
-        ? typeNameById(a.appraisal_type_id).toLowerCase().includes(q)
+        ? typeNameById(a.appraisal_type_id, a).toLowerCase().includes(q)
         : true;
       return matchType && matchQuery;
     });
@@ -537,7 +539,14 @@ const MyAppraisal = () => {
 
   const typeNameById = useMemo(() => {
     const map = new Map(types.map((t) => [t.id, t.name]));
-    return (id: number) => map.get(id) || `Type #${id}`;
+    return (id: number, appraisal?: Appraisal) => {
+      // If appraisal has embedded appraisal_type data, use it
+      if (appraisal?.appraisal_type?.name) {
+        return appraisal.appraisal_type.name;
+      }
+      // Otherwise fall back to lookup map
+      return map.get(id) || `Type #${id}`;
+    };
   }, [types]);
   const displayStatus = (status: string) =>
     status === "Submitted" ? "Waiting Acknowledgement" : status;
@@ -573,7 +582,7 @@ const MyAppraisal = () => {
           ? true
           : a.appraisal_type_id === Number(searchTypeId);
       const matchQuery = q
-        ? typeNameById(a.appraisal_type_id).toLowerCase().includes(q)
+        ? typeNameById(a.appraisal_type_id, a).toLowerCase().includes(q)
         : true;
       return matchType && matchQuery;
     });
@@ -647,7 +656,10 @@ const MyAppraisal = () => {
           <CardContent className="text-left">
             <div className="text-2xl font-bold text-foreground">
               {selectedAppraisal
-                ? typeNameById(selectedAppraisal.appraisal_type_id)
+                ? typeNameById(
+                    selectedAppraisal.appraisal_type_id,
+                    selectedAppraisal
+                  )
                 : "—"}
             </div>
           </CardContent>
@@ -779,7 +791,7 @@ const MyAppraisal = () => {
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
                             <div className="font-medium text-foreground">
-                              {typeNameById(a.appraisal_type_id)}
+                              {typeNameById(a.appraisal_type_id, a)}
                             </div>
                             <div className="text-xs text-muted-foreground flex items-center gap-1">
                               <Calendar className="h-3 w-3 icon-due-date" />

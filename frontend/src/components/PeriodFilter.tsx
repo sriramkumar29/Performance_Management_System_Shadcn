@@ -84,7 +84,7 @@ export default function PeriodFilter({
   defaultPreset = "All",
   onChange,
   className,
-}: PeriodFilterProps) {
+}: Readonly<PeriodFilterProps>) {
   const initial = useMemo(
     () => value ?? computePreset(defaultPreset),
     [value, defaultPreset]

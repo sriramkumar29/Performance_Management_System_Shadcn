@@ -38,6 +38,9 @@ INVALID_REFRESH_TOKEN = "Invalid refresh token"
 REFRESH_TOKEN_EXPIRED = "Refresh token expired"
 ACCESS_DENIED = "Access denied"
 UNAUTHORIZED = "Unauthorized access"
+ACCOUNT_DISABLED = "Account is disabled"
+INVALID_ACCESS_TOKEN = "Invalid access token"
+ACCESS_TOKEN_EXPIRED = "Access token expired"
 
 # =============================================================================
 # ERROR MESSAGES - Validation
@@ -78,6 +81,7 @@ INVALID_FORMAT = "Invalid format"
 INVALID_EMAIL_FORMAT = "Invalid email format"
 PASSWORD_TOO_SHORT = "Password must be at least 8 characters"
 NAME_TOO_SHORT = "Name must be at least 2 characters"
+EMPLOYEE_EMAIL_ADDRESS_DESC = "Employee email address"
 
 # =============================================================================
 # HTTP STATUS MESSAGES
@@ -85,9 +89,21 @@ NAME_TOO_SHORT = "Name must be at least 2 characters"
 
 INTERNAL_SERVER_ERROR = "Internal server error"
 BAD_REQUEST = "Bad request"
-NOT_FOUND = "Resource not found"
+NOT_FOUND = "Not Found"
 FORBIDDEN = "Forbidden"
 CONFLICT = "Resource conflict"
+UNAUTHORIZED_HTTP = "Unauthorized"
+VALIDATION_ERROR = "Validation Error"
+
+# =============================================================================
+# FILE AND ROUTE ERROR MESSAGES
+# =============================================================================
+
+FILE_NOT_FOUND = "File not found"
+API_ENDPOINT_NOT_FOUND = "API endpoint not found"
+ROUTE_NOT_FOUND = "Route not found"
+FRONTEND_NOT_FOUND = "Frontend not found. Make sure to build your React app first."
+API_RUNNING_FRONTEND_NOT_FOUND = "API is running. Frontend not found - build your React app first."
 
 # =============================================================================
 # ENTITY ROLES AND TYPES

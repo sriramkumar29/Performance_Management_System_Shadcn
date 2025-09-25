@@ -3,6 +3,7 @@ from typing import Optional, List, Dict, Union
 from datetime import date
 from app.models.appraisal import AppraisalStatus
 from app.schemas.goal import AppraisalGoalResponse, GoalResponse
+from app.schemas.appraisal_type import AppraisalTypeResponse
 
 
 class AppraisalBase(BaseModel):
@@ -91,6 +92,7 @@ class AppraisalResponse(AppraisalBase):
     reviewer_overall_rating: Optional[int] = Field(None, description="Reviewer overall rating")
     created_at: date = Field(..., description="Creation date")
     updated_at: date = Field(..., description="Last update date")
+    appraisal_type: Optional[AppraisalTypeResponse] = Field(None, description="Appraisal type details")
     
     class Config:
         from_attributes = True
@@ -123,25 +125,40 @@ class SelfAssessmentUpdate(BaseModel):
     @classmethod
     def validate_goals_data(cls, v):
         for goal_id, goal_data in v.items():
-            if goal_id <= 0:
-                raise ValueError('Goal ID must be a positive integer')
-            
-            if not isinstance(goal_data, dict):
-                raise ValueError('Goal data must be a dictionary')
-            
-            # Validate rating if provided
-            if 'self_rating' in goal_data:
-                rating = goal_data['self_rating']
-                if rating is not None and (not isinstance(rating, int) or not 1 <= rating <= 5):
-                    raise ValueError(f'Self rating for goal {goal_id} must be between 1 and 5')
-            
-            # Validate comment if provided
-            if 'self_comment' in goal_data:
-                comment = goal_data['self_comment']
-                if comment is not None and (not isinstance(comment, str) or len(comment) > 2000):
-                    raise ValueError(f'Self comment for goal {goal_id} must be a string with max 2000 characters')
+            cls._validate_goal_id(goal_id)
+            cls._validate_goal_data_structure(goal_data)
+            cls._validate_self_rating(goal_id, goal_data)
+            cls._validate_self_comment(goal_id, goal_data)
         
         return v
+    
+    @classmethod
+    def _validate_goal_id(cls, goal_id: int) -> None:
+        """Validate that goal ID is a positive integer."""
+        if goal_id <= 0:
+            raise ValueError('Goal ID must be a positive integer')
+    
+    @classmethod
+    def _validate_goal_data_structure(cls, goal_data: dict) -> None:
+        """Validate that goal data is a dictionary."""
+        if not isinstance(goal_data, dict):
+            raise ValueError('Goal data must be a dictionary')
+    
+    @classmethod
+    def _validate_self_rating(cls, goal_id: int, goal_data: dict) -> None:
+        """Validate self rating if provided."""
+        if 'self_rating' in goal_data:
+            rating = goal_data['self_rating']
+            if rating is not None and (not isinstance(rating, int) or not 1 <= rating <= 5):
+                raise ValueError(f'Self rating for goal {goal_id} must be between 1 and 5')
+    
+    @classmethod
+    def _validate_self_comment(cls, goal_id: int, goal_data: dict) -> None:
+        """Validate self comment if provided."""
+        if 'self_comment' in goal_data:
+            comment = goal_data['self_comment']
+            if comment is not None and (not isinstance(comment, str) or len(comment) > 2000):
+                raise ValueError(f'Self comment for goal {goal_id} must be a string with max 2000 characters')
 
 
 class AppraiserEvaluationUpdate(BaseModel):

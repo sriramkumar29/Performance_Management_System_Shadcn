@@ -7,20 +7,20 @@ import { Slider } from "../../components/ui/slider";
 import { Textarea } from "../../components/ui/textarea";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
-import { 
-  Eye, 
-  MessageSquare, 
-  Star, 
-  Calendar, 
-  ChevronLeft, 
-  ChevronRight, 
-  CheckCircle2, 
+import {
+  Eye,
+  MessageSquare,
+  Star,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
   Target,
   User,
   UserCheck,
-  Home
+  Home,
 } from "lucide-react";
-import { toast } from 'sonner'
+import { toast } from "sonner";
 
 interface GoalCategory {
   id: number;
@@ -60,8 +60,6 @@ interface AppraisalWithGoals {
   reviewer_overall_rating?: number | null;
 }
 
- 
-
 const ReviewerEvaluation = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -72,7 +70,20 @@ const ReviewerEvaluation = () => {
     rating: number | null;
     comment: string;
   }>({ rating: null, comment: "" });
-  
+
+  // Helper function to get progress indicator class
+  const getProgressIndicatorClass = (
+    currentIndex: number,
+    activeIndex: number
+  ): string => {
+    if (currentIndex === activeIndex) {
+      return "bg-primary";
+    }
+    if (currentIndex < activeIndex) {
+      return "bg-primary/60";
+    }
+    return "bg-border";
+  };
 
   const load = async () => {
     if (!id) return;
@@ -169,7 +180,7 @@ const ReviewerEvaluation = () => {
         </div>
         {/* Mobile-only floating Home button for better discoverability */}
         <Button
-          onClick={() => navigate('/')}
+          onClick={() => navigate("/")}
           title="Home"
           aria-label="Home"
           className="sm:hidden fixed bottom-20 right-4 z-50 rounded-full h-12 w-12 p-0 bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -182,7 +193,6 @@ const ReviewerEvaluation = () => {
   return (
     <div className="min-h-screen bg-background p-6" aria-busy={loading}>
       <div className="max-w-4xl mx-auto space-y-6">
-        
         {/* Header Card */}
         <Card className="glass-effect shadow-medium border-0 p-6 animate-fade-in">
           <div className="flex items-center justify-between">
@@ -191,27 +201,35 @@ const ReviewerEvaluation = () => {
                 <Eye className="h-6 w-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">Reviewer Evaluation</h1>
+                <h1 className="text-2xl font-bold text-foreground">
+                  Reviewer Evaluation
+                </h1>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                   <Calendar className="h-4 w-4" />
-                  {new Date(appraisal.start_date).toLocaleDateString()} – {new Date(appraisal.end_date).toLocaleDateString()}
+                  {new Date(appraisal.start_date).toLocaleDateString()} –{" "}
+                  {new Date(appraisal.end_date).toLocaleDateString()}
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Badge variant="secondary" className="px-3 py-1 bg-violet-100 text-violet-800 border-violet-200">
+              <Badge
+                variant="secondary"
+                className="px-3 py-1 bg-violet-100 text-violet-800 border-violet-200"
+              >
                 {appraisal.status}
               </Badge>
               <div className="text-right">
                 <div className="text-sm font-medium text-foreground">
-                  {isOverallPage ? 'Overall Evaluation' : `Goal ${idx + 1} of ${total}`}
+                  {isOverallPage
+                    ? "Overall Evaluation"
+                    : `Goal ${idx + 1} of ${total}`}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {Math.round(progressPercentage)}% Complete
                 </div>
               </div>
               <Button
-                onClick={() => navigate('/')}
+                onClick={() => navigate("/")}
                 title="Home"
                 aria-label="Home"
                 className="ml-1 hidden sm:inline-flex bg-primary text-primary-foreground hover:bg-primary/90"
@@ -253,7 +271,10 @@ const ReviewerEvaluation = () => {
                     </span>
                     {current.goal.category && (
                       <span className="flex items-center gap-1">
-                        <Badge variant="outline" className="text-xs bg-cyan-50 text-cyan-700 border-cyan-200">
+                        <Badge
+                          variant="outline"
+                          className="text-xs bg-cyan-50 text-cyan-700 border-cyan-200"
+                        >
                           {current.goal.category.name}
                         </Badge>
                       </span>
@@ -267,27 +288,37 @@ const ReviewerEvaluation = () => {
                 <div className="rounded-xl border border-border p-4 bg-muted/40">
                   <div className="flex items-center gap-2 mb-4">
                     <User className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium text-foreground">Employee Self Assessment</span>
+                    <span className="text-sm font-medium text-foreground">
+                      Employee Self Assessment
+                    </span>
                   </div>
                   <div className="space-y-4">
                     <div>
                       <label className="text-xs font-medium text-foreground mb-2 block">
-                        Self Rating: {current.self_rating || 'Not rated'}
+                        Self Rating: {current.self_rating || "Not rated"}
                       </label>
                       <Slider
                         min={1}
                         max={5}
                         step={1}
-                        value={current.self_rating != null ? [current.self_rating] : [1]}
+                        value={
+                          current.self_rating != null
+                            ? [current.self_rating]
+                            : [1]
+                        }
                         disabled
                         className="opacity-70"
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-foreground mb-2 block">
+                      <label
+                        htmlFor={`self-comment-${current.goal.goal_id}`}
+                        className="text-xs font-medium text-foreground mb-2 block"
+                      >
                         Self Comments
                       </label>
                       <Textarea
+                        id={`self-comment-${current.goal.goal_id}`}
                         rows={3}
                         value={current.self_comment ?? "No comments provided"}
                         disabled
@@ -301,29 +332,42 @@ const ReviewerEvaluation = () => {
                 <div className="rounded-xl border border-border p-4 bg-muted/40">
                   <div className="flex items-center gap-2 mb-4">
                     <UserCheck className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium text-foreground">Appraiser Evaluation</span>
+                    <span className="text-sm font-medium text-foreground">
+                      Appraiser Evaluation
+                    </span>
                   </div>
                   <div className="space-y-4">
                     <div>
                       <label className="text-xs font-medium text-foreground mb-2 block">
-                        Appraiser Rating: {current.appraiser_rating || 'Not rated'}
+                        Appraiser Rating:{" "}
+                        {current.appraiser_rating || "Not rated"}
                       </label>
                       <Slider
                         min={1}
                         max={5}
                         step={1}
-                        value={current.appraiser_rating != null ? [current.appraiser_rating] : [1]}
+                        value={
+                          current.appraiser_rating != null
+                            ? [current.appraiser_rating]
+                            : [1]
+                        }
                         disabled
                         className="opacity-70"
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-foreground mb-2 block">
+                      <label
+                        htmlFor={`appraiser-comment-${current.goal.goal_id}`}
+                        className="text-xs font-medium text-foreground mb-2 block"
+                      >
                         Appraiser Comments
                       </label>
                       <Textarea
+                        id={`appraiser-comment-${current.goal.goal_id}`}
                         rows={4}
-                        value={current.appraiser_comment ?? "No comments provided"}
+                        value={
+                          current.appraiser_comment ?? "No comments provided"
+                        }
                         disabled
                         className="bg-card/50 border-border"
                       />
@@ -334,9 +378,9 @@ const ReviewerEvaluation = () => {
 
               {/* Navigation */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-border/50">
-                <Button 
-                  variant="outline" 
-                  onClick={handlePrev} 
+                <Button
+                  variant="outline"
+                  onClick={handlePrev}
                   disabled={!canPrev}
                   className="w-full sm:w-auto flex items-center gap-2"
                 >
@@ -349,13 +393,10 @@ const ReviewerEvaluation = () => {
                     {Array.from({ length: total + 1 }, (_, i) => (
                       <div
                         key={i}
-                        className={`w-2 h-2 rounded-full ${
-                          i === idx
-                            ? 'bg-primary'
-                            : i < idx
-                            ? 'bg-primary/60'
-                            : 'bg-border'
-                        }`}
+                        className={`w-2 h-2 rounded-full ${getProgressIndicatorClass(
+                          i,
+                          idx
+                        )}`}
                       />
                     ))}
                   </div>
@@ -382,8 +423,12 @@ const ReviewerEvaluation = () => {
                   <Star className="h-6 w-6" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-foreground">Overall Evaluation</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Final review and completion</p>
+                  <h2 className="text-2xl font-bold text-foreground">
+                    Overall Evaluation
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Final review and completion
+                  </p>
                 </div>
               </div>
 
@@ -391,29 +436,43 @@ const ReviewerEvaluation = () => {
               <div className="rounded-xl border border-border p-5 bg-muted/40">
                 <div className="flex items-center gap-2 mb-4">
                   <UserCheck className="h-5 w-5 text-primary" />
-                  <span className="text-lg font-semibold text-foreground">Appraiser Overall Assessment</span>
+                  <span className="text-lg font-semibold text-foreground">
+                    Appraiser Overall Assessment
+                  </span>
                 </div>
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-foreground mb-3 block">
-                      Overall Rating: {appraisal.appraiser_overall_rating || 'Not provided'}
+                      Overall Rating:{" "}
+                      {appraisal.appraiser_overall_rating || "Not provided"}
                     </label>
                     <Slider
                       min={1}
                       max={5}
                       step={1}
-                      value={appraisal.appraiser_overall_rating != null ? [appraisal.appraiser_overall_rating] : [1]}
+                      value={
+                        appraisal.appraiser_overall_rating != null
+                          ? [appraisal.appraiser_overall_rating]
+                          : [1]
+                      }
                       disabled
                       className="opacity-70"
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-foreground mb-3 block">
+                    <label
+                      htmlFor="appraiser-overall-comments"
+                      className="text-sm font-medium text-foreground mb-3 block"
+                    >
                       Overall Comments
                     </label>
                     <Textarea
+                      id="appraiser-overall-comments"
                       rows={4}
-                      value={appraisal.appraiser_overall_comments ?? "No comments provided"}
+                      value={
+                        appraisal.appraiser_overall_comments ??
+                        "No comments provided"
+                      }
                       disabled
                       className="bg-card/50 border-border"
                     />
@@ -425,12 +484,14 @@ const ReviewerEvaluation = () => {
               <div className="rounded-xl border border-border p-5 bg-muted/40">
                 <div className="flex items-center gap-2 mb-4">
                   <Eye className="h-5 w-5 text-primary" />
-                  <span className="text-lg font-semibold text-foreground">Your Reviewer Assessment</span>
+                  <span className="text-lg font-semibold text-foreground">
+                    Your Reviewer Assessment
+                  </span>
                 </div>
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-foreground mb-3 block">
-                      Overall Rating (1-5): {overall.rating || 'Please select'}
+                      Overall Rating (1-5): {overall.rating || "Please select"}
                     </label>
                     <Slider
                       min={1}
@@ -473,9 +534,9 @@ const ReviewerEvaluation = () => {
 
               {/* Navigation */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-border/50">
-                <Button 
-                  variant="outline" 
-                  onClick={handlePrev} 
+                <Button
+                  variant="outline"
+                  onClick={handlePrev}
                   disabled={!canPrev}
                   className="w-full sm:w-auto flex items-center gap-2"
                 >
@@ -488,13 +549,10 @@ const ReviewerEvaluation = () => {
                     {Array.from({ length: total + 1 }, (_, i) => (
                       <div
                         key={i}
-                        className={`w-2 h-2 rounded-full ${
-                          i === idx
-                            ? 'bg-primary'
-                            : i < idx
-                            ? 'bg-primary/60'
-                            : 'bg-border'
-                        }`}
+                        className={`w-2 h-2 rounded-full ${getProgressIndicatorClass(
+                          i,
+                          idx
+                        )}`}
                       />
                     ))}
                   </div>
@@ -506,7 +564,7 @@ const ReviewerEvaluation = () => {
                   className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2 px-6 py-2 shadow-lg"
                 >
                   <CheckCircle2 className="h-4 w-4" />
-                  {loading ? 'Submitting...' : 'Submit & Complete'}
+                  {loading ? "Submitting..." : "Submit & Complete"}
                 </Button>
               </div>
             </div>
@@ -515,7 +573,7 @@ const ReviewerEvaluation = () => {
       </div>
       {/* Mobile-only floating Home button for better discoverability */}
       <Button
-        onClick={() => navigate('/')}
+        onClick={() => navigate("/")}
         title="Home"
         aria-label="Home"
         className="sm:hidden fixed bottom-20 right-4 z-50 rounded-full h-12 w-12 p-0 bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30"

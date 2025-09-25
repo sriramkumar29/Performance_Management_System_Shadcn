@@ -8,21 +8,20 @@ import { Textarea } from "../../components/ui/textarea";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Progress } from "../../components/ui/progress";
-import { 
-  Target, 
-  Calendar, 
-  Weight, 
-  MessageSquare, 
-  Star, 
-  ChevronLeft, 
-  ChevronRight, 
+import {
+  Target,
+  Calendar,
+  Weight,
+  MessageSquare,
+  Star,
+  ChevronLeft,
+  ChevronRight,
   Send,
   User,
   UserCheck,
   BarChart3,
-  Home
-} from 'lucide-react';
-
+  Home,
+} from "lucide-react";
 
 interface GoalCategory {
   id: number;
@@ -62,7 +61,11 @@ interface AppraisalWithGoals {
 
 type FormState = Record<number, { rating: number | null; comment: string }>;
 
- 
+const getProgressIndicatorClass = (i: number, idx: number) => {
+  if (i === idx) return "bg-primary";
+  if (i < idx) return "bg-primary/60";
+  return "bg-border";
+};
 
 const AppraiserEvaluation = () => {
   const { id } = useParams();
@@ -75,7 +78,6 @@ const AppraiserEvaluation = () => {
     rating: number | null;
     comment: string;
   }>({ rating: null, comment: "" });
-  
 
   const load = async () => {
     if (!id) return;
@@ -163,7 +165,7 @@ const AppraiserEvaluation = () => {
     // ensure all goals filled
     for (const ag of goals) {
       const v = form[ag.goal.goal_id];
-      if (!v || !v.rating || !v.comment || !v.comment.trim()) {
+      if (!v?.rating || !v?.comment?.trim()) {
         const missingIdx = goals.findIndex(
           (g) => g.goal.goal_id === ag.goal.goal_id
         );
@@ -207,8 +209,10 @@ const AppraiserEvaluation = () => {
       );
       if (!st.ok) throw new Error(st.error || "Failed to advance status");
       navigate("/");
-    } catch (e: any) {
-      // notifications removed
+    } catch (e: unknown) {
+      const errorMessage =
+        e instanceof Error ? e.message : "Failed to submit evaluation";
+      console.error("Failed to submit appraiser evaluation:", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -226,7 +230,7 @@ const AppraiserEvaluation = () => {
         </div>
         {/* Mobile-only floating Home button for better discoverability */}
         <Button
-          onClick={() => navigate('/')}
+          onClick={() => navigate("/")}
           title="Home"
           aria-label="Home"
           className="sm:hidden fixed bottom-20 right-4 z-50 rounded-full h-12 w-12 p-0 bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -239,9 +243,11 @@ const AppraiserEvaluation = () => {
   const progressPercentage = total > 0 ? ((idx + 1) / (total + 1)) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8 animate-fade-in" aria-busy={loading}>
+    <div
+      className="min-h-screen bg-background p-4 md:p-6 lg:p-8 animate-fade-in"
+      aria-busy={loading}
+    >
       <div className="mx-auto max-w-5xl space-y-6">
-
         {/* Header Card */}
         <Card className="shadow-medium border-0 glass-effect">
           <CardHeader className="pb-4">
@@ -252,23 +258,29 @@ const AppraiserEvaluation = () => {
                 </h1>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
-                  {new Date(appraisal.start_date).toLocaleDateString()} – {new Date(appraisal.end_date).toLocaleDateString()}
+                  {new Date(appraisal.start_date).toLocaleDateString()} –{" "}
+                  {new Date(appraisal.end_date).toLocaleDateString()}
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Badge variant="outline" className="px-3 py-1 text-sm font-medium bg-teal-50 text-teal-700 border-teal-200">
+                <Badge
+                  variant="outline"
+                  className="px-3 py-1 text-sm font-medium bg-teal-50 text-teal-700 border-teal-200"
+                >
                   {appraisal.status}
                 </Badge>
                 <div className="text-right">
                   <div className="text-sm font-medium text-foreground">
-                    {isOverallPage ? "Overall Evaluation" : `Goal ${idx + 1} of ${total}`}
+                    {isOverallPage
+                      ? "Overall Evaluation"
+                      : `Goal ${idx + 1} of ${total}`}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {Math.round(progressPercentage)}% Complete
                   </div>
                 </div>
                 <Button
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate("/")}
                   title="Home"
                   aria-label="Home"
                   className="ml-1 hidden sm:inline-flex bg-primary text-primary-foreground hover:bg-primary/90"
@@ -305,7 +317,10 @@ const AppraiserEvaluation = () => {
                       <span>Weightage: {current.goal.goal_weightage}%</span>
                     </div>
                     {current.goal.category && (
-                      <Badge variant="secondary" className="text-xs bg-pink-100 text-pink-700 border-pink-200">
+                      <Badge
+                        variant="secondary"
+                        className="text-xs bg-pink-100 text-pink-700 border-pink-200"
+                      >
                         {current.goal.category.name}
                       </Badge>
                     )}
@@ -319,13 +334,20 @@ const AppraiserEvaluation = () => {
               <div className="rounded-lg border border-border/50 bg-background p-4 space-y-4">
                 <div className="flex items-center gap-2 mb-3">
                   <User className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-medium text-foreground">Employee Self Assessment</h3>
+                  <h3 className="text-sm font-medium text-foreground">
+                    Employee Self Assessment
+                  </h3>
                 </div>
-                
+
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <Star className="h-4 w-4 text-primary" />
-                    <label className="text-sm font-medium text-foreground">Self Rating</label>
+                    <label
+                      htmlFor={`self-rating-${current.goal.goal_id}`}
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Self Rating
+                    </label>
                     {current.self_rating && (
                       <Badge variant="outline" className="ml-auto">
                         {current.self_rating}/5
@@ -334,10 +356,15 @@ const AppraiserEvaluation = () => {
                   </div>
                   <div className="px-3">
                     <Slider
+                      id={`self-rating-${current.goal.goal_id}`}
                       min={1}
                       max={5}
                       step={1}
-                      value={current.self_rating != null ? [current.self_rating] : [1]}
+                      value={
+                        current.self_rating != null
+                          ? [current.self_rating]
+                          : [1]
+                      }
                       disabled
                       aria-label="Self Rating"
                       className="opacity-60"
@@ -355,9 +382,15 @@ const AppraiserEvaluation = () => {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-primary" />
-                    <label className="text-sm font-medium text-foreground">Self Comments</label>
+                    <label
+                      htmlFor={`self-comment-${current.goal.goal_id}`}
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Self Comments
+                    </label>
                   </div>
                   <Textarea
+                    id={`self-comment-${current.goal.goal_id}`}
                     rows={3}
                     value={current.self_comment ?? "No comments provided"}
                     disabled
@@ -371,31 +404,44 @@ const AppraiserEvaluation = () => {
               <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-4">
                 <div className="flex items-center gap-2 mb-3">
                   <UserCheck className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-medium text-foreground">Your Evaluation</h3>
+                  <h3 className="text-sm font-medium text-foreground">
+                    Your Evaluation
+                  </h3>
                 </div>
 
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <Star className="h-4 w-4 text-primary" />
-                    <label className="text-sm font-medium text-foreground">Your Rating (1-5)</label>
+                    <label
+                      htmlFor={`appraiser-rating-${current.goal.goal_id}`}
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Your Rating (1-5)
+                    </label>
                     {form[current.goal.goal_id]?.rating && (
-                      <Badge variant="outline" className="ml-auto bg-lime-50 text-lime-700 border-lime-200">
+                      <Badge
+                        variant="outline"
+                        className="ml-auto bg-lime-50 text-lime-700 border-lime-200"
+                      >
                         {form[current.goal.goal_id]?.rating}/5
                       </Badge>
                     )}
                   </div>
                   <div className="px-3">
                     <Slider
+                      id={`appraiser-rating-${current.goal.goal_id}`}
                       min={1}
                       max={5}
                       step={1}
                       value={
                         form[current.goal.goal_id]?.rating != null
-                          ? [form[current.goal.goal_id]!.rating as number]
+                          ? [form[current.goal.goal_id].rating!]
                           : [1]
                       }
                       onValueChange={(v) =>
-                        setCurrentField(current.goal.goal_id, { rating: v[0] ?? null })
+                        setCurrentField(current.goal.goal_id, {
+                          rating: v[0] ?? null,
+                        })
                       }
                       aria-label="Your Rating"
                       className="w-full"
@@ -413,9 +459,15 @@ const AppraiserEvaluation = () => {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-primary" />
-                    <label className="text-sm font-medium text-foreground">Your Comments</label>
+                    <label
+                      htmlFor={`appraiser-comment-${current.goal.goal_id}`}
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Your Comments
+                    </label>
                   </div>
                   <Textarea
+                    id={`appraiser-comment-${current.goal.goal_id}`}
                     rows={4}
                     placeholder="Provide your detailed evaluation, feedback, and recommendations..."
                     value={form[current.goal.goal_id]?.comment ?? ""}
@@ -428,41 +480,40 @@ const AppraiserEvaluation = () => {
                     className="resize-none focus:ring-2 focus:ring-primary/20 border-border/50"
                   />
                   <div className="text-xs text-muted-foreground">
-                    {form[current.goal.goal_id]?.comment?.length || 0} characters
+                    {form[current.goal.goal_id]?.comment?.length || 0}{" "}
+                    characters
                   </div>
                 </div>
               </div>
 
               {/* Navigation */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-border/50">
-                <Button 
-                  variant="outline" 
-                  onClick={handlePrev} 
+                <Button
+                  variant="outline"
+                  onClick={handlePrev}
                   disabled={!canPrev}
                   className="w-full sm:w-auto"
                 >
                   <ChevronLeft className="h-4 w-4 mr-2" />
                   Previous Goal
                 </Button>
-                
+
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <div className="flex gap-1" role="list" aria-label="Progress steps">
+                  <ol className="flex gap-1" aria-label="Progress steps">
                     {Array.from({ length: total + 1 }, (_, i) => (
-                      <div
+                      <li
                         key={i}
-                        role="listitem"
-                        aria-label={`Step ${i + 1} of ${total + 1}${i === idx ? ", current step" : ""}`}
-                        aria-current={i === idx ? "step" : undefined}
-                        className={`w-2 h-2 rounded-full ${
-                          i === idx 
-                            ? 'bg-primary' 
-                            : i < idx 
-                            ? 'bg-primary/60' 
-                            : 'bg-border'
+                        aria-label={`Step ${i + 1} of ${total + 1}${
+                          i === idx ? ", current step" : ""
                         }`}
+                        aria-current={i === idx ? "step" : undefined}
+                        className={`w-2 h-2 rounded-full ${getProgressIndicatorClass(
+                          i,
+                          idx
+                        )}`}
                       />
                     ))}
-                  </div>
+                  </ol>
                 </div>
 
                 <Button
@@ -491,7 +542,8 @@ const AppraiserEvaluation = () => {
                     Overall Performance Evaluation
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    Provide your overall assessment based on all individual goal evaluations
+                    Provide your overall assessment based on all individual goal
+                    evaluations
                   </p>
                 </div>
               </div>
@@ -502,7 +554,10 @@ const AppraiserEvaluation = () => {
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Star className="h-4 w-4 text-primary" />
-                  <label className="text-sm font-medium text-foreground">
+                  <label
+                    htmlFor="overall-rating"
+                    className="text-sm font-medium text-foreground"
+                  >
                     Overall Rating (1-5)
                   </label>
                   {overall.rating && (
@@ -513,6 +568,7 @@ const AppraiserEvaluation = () => {
                 </div>
                 <div className="px-3">
                   <Slider
+                    id="overall-rating"
                     min={1}
                     max={5}
                     step={1}
@@ -537,11 +593,15 @@ const AppraiserEvaluation = () => {
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="h-4 w-4 text-primary" />
-                  <label className="text-sm font-medium text-foreground">
+                  <label
+                    htmlFor="overall-comments"
+                    className="text-sm font-medium text-foreground"
+                  >
                     Overall Comments
                   </label>
                 </div>
                 <Textarea
+                  id="overall-comments"
                   rows={6}
                   placeholder="Summarize overall performance, highlight key strengths, areas for improvement, and recommendations for development..."
                   value={overall.comment}
@@ -558,28 +618,25 @@ const AppraiserEvaluation = () => {
 
               {/* Navigation */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-border/50">
-                <Button 
-                  variant="outline" 
-                  onClick={handlePrev} 
+                <Button
+                  variant="outline"
+                  onClick={handlePrev}
                   disabled={!canPrev}
                   className="w-full sm:w-auto"
                 >
                   <ChevronLeft className="h-4 w-4 mr-2" />
                   Previous Goal
                 </Button>
-                
+
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <div className="flex gap-1">
                     {Array.from({ length: total + 1 }, (_, i) => (
                       <div
                         key={i}
-                        className={`w-2 h-2 rounded-full ${
-                          i === idx 
-                            ? 'bg-primary' 
-                            : i < idx 
-                            ? 'bg-primary/60' 
-                            : 'bg-border'
-                        }`}
+                        className={`w-2 h-2 rounded-full ${getProgressIndicatorClass(
+                          i,
+                          idx
+                        )}`}
                       />
                     ))}
                   </div>
@@ -601,7 +658,7 @@ const AppraiserEvaluation = () => {
 
       {/* Mobile-only floating Home button for better discoverability */}
       <Button
-        onClick={() => navigate('/')}
+        onClick={() => navigate("/")}
         title="Home"
         aria-label="Home"
         className="sm:hidden fixed bottom-20 right-4 z-50 rounded-full h-12 w-12 p-0 bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30"

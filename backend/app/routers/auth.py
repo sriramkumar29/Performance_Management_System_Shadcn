@@ -47,7 +47,7 @@ async def get_current_user(
     return await auth_service.get_current_user_from_token(db, token=token)
 
 
-async def get_current_active_user(
+def get_current_active_user(
     current_user: Employee = Depends(get_current_user)
 ) -> Employee:
     """
@@ -69,7 +69,7 @@ async def get_current_active_user(
 
 
 # Optional dependencies for role-based access
-async def get_current_manager(
+def get_current_manager(
     current_user: Employee = Depends(get_current_active_user)
 ) -> Employee:
     """
