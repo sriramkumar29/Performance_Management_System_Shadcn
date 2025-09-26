@@ -386,7 +386,10 @@ async def update_goal(
     updated_goal = await goal_service.update(db, db_obj=db_goal, obj_in=goal)
     await db.commit()
     
-    return GoalResponse.model_validate(updated_goal)
+    # Reload the goal with relationships for the response
+    final_goal = await goal_service.get_by_id_or_404(db, goal_id, load_relationships=["category"])
+    
+    return GoalResponse.model_validate(final_goal)
 
 
 @router.delete("/{goal_id}", status_code=status.HTTP_204_NO_CONTENT)

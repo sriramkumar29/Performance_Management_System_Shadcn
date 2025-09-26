@@ -19,6 +19,9 @@ from app.schemas.goal import (
     AppraisalGoalCreate, AppraisalGoalUpdate
 )
 from app.services.base_service import BaseService
+from app.repositories.category_repository import CategoryRepository
+from app.repositories.goal_repository import GoalRepository
+from app.repositories.appraisal_goal_repository import AppraisalGoalRepository
 from app.exceptions import EntityNotFoundError, ValidationError
 
 
@@ -27,6 +30,7 @@ class GoalService(BaseService[Goal, GoalCreate, GoalUpdate]):
     
     def __init__(self):
         super().__init__(Goal)
+        self.repository = GoalRepository()
     
     @property
     def entity_name(self) -> str:
@@ -35,6 +39,80 @@ class GoalService(BaseService[Goal, GoalCreate, GoalUpdate]):
     @property
     def id_field(self) -> str:
         return "goal_id"
+    
+    async def create(
+        self,
+        db: AsyncSession,
+        *,
+        obj_in: GoalCreate
+    ) -> Goal:
+        """Create a new goal."""
+        # Convert Pydantic model to dict
+        goal_data = obj_in.model_dump()
+        
+        # Apply business logic hooks
+        goal_data = await self.before_create(db, goal_data)
+        
+        # Use repository to create
+        db_goal = await self.repository.create(db, obj_data=goal_data)
+        
+        # Apply after-create hook
+        db_goal = await self.after_create(db, db_goal, goal_data)
+        
+        return db_goal
+    
+    async def get_by_id_or_404(
+        self,
+        db: AsyncSession,
+        entity_id: int,
+        *,
+        load_relationships: Optional[List[str]] = None
+    ) -> Goal:
+        """Get goal by ID or raise 404 error."""
+        goal = await self.repository.get_by_id(db, entity_id, load_relationships=load_relationships)
+        if not goal:
+            raise EntityNotFoundError(f"{self.entity_name} with ID {entity_id} not found")
+        return goal
+    
+    async def get_multi(
+        self,
+        db: AsyncSession,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        filters: Optional[List] = None,
+        order_by = None
+    ) -> List[Goal]:
+        """Get multiple goals."""
+        return await self.repository.get_multi(
+            db,
+            skip=skip,
+            limit=limit,
+            filters=filters,
+            order_by=order_by
+        )
+    
+    async def update(
+        self,
+        db: AsyncSession,
+        *,
+        db_obj: Goal,
+        obj_in: GoalUpdate
+    ) -> Goal:
+        """Update a goal with the provided data."""
+        # Convert Pydantic model to dict, excluding unset values
+        update_data = obj_in.model_dump(exclude_unset=True)
+        
+        # Apply business logic hooks
+        update_data = await self.before_update(db, db_obj, update_data)
+        
+        # Use repository to update
+        updated_goal = await self.repository.update(db, db_obj=db_obj, obj_data=update_data)
+        
+        # Apply after-update hook
+        updated_goal = await self.after_update(db, updated_goal, db_obj, update_data)
+        
+        return updated_goal
 
 
 class GoalTemplateService(BaseService[GoalTemplate, GoalTemplateCreate, GoalTemplateUpdate]):
@@ -42,6 +120,8 @@ class GoalTemplateService(BaseService[GoalTemplate, GoalTemplateCreate, GoalTemp
     
     def __init__(self):
         super().__init__(GoalTemplate)
+        from app.repositories.goal_template_repository import GoalTemplateRepository
+        self.repository = GoalTemplateRepository()
     
     @property
     def entity_name(self) -> str:
@@ -50,6 +130,19 @@ class GoalTemplateService(BaseService[GoalTemplate, GoalTemplateCreate, GoalTemp
     @property
     def id_field(self) -> str:
         return "temp_id"
+    
+    async def get_by_id_or_404(
+        self,
+        db: AsyncSession,
+        entity_id: int,
+        *,
+        load_relationships: Optional[List[str]] = None
+    ) -> GoalTemplate:
+        """Get goal template by ID or raise 404 error."""
+        template = await self.repository.get_by_id(db, entity_id, load_relationships=load_relationships)
+        if not template:
+            raise EntityNotFoundError(f"{self.entity_name} with ID {entity_id} not found")
+        return template
     
     async def get_template_with_categories(
         self,
@@ -179,6 +272,7 @@ class CategoryService(BaseService[Category, CategoryCreate, None]):
     
     def __init__(self):
         super().__init__(Category)
+        self.repository = CategoryRepository()
     
     @property
     def entity_name(self) -> str:
@@ -187,6 +281,37 @@ class CategoryService(BaseService[Category, CategoryCreate, None]):
     @property
     def id_field(self) -> str:
         return "id"
+    
+    async def get_multi(
+        self,
+        db: AsyncSession,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        filters: Optional[List] = None,
+        order_by = None
+    ) -> List[Category]:
+        """Get multiple categories."""
+        return await self.repository.get_multi(
+            db,
+            skip=skip,
+            limit=limit,
+            filters=filters,
+            order_by=order_by
+        )
+    
+    async def get_by_id_or_404(
+        self,
+        db: AsyncSession,
+        entity_id: int,
+        *,
+        load_relationships: Optional[List[str]] = None
+    ) -> Category:
+        """Get category by ID or raise 404 error."""
+        category = await self.repository.get_by_id(db, entity_id)
+        if not category:
+            raise EntityNotFoundError(f"{self.entity_name} with ID {entity_id} not found")
+        return category
 
 
 class AppraisalGoalService(BaseService[AppraisalGoal, AppraisalGoalCreate, AppraisalGoalUpdate]):
@@ -194,6 +319,7 @@ class AppraisalGoalService(BaseService[AppraisalGoal, AppraisalGoalCreate, Appra
     
     def __init__(self):
         super().__init__(AppraisalGoal)
+        self.repository = AppraisalGoalRepository()
     
     @property
     def entity_name(self) -> str:
@@ -202,3 +328,37 @@ class AppraisalGoalService(BaseService[AppraisalGoal, AppraisalGoalCreate, Appra
     @property
     def id_field(self) -> str:
         return "id"
+    
+    async def create(
+        self,
+        db: AsyncSession,
+        *,
+        obj_in: AppraisalGoalCreate
+    ) -> AppraisalGoal:
+        """Create a new appraisal goal."""
+        # Convert Pydantic model to dict
+        appraisal_goal_data = obj_in.model_dump()
+        
+        # Apply business logic hooks
+        appraisal_goal_data = await self.before_create(db, appraisal_goal_data)
+        
+        # Use repository to create
+        db_appraisal_goal = await self.repository.create(db, obj_data=appraisal_goal_data)
+        
+        # Apply after-create hook
+        db_appraisal_goal = await self.after_create(db, db_appraisal_goal, appraisal_goal_data)
+        
+        return db_appraisal_goal
+    
+    async def get_by_id_or_404(
+        self,
+        db: AsyncSession,
+        entity_id: int,
+        *,
+        load_relationships: Optional[List[str]] = None
+    ) -> AppraisalGoal:
+        """Get appraisal goal by ID or raise 404 error."""
+        appraisal_goal = await self.repository.get_by_id(db, entity_id)
+        if not appraisal_goal:
+            raise EntityNotFoundError(f"{self.entity_name} with ID {entity_id} not found")
+        return appraisal_goal

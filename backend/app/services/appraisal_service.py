@@ -17,6 +17,7 @@ from app.models.goal import Goal, AppraisalGoal
 from app.models.appraisal_type import AppraisalType, AppraisalRange
 from app.schemas.appraisal import AppraisalCreate, AppraisalUpdate
 from app.services.base_service import BaseService
+from app.repositories.appraisal_repository import AppraisalRepository
 from app.exceptions import (
     EntityNotFoundError,
     ValidationError,
@@ -40,6 +41,7 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
     
     def __init__(self):
         super().__init__(Appraisal)
+        self.repository = AppraisalRepository()
         self._valid_transitions = {
             AppraisalStatus.DRAFT: [AppraisalStatus.SUBMITTED],
             AppraisalStatus.SUBMITTED: [AppraisalStatus.APPRAISEE_SELF_ASSESSMENT],
@@ -56,6 +58,47 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
     @property
     def id_field(self) -> str:
         return "appraisal_id"
+    
+    async def get_by_id_or_404(
+        self,
+        db: AsyncSession,
+        entity_id: int,
+        *,
+        load_relationships: Optional[List[str]] = None
+    ) -> Appraisal:
+        """Get appraisal by ID or raise 404 error."""
+        appraisal = await self.repository.get_by_id(db, entity_id, load_relationships)
+        if not appraisal:
+            raise EntityNotFoundError(f"{self.entity_name} with ID {entity_id} not found")
+        return appraisal
+    
+    async def update(
+        self,
+        db: AsyncSession,
+        *,
+        db_obj: Appraisal,
+        obj_in: AppraisalUpdate
+    ) -> Appraisal:
+        """Update an appraisal with the provided data."""
+        # Convert Pydantic model to dict, excluding unset values
+        update_data = obj_in.model_dump(exclude_unset=True)
+        
+        # Apply business logic hooks
+        update_data = await self.before_update(db, db_obj, update_data)
+        
+        # Update fields
+        for field, value in update_data.items():
+            if hasattr(db_obj, field):
+                setattr(db_obj, field, value)
+        
+        # Flush changes
+        await db.flush()
+        await db.refresh(db_obj)
+        
+        # Apply after-update hook
+        db_obj = await self.after_update(db, db_obj, db_obj, update_data)
+        
+        return db_obj
     
     async def create_appraisal(
         self,

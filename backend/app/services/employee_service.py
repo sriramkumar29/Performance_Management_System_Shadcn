@@ -5,7 +5,7 @@ This module provides business logic for employee-related operations
 with proper validation and error handling.
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -15,6 +15,7 @@ from passlib.context import CryptContext
 from app.models.employee import Employee
 from app.schemas.employee import EmployeeCreate, EmployeeUpdate
 from app.services.base_service import BaseService
+from app.repositories.employee_repository import EmployeeRepository
 from app.exceptions import (
     EntityNotFoundError,
     DuplicateEntityError,
@@ -33,7 +34,17 @@ class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
     """Service class for employee operations."""
     
     def __init__(self):
+        """Initialize the EmployeeService."""
         super().__init__(Employee)
+        self.repository = EmployeeRepository()
+
+    async def update(self, db: AsyncSession, employee_id: int, **update_data):
+        """Update an employee"""
+        employee = await self.get_by_id_or_404(db, employee_id)
+        for key, value in update_data.items():
+            if hasattr(employee, key):
+                setattr(employee, key, value)
+        return await self.repository.update(db, employee)
     
     @property
     def entity_name(self) -> str:
@@ -42,6 +53,27 @@ class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
     @property
     def id_field(self) -> str:
         return "emp_id"
+    
+    async def get_by_id_or_404(
+        self,
+        db: AsyncSession,
+        entity_id: int,
+        *,
+        load_relationships: Optional[List[str]] = None
+    ) -> Employee:
+        """Get employee by ID or raise 404 error."""
+        employee = await self.repository.get_by_id(db, entity_id)
+        if not employee:
+            raise EntityNotFoundError(f"{self.entity_name} with ID {entity_id} not found")
+        return employee
+    
+    async def get_by_id(
+        self,
+        db: AsyncSession,
+        entity_id: int
+    ) -> Optional[Employee]:
+        """Get employee by ID without raising error."""
+        return await self.repository.get_by_id(db, entity_id)
     
     async def create_employee(
         self,
@@ -134,7 +166,7 @@ class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
             )
             filters.extend(search_filters)
         
-        return await self.get_multi(
+        return await self.repository.get_multi(
             db=db,
             skip=skip,
             limit=limit,
@@ -152,7 +184,7 @@ class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
         """Get employees who can be managers (active employees)."""
         filters = [Employee.emp_status == True]
         
-        return await self.get_multi(
+        return await self.repository.get_multi(
             db=db,
             skip=skip,
             limit=limit,
@@ -188,10 +220,7 @@ class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
         email: str
     ) -> Optional[Employee]:
         """Get employee by email address."""
-        result = await db.execute(
-            select(Employee).where(Employee.emp_email == email)
-        )
-        return result.scalars().first()
+        return await self.repository.get_by_email(db, email)
     
     async def _validate_email_unique(
         self,
@@ -240,3 +269,15 @@ class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
                 obj_data["emp_email"], 
                 exclude_id=exclude_id
             )
+    
+    def _build_search_filters(self, search: str, fields: List[str]) -> List:
+        """Build search filters for the given fields."""
+        search_filters = []
+        search_term = f"%{search}%"
+        
+        for field in fields:
+            if hasattr(Employee, field):
+                attr = getattr(Employee, field)
+                search_filters.append(attr.ilike(search_term))
+        
+        return [or_(*search_filters)] if search_filters else []
