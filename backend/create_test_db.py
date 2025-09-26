@@ -11,7 +11,6 @@ from app.db.database import Base
 # Parse connection details from DATABASE_URL
 def parse_db_url(url: str):
     """Parse PostgreSQL URL to extract connection details."""
-    # Example: postgresql+asyncpg://postgres:sri%40123@localhost:5432/performance_management_test
     url = url.replace('postgresql+asyncpg://', '')
     user_pass, host_db = url.split('@')
     user, password = user_pass.split(':')
