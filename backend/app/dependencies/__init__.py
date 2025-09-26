@@ -9,6 +9,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 from pydantic import BaseModel
 
+# Import auth dependencies for easy access
+from .auth import (
+    oauth2_scheme,
+    get_auth_service,
+    get_current_user,
+    get_current_active_user,
+    get_current_manager,
+    require_manager_role,
+    require_admin_role,
+    require_hr_role
+)
+
 from app.db.database import get_db
 from app.models.employee import Employee
 from app.exceptions import EntityNotFoundError, ValidationError

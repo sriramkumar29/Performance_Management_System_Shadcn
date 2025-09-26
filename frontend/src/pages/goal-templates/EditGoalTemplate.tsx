@@ -320,6 +320,7 @@ const EditGoalTemplate = () => {
             <div className="flex flex-col sm:flex-row gap-2">
               <Input
                 placeholder="Add category name"
+                readOnly={loading || saving}
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
                 onKeyDown={(e) => {
