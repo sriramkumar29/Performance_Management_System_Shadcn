@@ -2,7 +2,6 @@ from datetime import date, datetime
 from typing import Tuple, Optional
 from app.models.appraisal_type import AppraisalType, AppraisalRange
 
-
 def calculate_appraisal_dates(
     appraisal_type: AppraisalType, 
     appraisal_range: Optional[AppraisalRange] = None,
@@ -10,84 +9,58 @@ def calculate_appraisal_dates(
 ) -> Tuple[date, date]:
     """
     Calculate start and end dates for an appraisal based on type and range.
-    
-    Args:
-        appraisal_type: The appraisal type (Annual, Quarterly, etc.)
-        appraisal_range: The specific range (1st, 2nd, etc.) if applicable
-        current_year: Year to calculate dates for (defaults to current year)
-    
-    Returns:
-        Tuple of (start_date, end_date)
     """
     if current_year is None:
         current_year = datetime.now().year
     
     type_name = appraisal_type.name.lower()
+    range_name = appraisal_range.name.lower() if appraisal_range else ""
 
-    # Only certain types require a specific range to be provided
-    needs_range = any(k in type_name for k in ("half", "semi", "quarter", "tri"))
-    if needs_range and appraisal_range is None:
-        raise ValueError(f"Appraisal type '{appraisal_type.name}' requires a range to be specified")
+    # Mapping for multi-range appraisal types
+    RANGE_MAPS = {
+        "tri": {
+            "1st": (1, 1, 4, 30),
+            "2nd": (5, 1, 8, 31),
+            "3rd": (9, 1, 12, 31),
+        },
+        "half": {
+            "1st": (1, 1, 6, 30),
+            "2nd": (7, 1, 12, 31),
+        },
+        "semi": {
+            "1st": (1, 1, 6, 30),
+            "2nd": (7, 1, 12, 31),
+        },
+        "quarter": {
+            "1st": (1, 1, 3, 31),
+            "2nd": (4, 1, 6, 30),
+            "3rd": (7, 1, 9, 30),
+            "4th": (10, 1, 12, 31),
+        }
+    }
 
-    # Normalize range name if provided
-    range_name = appraisal_range.name.lower() if appraisal_range is not None else ""
-    
-    # Tri-annual appraisals (3 times per year) - check tri before annual
-    if "tri" in type_name:
-        if "1st" in range_name or "first" in range_name:
-            start_date = date(current_year, 1, 1)
-            end_date = date(current_year, 4, 30)
-        elif "2nd" in range_name or "second" in range_name:
-            start_date = date(current_year, 5, 1)
-            end_date = date(current_year, 8, 31)
-        elif "3rd" in range_name or "third" in range_name:
-            start_date = date(current_year, 9, 1)
-            end_date = date(current_year, 12, 31)
-        else:
-            raise ValueError(f"Invalid range '{range_name}' for tri-annual appraisal")
-        return start_date, end_date
+    # Normalize range names (support "first", "second", etc.)
+    RANGE_ALIASES = {
+        "first": "1st",
+        "second": "2nd",
+        "third": "3rd",
+        "fourth": "4th"
+    }
+    if range_name in RANGE_ALIASES:
+        range_name = RANGE_ALIASES[range_name]
 
-    # Annual appraisals - full year (handle after tri check)
-    if "annual" in type_name:
-        start_date = date(current_year, 1, 1)
-        end_date = date(current_year, 12, 31)
-        return start_date, end_date
+    # Handle types with specific ranges
+    for key in RANGE_MAPS:
+        if key in type_name:
+            if not range_name:
+                raise ValueError(f"Appraisal type '{appraisal_type.name}' requires a range")
+            if range_name not in RANGE_MAPS[key]:
+                raise ValueError(f"Invalid range '{range_name}' for {key}-yearly appraisal")
+            start_month, start_day, end_month, end_day = RANGE_MAPS[key][range_name]
+            return date(current_year, start_month, start_day), date(current_year, end_month, end_day)
 
-    # Half-yearly appraisals
-    if "half" in type_name or "semi" in type_name:
-        if "1st" in range_name or "first" in range_name:
-            start_date = date(current_year, 1, 1)
-            end_date = date(current_year, 6, 30)
-        elif "2nd" in range_name or "second" in range_name:
-            start_date = date(current_year, 7, 1)
-            end_date = date(current_year, 12, 31)
-        else:
-            raise ValueError(f"Invalid range '{range_name}' for half-yearly appraisal")
-        return start_date, end_date
+    # Handle types without ranges
+    if any(k in type_name for k in ("annual", "project")):
+        return date(current_year, 1, 1), date(current_year, 12, 31)
 
-    # Quarterly appraisals
-    if "quarter" in type_name:
-        if "1st" in range_name or "first" in range_name:
-            start_date = date(current_year, 1, 1)
-            end_date = date(current_year, 3, 31)
-        elif "2nd" in range_name or "second" in range_name:
-            start_date = date(current_year, 4, 1)
-            end_date = date(current_year, 6, 30)
-        elif "3rd" in range_name or "third" in range_name:
-            start_date = date(current_year, 7, 1)
-            end_date = date(current_year, 9, 30)
-        elif "4th" in range_name or "fourth" in range_name:
-            start_date = date(current_year, 10, 1)
-            end_date = date(current_year, 12, 31)
-        else:
-            raise ValueError(f"Invalid range '{range_name}' for quarterly appraisal")
-        return start_date, end_date
-    
-    # Project-end appraisals - default to current year but can be customized
-    if "project" in type_name:
-        start_date = date(current_year, 1, 1)
-        end_date = date(current_year, 12, 31)
-        return start_date, end_date
-
-    # Unknown appraisal type -> explicit error
     raise ValueError(f"Unknown appraisal type '{appraisal_type.name}'")

@@ -1,14 +1,23 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Table, CheckConstraint, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.db.database import Base
+from app.constants import (
+    GOALS_TEMPLATE_TEMP_ID,
+    CATEGORIES_ID,
+    APPRAISALS_APPRAISAL_ID,
+    GOALS_GOAL_ID,
+    ON_DELETE_CASCADE,
+    ON_DELETE_SET_NULL,
+    CONSTRAINT_RATING_1_TO_5
+)
 
 
 # Category association table for goal templates
 goal_template_categories = Table(
     "goal_template_categories",
     Base.metadata,
-    Column("template_id", Integer, ForeignKey("goals_template.temp_id", ondelete="CASCADE"), primary_key=True),
-    Column("category_id", Integer, ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True)
+    Column("template_id", Integer, ForeignKey(GOALS_TEMPLATE_TEMP_ID, ondelete=ON_DELETE_CASCADE), primary_key=True),
+    Column("category_id", Integer, ForeignKey(CATEGORIES_ID, ondelete=ON_DELETE_CASCADE), primary_key=True)
 )
 
 # Removed goal_categories association table - now using direct foreign key
@@ -58,8 +67,8 @@ class Goal(Base):
     __tablename__ = "goals"
     
     goal_id = Column(Integer, primary_key=True, index=True)
-    goal_template_id = Column(Integer, ForeignKey("goals_template.temp_id", ondelete="SET NULL"), nullable=True)
-    category_id = Column(Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
+    goal_template_id = Column(Integer, ForeignKey(GOALS_TEMPLATE_TEMP_ID, ondelete=ON_DELETE_SET_NULL), nullable=True)
+    category_id = Column(Integer, ForeignKey(CATEGORIES_ID, ondelete=ON_DELETE_SET_NULL), nullable=True)
     goal_title = Column(String, nullable=False)
     goal_description = Column(String, nullable=False)
     goal_performance_factor = Column(String, nullable=False)
@@ -88,14 +97,14 @@ class AppraisalGoal(Base):
     )
     
     id = Column(Integer, primary_key=True, index=True)
-    appraisal_id = Column(Integer, ForeignKey("appraisals.appraisal_id", ondelete="CASCADE"), nullable=False)
-    goal_id = Column(Integer, ForeignKey("goals.goal_id", ondelete="CASCADE"), nullable=False)
+    appraisal_id = Column(Integer, ForeignKey(APPRAISALS_APPRAISAL_ID, ondelete=ON_DELETE_CASCADE), nullable=False)
+    goal_id = Column(Integer, ForeignKey(GOALS_GOAL_ID, ondelete=ON_DELETE_CASCADE), nullable=False)
     
     # Evaluation fields - moved from Goals table as per recommendations
     self_comment = Column(String, nullable=True)
-    self_rating = Column(Integer, CheckConstraint("self_rating BETWEEN 1 AND 5"), nullable=True)
+    self_rating = Column(Integer, CheckConstraint(f"self_rating {CONSTRAINT_RATING_1_TO_5}"), nullable=True)
     appraiser_comment = Column(String, nullable=True)
-    appraiser_rating = Column(Integer, CheckConstraint("appraiser_rating BETWEEN 1 AND 5"), nullable=True)
+    appraiser_rating = Column(Integer, CheckConstraint(f"appraiser_rating {CONSTRAINT_RATING_1_TO_5}"), nullable=True)
     
     # Relationships - using string-based references to avoid circular imports
     appraisal = relationship(

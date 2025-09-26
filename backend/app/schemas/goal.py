@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 
-from app.constants import IMPORTANCE_MUST_BE_VALID, WEIGHTAGE_MUST_BE_VALID
+from app.constants import IMPORTANCE_MUST_BE_VALID, WEIGHTAGE_MUST_BE_VALID, VALID_IMPORTANCE_LEVELS
 
 
 class CategoryBase(BaseModel):
@@ -35,7 +35,7 @@ class GoalTemplateBase(BaseModel):
     
     @field_validator('temp_importance')
     def validate_importance(cls, v):
-        if v not in ["High", "Medium", "Low"]:
+        if v not in VALID_IMPORTANCE_LEVELS:
             raise ValueError(IMPORTANCE_MUST_BE_VALID)
         return v
     
@@ -71,7 +71,7 @@ class GoalTemplateUpdate(BaseModel):
     
     @field_validator('temp_importance')
     def validate_importance(cls, v):
-        if v is not None and v not in ["High", "Medium", "Low"]:
+        if v is not None and v not in VALID_IMPORTANCE_LEVELS:
             raise ValueError(IMPORTANCE_MUST_BE_VALID)
         return v
     
@@ -103,7 +103,7 @@ class GoalBase(BaseModel):
     
     @field_validator('goal_importance')
     def validate_importance(cls, v):
-        if v not in ["High", "Medium", "Low"]:
+        if v not in VALID_IMPORTANCE_LEVELS:
             raise ValueError(IMPORTANCE_MUST_BE_VALID)
         return v
     
@@ -133,7 +133,7 @@ class GoalUpdate(BaseModel):
     
     @field_validator('goal_importance')
     def validate_importance(cls, v):
-        if v is not None and v not in ["High", "Medium", "Low"]:
+        if v is not None and v not in VALID_IMPORTANCE_LEVELS:
             raise ValueError(IMPORTANCE_MUST_BE_VALID)
         return v
     

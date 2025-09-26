@@ -20,6 +20,7 @@ from app.exceptions import (
     StatusTransitionError,
     WeightageValidationError
 )
+from app.constants import ENTITY_APPRAISAL_TYPE, ENTITY_APPRAISAL_RANGE
 from app.constants import (
     APPRAISAL_TYPE_NOT_FOUND,
     APPRAISAL_RANGE_NOT_FOUND,
@@ -380,14 +381,14 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
         appraisal_type = await self.repository.get_appraisal_type_by_id(db, appraisal_data.appraisal_type_id)
         
         if not appraisal_type:
-            raise EntityNotFoundError("Appraisal type", appraisal_data.appraisal_type_id)
+            raise EntityNotFoundError(ENTITY_APPRAISAL_TYPE, appraisal_data.appraisal_type_id)
         
         # Check appraisal range if provided
         if appraisal_data.appraisal_type_range_id:
             appraisal_range = await self.repository.get_appraisal_range_by_id(db, appraisal_data.appraisal_type_range_id)
             
             if not appraisal_range:
-                raise EntityNotFoundError("Appraisal range", appraisal_data.appraisal_type_range_id)
+                raise EntityNotFoundError(ENTITY_APPRAISAL_RANGE, appraisal_data.appraisal_type_range_id)
             
             # Check if range belongs to the type
             if appraisal_range.appraisal_type_id != appraisal_data.appraisal_type_id:

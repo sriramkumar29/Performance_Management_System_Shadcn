@@ -17,9 +17,9 @@ from app.repositories.employee_repository import EmployeeRepository
 from app.exceptions import (
     EntityNotFoundError,
     DuplicateEntityError,
-    ValidationError,
-    BadRequestError
+    ValidationError
 )
+from app.constants import ENTITY_EMPLOYEE, ENTITY_REPORTING_MANAGER
 from app.constants import (
     EMAIL_ALREADY_EXISTS,
     CIRCULAR_REPORTING_RELATIONSHIP
@@ -240,7 +240,7 @@ class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
         email_exists = await self.repository.check_email_exists(db, email, exclude_id)
         
         if email_exists:
-            raise DuplicateEntityError("Employee", "email")
+            raise DuplicateEntityError(ENTITY_EMPLOYEE, "email")
     
     async def _validate_reporting_manager(
         self,
@@ -251,7 +251,7 @@ class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
         manager = await self.repository.validate_manager_exists(db, manager_id)
         
         if not manager:
-            raise EntityNotFoundError("Reporting manager", manager_id)
+            raise EntityNotFoundError(ENTITY_REPORTING_MANAGER, manager_id)
         
         return manager
     

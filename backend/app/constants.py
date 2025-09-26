@@ -106,6 +106,43 @@ FRONTEND_NOT_FOUND = "Frontend not found. Make sure to build your React app firs
 API_RUNNING_FRONTEND_NOT_FOUND = "API is running. Frontend not found - build your React app first."
 
 # =============================================================================
+# DATABASE TABLE AND COLUMN REFERENCES
+# =============================================================================
+
+# Table names
+EMPLOYEES_TABLE = "employees"
+APPRAISALS_TABLE = "appraisals"
+APPRAISAL_TYPES_TABLE = "appraisal_types"
+APPRAISAL_RANGES_TABLE = "appraisal_ranges"
+GOALS_TABLE = "goals"
+GOALS_TEMPLATE_TABLE = "goals_template"
+CATEGORIES_TABLE = "categories"
+APPRAISAL_GOALS_TABLE = "appraisal_goals"
+
+# Column references for foreign keys
+EMPLOYEES_EMP_ID = f"{EMPLOYEES_TABLE}.emp_id"
+APPRAISALS_APPRAISAL_ID = f"{APPRAISALS_TABLE}.appraisal_id"
+APPRAISAL_TYPES_ID = f"{APPRAISAL_TYPES_TABLE}.id"
+APPRAISAL_RANGES_ID = f"{APPRAISAL_RANGES_TABLE}.id"
+GOALS_GOAL_ID = f"{GOALS_TABLE}.goal_id"
+GOALS_TEMPLATE_TEMP_ID = f"{GOALS_TEMPLATE_TABLE}.temp_id"
+CATEGORIES_ID = f"{CATEGORIES_TABLE}.id"
+
+# OnDelete actions  
+ON_DELETE_CASCADE = "CASCADE"
+ON_DELETE_SET_NULL = "SET NULL"
+ON_DELETE_RESTRICT = "RESTRICT"
+
+# Common constraint messages
+CONSTRAINT_RATING_1_TO_5 = "BETWEEN 1 AND 5"
+
+# Importance levels
+IMPORTANCE_HIGH = "High"
+IMPORTANCE_MEDIUM = "Medium"
+IMPORTANCE_LOW = "Low"
+VALID_IMPORTANCE_LEVELS = [IMPORTANCE_HIGH, IMPORTANCE_MEDIUM, IMPORTANCE_LOW]
+
+# =============================================================================
 # ENTITY ROLES AND TYPES
 # =============================================================================
 
@@ -114,6 +151,20 @@ ROLE_APPRAISER = "Appraiser"
 ROLE_REVIEWER = "Reviewer"
 ROLE_MANAGER = "Manager"
 ROLE_EMPLOYEE = "Employee"
+
+# Employee role levels (for validation)
+ROLE_ADMIN = "admin"
+ROLE_MANAGER_LOWER = "manager"
+
+# Entity names for error messages
+ENTITY_EMPLOYEE = "Employee"
+ENTITY_APPRAISAL = "Appraisal"
+ENTITY_APPRAISAL_TYPE = "Appraisal type"
+ENTITY_APPRAISAL_RANGE = "Appraisal range"
+ENTITY_REPORTING_MANAGER = "Reporting manager"
+ENTITY_GOAL = "Goal"
+ENTITY_GOAL_TEMPLATE = "Goal template"
+ENTITY_CATEGORY = "Category"
 
 # =============================================================================
 # COMMON PATTERNS FOR DYNAMIC MESSAGES

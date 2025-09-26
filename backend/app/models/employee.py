@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from app.db.database import Base
+from app.constants import EMPLOYEES_EMP_ID, ON_DELETE_SET_NULL
 
 
 class Employee(Base):
@@ -14,7 +15,7 @@ class Employee(Base):
     emp_department = Column(String, nullable=False)
     emp_roles = Column(String, nullable=False)  # e.g., Intern, Fresher, Developer, Team Lead, Manager, VP, CEO
     emp_roles_level = Column(Integer, nullable=False)  # e.g., 1..7
-    emp_reporting_manager_id = Column(Integer, ForeignKey("employees.emp_id", ondelete="SET NULL"), nullable=True)
+    emp_reporting_manager_id = Column(Integer, ForeignKey(EMPLOYEES_EMP_ID, ondelete=ON_DELETE_SET_NULL), nullable=True)
     emp_status = Column(Boolean, default=True)
     emp_password = Column(String, nullable=False)  # Store hashed password
     

@@ -3,6 +3,15 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
 from app.db.database import Base
+from app.constants import (
+    EMPLOYEES_EMP_ID, 
+    APPRAISAL_TYPES_ID, 
+    APPRAISAL_RANGES_ID,
+    ON_DELETE_CASCADE, 
+    ON_DELETE_SET_NULL, 
+    ON_DELETE_RESTRICT,
+    CONSTRAINT_RATING_1_TO_5
+)
 
 
 class AppraisalStatus(str, enum.Enum):
@@ -22,18 +31,18 @@ class Appraisal(Base):
     __tablename__ = "appraisals"
     
     appraisal_id = Column(Integer, primary_key=True, index=True)
-    appraisee_id = Column(Integer, ForeignKey("employees.emp_id", ondelete="CASCADE"), nullable=False)
-    appraiser_id = Column(Integer, ForeignKey("employees.emp_id", ondelete="SET NULL"), nullable=False)
-    reviewer_id = Column(Integer, ForeignKey("employees.emp_id", ondelete="SET NULL"), nullable=False)
-    appraisal_type_id = Column(Integer, ForeignKey("appraisal_types.id", ondelete="RESTRICT"), nullable=False)
-    appraisal_type_range_id = Column(Integer, ForeignKey("appraisal_ranges.id", ondelete="RESTRICT"), nullable=True)
+    appraisee_id = Column(Integer, ForeignKey(EMPLOYEES_EMP_ID, ondelete=ON_DELETE_CASCADE), nullable=False)
+    appraiser_id = Column(Integer, ForeignKey(EMPLOYEES_EMP_ID, ondelete=ON_DELETE_SET_NULL), nullable=False)
+    reviewer_id = Column(Integer, ForeignKey(EMPLOYEES_EMP_ID, ondelete=ON_DELETE_SET_NULL), nullable=False)
+    appraisal_type_id = Column(Integer, ForeignKey(APPRAISAL_TYPES_ID, ondelete=ON_DELETE_RESTRICT), nullable=False)
+    appraisal_type_range_id = Column(Integer, ForeignKey(APPRAISAL_RANGES_ID, ondelete=ON_DELETE_RESTRICT), nullable=True)
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
     status = Column(Enum(AppraisalStatus), default=AppraisalStatus.DRAFT, nullable=False)
     appraiser_overall_comments = Column(String, nullable=True)
-    appraiser_overall_rating = Column(Integer, CheckConstraint("appraiser_overall_rating BETWEEN 1 AND 5"), nullable=True)
+    appraiser_overall_rating = Column(Integer, CheckConstraint(f"appraiser_overall_rating {CONSTRAINT_RATING_1_TO_5}"), nullable=True)
     reviewer_overall_comments = Column(String, nullable=True)
-    reviewer_overall_rating = Column(Integer, CheckConstraint("reviewer_overall_rating BETWEEN 1 AND 5"), nullable=True)
+    reviewer_overall_rating = Column(Integer, CheckConstraint(f"reviewer_overall_rating {CONSTRAINT_RATING_1_TO_5}"), nullable=True)
     created_at = Column(Date, server_default=func.now(), nullable=False)
     updated_at = Column(Date, server_default=func.now(), onupdate=func.now(), nullable=False)
     

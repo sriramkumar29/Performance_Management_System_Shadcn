@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from app.db.database import Base
+from app.constants import APPRAISAL_TYPES_ID, ON_DELETE_CASCADE
 
 
 class AppraisalType(Base):
@@ -23,7 +24,7 @@ class AppraisalRange(Base):
     __tablename__ = "appraisal_ranges"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    appraisal_type_id = Column(Integer, ForeignKey("appraisal_types.id", ondelete="CASCADE"), nullable=False)
+    appraisal_type_id = Column(Integer, ForeignKey(APPRAISAL_TYPES_ID, ondelete=ON_DELETE_CASCADE), nullable=False)
     name = Column(String(50), nullable=False)  # e.g., "1st", "2nd", "3rd", "4th"
     start_month_offset = Column(Integer, nullable=False)  # Month offset from start of year
     end_month_offset = Column(Integer, nullable=False)  # Month offset from start of year

@@ -13,6 +13,7 @@ from app.db.database import get_db
 from app.models.employee import Employee
 from app.services.auth_service import AuthService
 from app.exceptions import UnauthorizedError
+from app.constants import ROLE_ADMIN, ROLE_MANAGER_LOWER
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/api/employees/login",  # Keep existing token URL for compatibility
@@ -83,7 +84,7 @@ async def require_manager_role(
     current_user: Employee = Depends(get_current_active_user)
 ) -> Employee:
     """Require manager role."""
-    if current_user.emp_roles and "manager" in current_user.emp_roles.lower():
+    if current_user.emp_roles and ROLE_MANAGER_LOWER in current_user.emp_roles.lower():
         return current_user
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -95,7 +96,7 @@ async def require_admin_role(
     current_user: Employee = Depends(get_current_active_user)
 ) -> Employee:
     """Require admin role."""
-    if current_user.emp_roles and "admin" in current_user.emp_roles.lower():
+    if current_user.emp_roles and ROLE_ADMIN in current_user.emp_roles.lower():
         return current_user
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,

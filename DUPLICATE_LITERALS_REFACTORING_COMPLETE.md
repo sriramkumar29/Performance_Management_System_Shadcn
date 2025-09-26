@@ -4,6 +4,40 @@
 
 Successfully identified and eliminated duplicate string literals throughout the codebase by defining constants and updating all references to use centralized constants.
 
+## 🆕 **Latest Iteration - Database & Model Constants**
+
+### **SonarQube Issue Addressed**:
+
+`"Define a constant instead of duplicating this literal "employees.emp_id" 3 times. [+2 locations]"`
+
+### **Major Database Literal Duplicates Fixed**:
+
+#### **Database Table References**
+
+- `"employees.emp_id"` - **4 occurrences** → `EMPLOYEES_EMP_ID`
+- `"appraisal_types.id"` - **3 occurrences** → `APPRAISAL_TYPES_ID`
+- `"appraisal_ranges.id"` - **2 occurrences** → `APPRAISAL_RANGES_ID`
+- `"goals_template.temp_id"` - **2 occurrences** → `GOALS_TEMPLATE_TEMP_ID`
+- `"categories.id"` - **3 occurrences** → `CATEGORIES_ID`
+- `"goals.goal_id"` - **2 occurrences** → `GOALS_GOAL_ID`
+
+#### **OnDelete Action Duplicates**
+
+- `"CASCADE"` - **6 occurrences** → `ON_DELETE_CASCADE`
+- `"SET NULL"` - **4 occurrences** → `ON_DELETE_SET_NULL`
+- `"RESTRICT"` - **2 occurrences** → `ON_DELETE_RESTRICT`
+
+#### **Validation String Duplicates**
+
+- `"BETWEEN 1 AND 5"` - **4 occurrences** → `CONSTRAINT_RATING_1_TO_5`
+- `["High", "Medium", "Low"]` - **4 occurrences** → `VALID_IMPORTANCE_LEVELS`
+
+#### **Role & Entity Name Duplicates**
+
+- `"manager"` role check - **1 occurrence** → `ROLE_MANAGER_LOWER`
+- `"admin"` role check - **1 occurrence** → `ROLE_ADMIN`
+- Entity names in error messages - **6 occurrences** → Various `ENTITY_*` constants
+
 ## 📋 Duplicate Literals Fixed
 
 ### 🔍 **Main Issue Identified**
