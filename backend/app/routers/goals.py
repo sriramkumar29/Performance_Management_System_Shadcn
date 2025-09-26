@@ -383,7 +383,7 @@ async def update_goal(
         EntityNotFoundError: If goal not found
     """
     db_goal = await goal_service.get_by_id_or_404(db, goal_id)
-    updated_goal = await goal_service.update(db, db_obj=db_goal, obj_in=goal)
+    await goal_service.update(db, db_obj=db_goal, obj_in=goal)
     await db.commit()
     
     # Reload the goal with relationships for the response

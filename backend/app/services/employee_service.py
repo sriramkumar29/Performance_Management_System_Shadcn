@@ -7,9 +7,7 @@ with proper validation and error handling.
 
 from typing import List, Optional, Dict, Any, Union
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
-from sqlalchemy import and_, or_
+from sqlalchemy import or_
 from passlib.context import CryptContext
 
 from app.models.employee import Employee
@@ -38,13 +36,27 @@ class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
         super().__init__(Employee)
         self.repository = EmployeeRepository()
 
-    async def update(self, db: AsyncSession, employee_id: int, **update_data):
-        """Update an employee"""
-        employee = await self.get_by_id_or_404(db, employee_id)
-        for key, value in update_data.items():
-            if hasattr(employee, key):
-                setattr(employee, key, value)
-        return await self.repository.update(db, employee)
+    async def update(
+        self, 
+        db: AsyncSession, 
+        *, 
+        db_obj: Employee, 
+        obj_in: EmployeeUpdate
+    ) -> Employee:
+        """Update an employee with the provided data."""
+        # Convert Pydantic model to dict, excluding unset values
+        update_data = obj_in.model_dump(exclude_unset=True)
+        
+        # Apply business logic hooks
+        update_data = await self.before_update(db, db_obj, update_data)
+        
+        # Update fields
+        for field, value in update_data.items():
+            if hasattr(db_obj, field):
+                setattr(db_obj, field, value)
+        
+        # Use repository to update
+        return await self.repository.update(db, db_obj)
     
     @property
     def entity_name(self) -> str:
@@ -62,7 +74,11 @@ class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
         load_relationships: Optional[List[str]] = None
     ) -> Employee:
         """Get employee by ID or raise 404 error."""
-        employee = await self.repository.get_by_id(db, entity_id)
+        if load_relationships:
+            employee = await self.repository.get_by_id_with_relationships(db, entity_id, load_relationships)
+        else:
+            employee = await self.repository.get_by_id(db, entity_id)
+        
         if not employee:
             raise EntityNotFoundError(f"{self.entity_name} with ID {entity_id} not found")
         return employee
@@ -97,13 +113,9 @@ class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
         hashed_password = pwd_context.hash(plain_password)
         obj_data["emp_password"] = hashed_password
         
-        # Create employee
+        # Create employee using repository
         db_employee = Employee(**obj_data)
-        db.add(db_employee)
-        await db.flush()
-        await db.refresh(db_employee)
-        
-        return db_employee
+        return await self.repository.create(db, db_employee)
     
     async def update_employee(
         self,
@@ -182,14 +194,10 @@ class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
         limit: int = 100
     ) -> List[Employee]:
         """Get employees who can be managers (active employees)."""
-        filters = [Employee.emp_status == True]
-        
-        return await self.repository.get_multi(
+        return await self.repository.get_active_employees(
             db=db,
             skip=skip,
-            limit=limit,
-            filters=filters,
-            order_by=Employee.emp_name
+            limit=limit
         )
     
     async def get_employee_with_subordinates(
@@ -229,15 +237,9 @@ class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
         exclude_id: Optional[int] = None
     ) -> None:
         """Validate that email is unique."""
-        query = select(Employee).where(Employee.emp_email == email)
+        email_exists = await self.repository.check_email_exists(db, email, exclude_id)
         
-        if exclude_id:
-            query = query.where(Employee.emp_id != exclude_id)
-        
-        result = await db.execute(query)
-        existing_employee = result.scalars().first()
-        
-        if existing_employee:
+        if email_exists:
             raise DuplicateEntityError("Employee", "email")
     
     async def _validate_reporting_manager(
@@ -246,13 +248,10 @@ class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
         manager_id: int
     ) -> Employee:
         """Validate that reporting manager exists and is active."""
-        manager = await self.get_by_id(db, manager_id)
+        manager = await self.repository.validate_manager_exists(db, manager_id)
         
         if not manager:
             raise EntityNotFoundError("Reporting manager", manager_id)
-        
-        if not manager.emp_status:
-            raise ValidationError("Reporting manager must be an active employee")
         
         return manager
     

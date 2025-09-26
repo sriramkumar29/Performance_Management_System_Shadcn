@@ -67,3 +67,68 @@ class EmployeeRepository:
     async def delete(db: AsyncSession, employee: Employee) -> None:
         await db.delete(employee)
         await db.flush()
+
+    @staticmethod
+    async def get_by_id_with_relationships(
+        db: AsyncSession, 
+        emp_id: int, 
+        load_relationships: Optional[List[str]] = None
+    ) -> Optional[Employee]:
+        """Get employee by ID with specified relationships loaded."""
+        query = select(Employee).where(Employee.emp_id == emp_id)
+        
+        if load_relationships:
+            for rel in load_relationships:
+                if rel == "subordinates":
+                    query = query.options(selectinload(Employee.subordinates))
+                # Add other relationships as needed
+        
+        result = await db.execute(query)
+        return result.scalars().first()
+
+    @staticmethod
+    async def check_email_exists(
+        db: AsyncSession, 
+        email: str, 
+        exclude_id: Optional[int] = None
+    ) -> bool:
+        """Check if email already exists, optionally excluding a specific employee ID."""
+        query = select(Employee).where(Employee.emp_email == email)
+        
+        if exclude_id:
+            query = query.where(Employee.emp_id != exclude_id)
+        
+        result = await db.execute(query)
+        return result.scalars().first() is not None
+
+    @staticmethod
+    async def validate_manager_exists(db: AsyncSession, manager_id: int) -> Optional[Employee]:
+        """Get manager by ID for validation purposes."""
+        result = await db.execute(
+            select(Employee).where(
+                and_(
+                    Employee.emp_id == manager_id,
+                    Employee.emp_status == True
+                )
+            )
+        )
+        return result.scalars().first()
+
+    @staticmethod
+    async def get_active_employees(
+        db: AsyncSession,
+        *,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Employee]:
+        """Get active employees for manager selection."""
+        query = (
+            select(Employee)
+            .where(Employee.emp_status == True)
+            .order_by(Employee.emp_name)
+            .offset(skip)
+            .limit(limit)
+        )
+        
+        result = await db.execute(query)
+        return result.scalars().all()

@@ -7,14 +7,9 @@ with proper validation and status transition management.
 
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
-from sqlalchemy import and_
 
 from app.models.appraisal import Appraisal, AppraisalStatus
-from app.models.employee import Employee
-from app.models.goal import Goal, AppraisalGoal
-from app.models.appraisal_type import AppraisalType, AppraisalRange
+from app.models.goal import Goal
 from app.schemas.appraisal import AppraisalCreate, AppraisalUpdate
 from app.services.base_service import BaseService
 from app.repositories.appraisal_repository import AppraisalRepository
@@ -121,8 +116,7 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
         goal_ids = obj_data.pop("goal_ids", [])
         
         db_appraisal = Appraisal(**obj_data)
-        db.add(db_appraisal)
-        await db.flush()
+        db_appraisal = await self.repository.create(db, db_appraisal)
         
         # Add goals to appraisal
         if goal_ids:
@@ -169,8 +163,8 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
         if new_status == AppraisalStatus.SUBMITTED:
             await self._validate_submission_requirements_direct(db, appraisal_id)
         
-        # Update status
-        db_appraisal.status = new_status
+        # Update status using repository
+        await self.repository.update_appraisal_status(db, db_appraisal, new_status)
         await db.commit()
         await db.refresh(db_appraisal)
         
@@ -206,22 +200,9 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
         if appraisal_type_id:
             filters.append(Appraisal.appraisal_type_id == appraisal_type_id)
         
-        # Use explicit query with selectinload to ensure appraisal_type is loaded
-        from sqlalchemy.orm import selectinload
-        from sqlalchemy import and_
-        
-        query = select(Appraisal).options(
-            selectinload(Appraisal.appraisal_goals),
-            selectinload(Appraisal.appraisal_type)
+        return await self.repository.get_with_filters(
+            db, skip=skip, limit=limit, filters=filters
         )
-        
-        if filters:
-            query = query.where(and_(*filters))
-        
-        query = query.order_by(Appraisal.created_at.desc()).offset(skip).limit(limit)
-        
-        result = await db.execute(query)
-        return result.scalars().all()
     
     async def add_goals_to_appraisal(
         self,
@@ -266,22 +247,20 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
         
         # Update goal assessments
         for goal_id, goal_data in goals_data.items():
-            appraisal_goal = next(
-                (ag for ag in db_appraisal.appraisal_goals if ag.goal_id == goal_id),
-                None
-            )
+            appraisal_goal = await self.repository.find_appraisal_goal(db, db_appraisal.appraisal_id, goal_id)
             
             if not appraisal_goal:
                 raise EntityNotFoundError("Goal", goal_id)
             
-            if "self_comment" in goal_data:
-                appraisal_goal.self_comment = goal_data["self_comment"]
+            self_comment = goal_data.get("self_comment")
+            self_rating = goal_data.get("self_rating")
             
-            if "self_rating" in goal_data:
-                rating = goal_data["self_rating"]
-                if rating is not None and not 1 <= rating <= 5:
-                    raise ValidationError("Rating must be between 1 and 5")
-                appraisal_goal.self_rating = rating
+            if self_rating is not None and not 1 <= self_rating <= 5:
+                raise ValidationError("Rating must be between 1 and 5")
+            
+            await self.repository.update_appraisal_goal_self_assessment(
+                db, appraisal_goal, self_comment, self_rating
+            )
         
         await db.flush()
         
@@ -310,31 +289,28 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
         
         # Update goal evaluations
         for goal_id, goal_data in goals_data.items():
-            appraisal_goal = next(
-                (ag for ag in db_appraisal.appraisal_goals if ag.goal_id == goal_id),
-                None
-            )
+            appraisal_goal = await self.repository.find_appraisal_goal(db, db_appraisal.appraisal_id, goal_id)
             
             if not appraisal_goal:
                 raise EntityNotFoundError("Goal", goal_id)
             
-            if "appraiser_comment" in goal_data:
-                appraisal_goal.appraiser_comment = goal_data["appraiser_comment"]
+            appraiser_comment = goal_data.get("appraiser_comment")
+            appraiser_rating = goal_data.get("appraiser_rating")
             
-            if "appraiser_rating" in goal_data:
-                rating = goal_data["appraiser_rating"]
-                if rating is not None and not 1 <= rating <= 5:
-                    raise ValidationError("Rating must be between 1 and 5")
-                appraisal_goal.appraiser_rating = rating
+            if appraiser_rating is not None and not 1 <= appraiser_rating <= 5:
+                raise ValidationError("Rating must be between 1 and 5")
+            
+            await self.repository.update_appraisal_goal_appraiser_evaluation(
+                db, appraisal_goal, appraiser_comment, appraiser_rating
+            )
         
         # Update overall appraiser evaluation
-        if appraiser_overall_comments is not None:
-            db_appraisal.appraiser_overall_comments = appraiser_overall_comments
+        if appraiser_overall_rating is not None and not 1 <= appraiser_overall_rating <= 5:
+            raise ValidationError("Overall rating must be between 1 and 5")
         
-        if appraiser_overall_rating is not None:
-            if not 1 <= appraiser_overall_rating <= 5:
-                raise ValidationError("Overall rating must be between 1 and 5")
-            db_appraisal.appraiser_overall_rating = appraiser_overall_rating
+        await self.repository.update_overall_appraiser_evaluation(
+            db, db_appraisal, appraiser_overall_comments, appraiser_overall_rating
+        )
         
         await db.flush()
         
@@ -361,13 +337,12 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
             raise ValidationError("Appraisal must be in 'Reviewer Evaluation' status")
         
         # Update overall reviewer evaluation
-        if reviewer_overall_comments is not None:
-            db_appraisal.reviewer_overall_comments = reviewer_overall_comments
+        if reviewer_overall_rating is not None and not 1 <= reviewer_overall_rating <= 5:
+            raise ValidationError("Overall rating must be between 1 and 5")
         
-        if reviewer_overall_rating is not None:
-            if not 1 <= reviewer_overall_rating <= 5:
-                raise ValidationError("Overall rating must be between 1 and 5")
-            db_appraisal.reviewer_overall_rating = reviewer_overall_rating
+        await self.repository.update_overall_reviewer_evaluation(
+            db, db_appraisal, reviewer_overall_comments, reviewer_overall_rating
+        )
         
         await db.flush()
         
@@ -387,8 +362,7 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
         ]
         
         for emp_id, role in employees_to_check:
-            result = await db.execute(select(Employee).where(Employee.emp_id == emp_id))
-            employee = result.scalars().first()
+            employee = await self.repository.get_employee_by_id(db, emp_id)
             
             if not employee:
                 raise EntityNotFoundError(role, emp_id)
@@ -403,20 +377,14 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
     ) -> None:
         """Validate appraisal type and range."""
         # Check appraisal type exists
-        result = await db.execute(
-            select(AppraisalType).where(AppraisalType.id == appraisal_data.appraisal_type_id)
-        )
-        appraisal_type = result.scalars().first()
+        appraisal_type = await self.repository.get_appraisal_type_by_id(db, appraisal_data.appraisal_type_id)
         
         if not appraisal_type:
             raise EntityNotFoundError("Appraisal type", appraisal_data.appraisal_type_id)
         
         # Check appraisal range if provided
         if appraisal_data.appraisal_type_range_id:
-            result = await db.execute(
-                select(AppraisalRange).where(AppraisalRange.id == appraisal_data.appraisal_type_range_id)
-            )
-            appraisal_range = result.scalars().first()
+            appraisal_range = await self.repository.get_appraisal_range_by_id(db, appraisal_data.appraisal_type_range_id)
             
             if not appraisal_range:
                 raise EntityNotFoundError("Appraisal range", appraisal_data.appraisal_type_range_id)
@@ -450,16 +418,14 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
         goal_ids: List[int]
     ) -> List[Goal]:
         """Validate that all goal IDs exist and return the goals."""
-        goals = []
+        goals = await self.repository.get_goals_by_ids(db, goal_ids)
         
-        for goal_id in goal_ids:
-            result = await db.execute(select(Goal).where(Goal.goal_id == goal_id))
-            goal = result.scalars().first()
-            
-            if not goal:
-                raise EntityNotFoundError("Goal", goal_id)
-            
-            goals.append(goal)
+        # Check if we got all the goals we requested
+        found_goal_ids = {goal.goal_id for goal in goals}
+        missing_goal_ids = set(goal_ids) - found_goal_ids
+        
+        if missing_goal_ids:
+            raise EntityNotFoundError("Goal", list(missing_goal_ids)[0])
         
         return goals
     
@@ -471,24 +437,7 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
     ) -> None:
         """Add goals to appraisal as AppraisalGoal records."""
         for goal_id in goal_ids:
-            # Check if goal is already added
-            existing = await db.execute(
-                select(AppraisalGoal).where(
-                    and_(
-                        AppraisalGoal.appraisal_id == appraisal.appraisal_id,
-                        AppraisalGoal.goal_id == goal_id
-                    )
-                )
-            )
-            
-            if not existing.scalars().first():
-                appraisal_goal = AppraisalGoal(
-                    appraisal_id=appraisal.appraisal_id,
-                    goal_id=goal_id
-                )
-                db.add(appraisal_goal)
-        
-        await db.flush()
+            await self.repository.add_goal_to_appraisal(db, appraisal.appraisal_id, goal_id)
     
     async def _validate_submission_requirements(
         self,
@@ -513,24 +462,10 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
         appraisal_id: int
     ) -> None:
         """Validate requirements for submitting an appraisal using direct queries."""
-        from sqlalchemy import select, func
-        from app.models.goal import Goal, AppraisalGoal
         from fastapi import HTTPException, status
         
-        # Sum goal weightage for this appraisal
-        total_res = await db.execute(
-            select(func.coalesce(func.sum(Goal.goal_weightage), 0))
-            .select_from(AppraisalGoal)
-            .join(Goal, AppraisalGoal.goal_id == Goal.goal_id)
-            .where(AppraisalGoal.appraisal_id == appraisal_id)
-        )
-        total_weightage = total_res.scalar() or 0
-
-        count_res = await db.execute(
-            select(func.count(AppraisalGoal.id))
-            .where(AppraisalGoal.appraisal_id == appraisal_id)
-        )
-        goal_count = count_res.scalar() or 0
+        # Get weightage and count from repository
+        total_weightage, goal_count = await self.repository.get_weightage_and_count(db, appraisal_id)
 
         if goal_count == 0 or total_weightage != 100:
             raise HTTPException(
@@ -544,19 +479,7 @@ class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate])
         appraisal_id: int
     ) -> Appraisal:
         """Get an appraisal with all its goals and nested relationships loaded."""
-        query = (
-            select(Appraisal)
-            .where(Appraisal.appraisal_id == appraisal_id)
-            .options(
-                selectinload(Appraisal.appraisal_goals)
-                .selectinload(AppraisalGoal.goal)
-                .selectinload(Goal.category),
-                selectinload(Appraisal.appraisal_type)
-            )
-        )
-        
-        result = await db.execute(query)
-        appraisal = result.scalars().first()
+        appraisal = await self.repository.get_with_goals_and_relationships(db, appraisal_id)
         
         if not appraisal:
             raise EntityNotFoundError(self.entity_name, appraisal_id)
