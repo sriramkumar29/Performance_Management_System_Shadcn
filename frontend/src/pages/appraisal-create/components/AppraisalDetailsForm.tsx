@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Calendar } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { Label } from "../../../components/ui/label";
 import { Input } from "../../../components/ui/input";
@@ -16,7 +16,7 @@ import {
   CardTitle,
   CardDescription,
 } from "../../../components/ui/card";
-import type { Dayjs } from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import { computePeriod } from "../helpers/dateHelpers";
 
 interface Employee {
@@ -283,27 +283,63 @@ export const AppraisalDetailsForm = ({
               );
             })()}
 
-            {/* Period Display */}
+            {/* Period Selection */}
             {formValues.period && formValues.period.length === 2 && (
               <div className="grid gap-2">
-                <Label>Period</Label>
+                <Label className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  Period
+                </Label>
                 <div className="flex gap-2">
-                  <Input
-                    value={formValues.period[0]?.format("YYYY-MM-DD") || ""}
-                    readOnly
-                    className="bg-muted/50"
-                    aria-label="Start date"
-                  />
-                  <Input
-                    value={formValues.period[1]?.format("YYYY-MM-DD") || ""}
-                    readOnly
-                    className="bg-muted/50"
-                    aria-label="End date"
-                  />
+                  <div className="relative flex-1">
+                    <Input
+                      type="date"
+                      value={formValues.period[0]?.format("YYYY-MM-DD") || ""}
+                      max={
+                        formValues.period[1]?.format("YYYY-MM-DD") || undefined
+                      }
+                      onChange={(e) => {
+                        const newStartDate = e.target.value;
+                        if (newStartDate && formValues.period) {
+                          const startDate = dayjs(newStartDate);
+                          setFormValues((v) => ({
+                            ...v,
+                            period: [startDate, v.period![1]],
+                          }));
+                        }
+                      }}
+                      disabled={isLocked}
+                      aria-label="Start date"
+                      placeholder="Start date"
+                    />
+                  </div>
+                  <div className="relative flex-1">
+                    <Input
+                      type="date"
+                      value={formValues.period[1]?.format("YYYY-MM-DD") || ""}
+                      min={
+                        formValues.period[0]?.format("YYYY-MM-DD") || undefined
+                      }
+                      onChange={(e) => {
+                        const newEndDate = e.target.value;
+                        if (newEndDate && formValues.period) {
+                          const endDate = dayjs(newEndDate);
+                          setFormValues((v) => ({
+                            ...v,
+                            period: [v.period![0], endDate],
+                          }));
+                        }
+                      }}
+                      disabled={isLocked}
+                      aria-label="End date"
+                      placeholder="End date"
+                    />
+                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Period is automatically calculated based on the selected type
-                  and range.
+                  Period is initially calculated based on the selected type and
+                  range, but can be manually adjusted using the calendar
+                  pickers.
                 </p>
               </div>
             )}

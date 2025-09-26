@@ -257,7 +257,7 @@ const AppraiserEvaluation = () => {
                   Appraiser Evaluation
                 </h1>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   {new Date(appraisal.start_date).toLocaleDateString()} –{" "}
                   {new Date(appraisal.end_date).toLocaleDateString()}
                 </div>
