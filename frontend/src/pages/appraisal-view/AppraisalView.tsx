@@ -246,9 +246,9 @@ const AppraisalView = () => {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <Star className="h-4 w-4 text-primary" />
-                    <label className="text-sm font-medium text-foreground">
+                    <span className="text-sm font-medium text-foreground">
                       Self Rating
-                    </label>
+                    </span>
                     {current.self_rating && (
                       <Badge variant="outline" className="ml-auto">
                         {current.self_rating}/5
@@ -268,15 +268,16 @@ const AppraisalView = () => {
                     className="opacity-70"
                   />
                   <div>
-                    <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <div className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
                       <MessageSquare className="h-4 w-4 text-primary" /> Self
                       Comments
-                    </label>
+                    </div>
                     <Textarea
                       rows={3}
                       value={current.self_comment ?? "No comments provided"}
                       disabled
                       className="bg-card/50 border-border resize-none"
+                      aria-label="Self Comments"
                     />
                   </div>
                 </div>
@@ -294,9 +295,9 @@ const AppraisalView = () => {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Star className="h-4 w-4 text-primary" />
-                      <label className="text-sm font-medium text-foreground">
+                      <span className="text-sm font-medium text-foreground">
                         Appraiser Rating
-                      </label>
+                      </span>
                       {current.appraiser_rating && (
                         <Badge variant="outline" className="ml-auto">
                           {current.appraiser_rating}/5
@@ -316,10 +317,10 @@ const AppraisalView = () => {
                       className="opacity-70"
                     />
                     <div>
-                      <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <div className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
                         <MessageSquare className="h-4 w-4 text-primary" />{" "}
                         Appraiser Comments
-                      </label>
+                      </div>
                       <Textarea
                         rows={4}
                         value={
@@ -327,6 +328,7 @@ const AppraisalView = () => {
                         }
                         disabled
                         className="bg-card/50 border-border resize-none"
+                        aria-label="Appraiser Comments"
                       />
                     </div>
                   </div>
@@ -346,32 +348,32 @@ const AppraisalView = () => {
                 </Button>
 
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <div
-                    className="flex gap-1"
-                    role="list"
+                  <ul
+                    className="flex gap-1 list-none p-0 m-0"
                     aria-label="Progress steps"
                   >
                     {Array.from(
                       { length: showOverall ? totalGoals + 1 : totalGoals },
-                      (_, i) => (
-                        <div
-                          key={i}
-                          role="listitem"
-                          aria-label={`Step ${i + 1} of ${
-                            showOverall ? totalGoals + 1 : totalGoals
-                          }${i === idx ? ", current step" : ""}`}
-                          aria-current={i === idx ? "step" : undefined}
-                          className={`w-2 h-2 rounded-full ${
-                            i === idx
-                              ? "bg-primary"
-                              : i < idx
-                              ? "bg-primary/60"
-                              : "bg-border"
-                          }`}
-                        />
-                      )
+                      (_, i) => {
+                        const getStepClass = () => {
+                          if (i === idx) return "bg-primary";
+                          if (i < idx) return "bg-primary/60";
+                          return "bg-border";
+                        };
+
+                        return (
+                          <li
+                            key={i}
+                            aria-label={`Step ${i + 1} of ${
+                              showOverall ? totalGoals + 1 : totalGoals
+                            }${i === idx ? ", current step" : ""}`}
+                            aria-current={i === idx ? "step" : undefined}
+                            className={`w-2 h-2 rounded-full ${getStepClass()}`}
+                          />
+                        );
+                      }
                     )}
-                  </div>
+                  </ul>
                 </div>
 
                 <Button
@@ -420,9 +422,9 @@ const AppraisalView = () => {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Star className="h-4 w-4 text-primary" />
-                      <label className="text-sm font-medium text-foreground">
+                      <span className="text-sm font-medium text-foreground">
                         Overall Rating
-                      </label>
+                      </span>
                       {appraisal.appraiser_overall_rating && (
                         <Badge variant="outline" className="ml-auto">
                           {appraisal.appraiser_overall_rating}/5
@@ -442,10 +444,10 @@ const AppraisalView = () => {
                       className="opacity-70"
                     />
                     <div>
-                      <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <div className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
                         <MessageSquare className="h-4 w-4 text-primary" />{" "}
                         Overall Comments
-                      </label>
+                      </div>
                       <Textarea
                         rows={4}
                         value={
@@ -454,6 +456,7 @@ const AppraisalView = () => {
                         }
                         disabled
                         className="bg-card/50 border-border resize-none"
+                        aria-label="Appraiser Overall Comments"
                       />
                     </div>
                   </div>
@@ -470,9 +473,9 @@ const AppraisalView = () => {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Star className="h-4 w-4 text-primary" />
-                      <label className="text-sm font-medium text-foreground">
+                      <span className="text-sm font-medium text-foreground">
                         Overall Rating
-                      </label>
+                      </span>
                       {appraisal.reviewer_overall_rating && (
                         <Badge variant="outline" className="ml-auto">
                           {appraisal.reviewer_overall_rating}/5
@@ -492,10 +495,10 @@ const AppraisalView = () => {
                       className="opacity-70"
                     />
                     <div>
-                      <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <div className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
                         <MessageSquare className="h-4 w-4 text-primary" />{" "}
                         Overall Comments
-                      </label>
+                      </div>
                       <Textarea
                         rows={5}
                         value={
@@ -504,6 +507,7 @@ const AppraisalView = () => {
                         }
                         disabled
                         className="bg-card/50 border-border resize-none"
+                        aria-label="Reviewer Overall Comments"
                       />
                     </div>
                   </div>

@@ -55,7 +55,7 @@ async def get_current_user(
         )
 
 
-async def get_current_active_user(
+def get_current_active_user(
     current_user: Employee = Depends(get_current_user)
 ) -> Employee:
     """
@@ -80,7 +80,7 @@ async def get_current_active_user(
 
 
 # Role-based dependencies
-async def require_manager_role(
+def require_manager_role(
     current_user: Employee = Depends(get_current_active_user)
 ) -> Employee:
     """Require manager role."""
@@ -92,7 +92,7 @@ async def require_manager_role(
     )
 
 
-async def require_admin_role(
+def require_admin_role(
     current_user: Employee = Depends(get_current_active_user)
 ) -> Employee:
     """Require admin role."""
@@ -104,7 +104,7 @@ async def require_admin_role(
     )
 
 
-async def require_hr_role(
+def require_hr_role(
     current_user: Employee = Depends(get_current_active_user)
 ) -> Employee:
     """Require HR role."""
