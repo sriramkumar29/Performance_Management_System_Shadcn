@@ -39,7 +39,7 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 
 # Install dependencies
-RUN echo "Installing frontend dependencies..." && npm ci
+RUN npm ci
 
 # Copy Vite config and TypeScript config
 COPY frontend/vite.config.ts ./
@@ -56,7 +56,7 @@ COPY frontend/src/ ./src/
 COPY frontend/.env.production ./
 
 # Build the Vite React app with production environment and empty API base URL
-RUN echo "Building frontend with Vite..." && NODE_ENV=production VITE_API_BASE_URL="" npm run build && echo "Frontend build complete!"
+RUN NODE_ENV=production VITE_API_BASE_URL="" npm run build
 
 # ==========================
 # Backend Stage
@@ -65,30 +65,20 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies
-RUN echo "Installing system dependencies..."
-RUN apt-get update
-RUN apt-get install -y gcc
-RUN rm -rf /var/lib/apt/lists/*
-RUN echo "System dependencies installed."
+RUN apt-get update && apt-get install -y gcc && rm -rf /var/lib/apt/lists/* 
 
 # Copy and install Python dependencies
 COPY backend/requirements.txt .
-RUN echo "Installing Python dependencies..."
 RUN pip install --no-cache-dir -r requirements.txt
-RUN echo "Python dependencies installed."
 
 # Copy FastAPI backend
 COPY backend/ ./backend/
-RUN echo "Copied backend source files."
 
 # Copy built Vite app from previous stage (Vite builds to 'dist' by default)
 COPY --from=frontend-build /app/frontend/dist ./backend/dist
-RUN echo "Copied frontend build into backend."
 
 # Remove frontend folder if exists
-RUN echo "Cleaning up frontend folder if exists..."
 RUN rm -rf ./frontend
-RUN echo "Frontend folder cleaned."
 
 # Expose port (Heroku will override via $PORT env)
 EXPOSE 8000
