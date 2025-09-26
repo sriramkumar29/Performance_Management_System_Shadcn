@@ -7,11 +7,8 @@ with proper validation and relationship handling.
 
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
-from sqlalchemy import and_, delete, insert
 
-from app.models.goal import Goal, GoalTemplate, Category, AppraisalGoal, goal_template_categories
+from app.models.goal import Goal, GoalTemplate, Category, AppraisalGoal
 from app.schemas.goal import (
     GoalCreate, GoalUpdate,
     GoalTemplateCreate, GoalTemplateUpdate,
@@ -150,14 +147,7 @@ class GoalTemplateService(BaseService[GoalTemplate, GoalTemplateCreate, GoalTemp
         template_id: int
     ) -> GoalTemplate:
         """Get a goal template with categories loaded."""
-        query = (
-            select(GoalTemplate)
-            .options(selectinload(GoalTemplate.categories))
-            .where(GoalTemplate.temp_id == template_id)
-        )
-        
-        result = await db.execute(query)
-        template = result.scalars().first()
+        template = await self.repository.get_with_categories(db, template_id)
         
         if not template:
             raise EntityNotFoundError(self.entity_name, template_id)
@@ -174,21 +164,16 @@ class GoalTemplateService(BaseService[GoalTemplate, GoalTemplateCreate, GoalTemp
         # Get or create categories
         categories = []
         for category_name in template_data.categories:
-            category = await self._get_or_create_category(db, category_name)
+            category = await self.repository.get_or_create_category(db, category_name)
             categories.append(category)
         
-        # Create new goal template
-        db_template = GoalTemplate(
-            temp_title=template_data.temp_title,
-            temp_description=template_data.temp_description,
-            temp_performance_factor=template_data.temp_performance_factor,
-            temp_importance=template_data.temp_importance,
-            temp_weightage=template_data.temp_weightage,
+        # Create new goal template using repository
+        template_dict = template_data.model_dump(exclude={"categories"})
+        db_template = await self.repository.create_with_categories(
+            db,
+            template_data=template_dict,
             categories=categories
         )
-        
-        db.add(db_template)
-        await db.flush()
         
         # Reload with categories for response
         return await self.get_template_with_categories(db, db_template.temp_id)
@@ -204,67 +189,30 @@ class GoalTemplateService(BaseService[GoalTemplate, GoalTemplateCreate, GoalTemp
         # Get existing template
         db_template = await self.get_template_with_categories(db, template_id)
         
-        # Update basic fields
+        # Update basic fields using repository
         update_data = template_data.model_dump(exclude={"categories"}, exclude_unset=True)
-        for key, value in update_data.items():
-            setattr(db_template, key, value)
-        
-        # Ensure pending scalar changes are flushed before mutating relationships
-        await db.flush()
+        if update_data:
+            db_template = await self.repository.update(
+                db, 
+                db_obj=db_template, 
+                obj_data=update_data
+            )
         
         # Update categories if provided
         if template_data.categories is not None:
-            await self._update_template_categories(db, db_template, template_data.categories)
-        
-        await db.flush()
+            # Get or create categories
+            categories = []
+            for category_name in template_data.categories:
+                category = await self.repository.get_or_create_category(db, category_name)
+                categories.append(category)
+            
+            # Update template categories using repository
+            await self.repository.update_template_categories(db, db_template, categories)
         
         # Reload with categories for response
         return await self.get_template_with_categories(db, template_id)
     
-    async def _update_template_categories(
-        self,
-        db: AsyncSession,
-        template: GoalTemplate,
-        category_names: List[str]
-    ) -> None:
-        """Update the categories associated with a template."""
-        # Delete existing associations
-        await db.execute(
-            delete(goal_template_categories).where(
-                goal_template_categories.c.template_id == template.temp_id
-            )
-        )
-        
-        # Insert associations for provided categories
-        for category_name in category_names:
-            # Get or create category
-            category = await self._get_or_create_category(db, category_name)
-            
-            # Insert link row
-            await db.execute(
-                insert(goal_template_categories).values(
-                    template_id=template.temp_id,
-                    category_id=category.id
-                )
-            )
-    
-    async def _get_or_create_category(
-        self,
-        db: AsyncSession,
-        category_name: str
-    ) -> Category:
-        """Get an existing category or create a new one."""
-        result = await db.execute(
-            select(Category).where(Category.name == category_name)
-        )
-        category = result.scalars().first()
-        
-        if not category:
-            category = Category(name=category_name)
-            db.add(category)
-            await db.flush()
-        
-        return category
+
 
 
 class CategoryService(BaseService[Category, CategoryCreate, None]):

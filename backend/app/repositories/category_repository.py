@@ -25,3 +25,29 @@ class CategoryRepository(BaseRepository[Category]):
     @property
     def id_field(self) -> str:
         return "id"
+
+    async def get_by_name(
+        self,
+        db: AsyncSession,
+        name: str
+    ) -> Optional[Category]:
+        """Get category by name."""
+        from sqlalchemy.future import select
+        result = await db.execute(
+            select(Category).where(Category.name == name)
+        )
+        return result.scalars().first()
+
+    async def get_or_create_by_name(
+        self,
+        db: AsyncSession,
+        name: str
+    ) -> Category:
+        """Get category by name or create if it doesn't exist."""
+        category = await self.get_by_name(db, name)
+        if not category:
+            category = Category(name=name)
+            db.add(category)
+            await db.flush()
+            await db.refresh(category)
+        return category

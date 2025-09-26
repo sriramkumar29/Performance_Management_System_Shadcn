@@ -434,11 +434,124 @@ Removed unnecessary imports from the service:
 
 ---
 
+---
+
+## Goal Services Repository Mapping
+
+### Overview
+
+This section outlines the mapping of database operations from the Goal Services (GoalService, GoalTemplateService, CategoryService, AppraisalGoalService) to their respective repositories, following the Repository pattern for better separation of concerns.
+
+### GoalTemplateService - Major Refactoring
+
+#### 1. Template with Categories Retrieval
+
+**Before:**
+
+```python
+async def get_template_with_categories(self, db, template_id):
+    query = (select(GoalTemplate).options(selectinload(GoalTemplate.categories))
+             .where(GoalTemplate.temp_id == template_id))
+    result = await db.execute(query)
+    template = result.scalars().first()
+```
+
+**After:**
+
+```python
+async def get_template_with_categories(self, db, template_id):
+    template = await self.repository.get_with_categories(db, template_id)
+```
+
+**Repository Method Added:**
+
+```python
+async def get_with_categories(db: AsyncSession, template_id: int) -> Optional[GoalTemplate]
+```
+
+#### 2. Template Creation with Categories
+
+**Before:**
+
+```python
+# Complex service logic with direct DB operations
+db_template = GoalTemplate(...)
+db.add(db_template)
+await db.flush()
+```
+
+**After:**
+
+```python
+db_template = await self.repository.create_with_categories(
+    db, template_data=template_dict, categories=categories
+)
+```
+
+**Repository Method Added:**
+
+```python
+async def create_with_categories(db: AsyncSession, *, template_data: dict, categories: List[Category]) -> GoalTemplate
+```
+
+#### 3. Category Management
+
+**Before:**
+
+```python
+# Service handled category creation and associations
+await db.execute(delete(goal_template_categories).where(...))
+await db.execute(insert(goal_template_categories).values(...))
+```
+
+**After:**
+
+```python
+await self.repository.update_template_categories(db, db_template, categories)
+```
+
+**Repository Methods Added:**
+
+```python
+async def update_template_categories(db: AsyncSession, template: GoalTemplate, categories: List[Category]) -> None
+async def get_or_create_category(db: AsyncSession, category_name: str) -> Category
+```
+
+### CategoryService Enhancements
+
+#### 1. Name-based Category Lookups
+
+**Repository Methods Added:**
+
+```python
+async def get_by_name(db: AsyncSession, name: str) -> Optional[Category]
+async def get_or_create_by_name(db: AsyncSession, name: str) -> Category
+```
+
+### Code Cleanup Achieved
+
+#### Removed from GoalService:
+
+- Direct SQLAlchemy imports (`select`, `selectinload`, `delete`, `insert`)
+- Helper methods moved to repository (`_update_template_categories`, `_get_or_create_category`)
+- Complex many-to-many relationship management logic
+
+#### Benefits for Goal Services:
+
+1. **Simplified Service Logic**: Focus on business rules rather than database operations
+2. **Enhanced Category Management**: Centralized category creation and lookup logic
+3. **Better Relationship Handling**: Complex template-category associations managed in repository
+4. **Improved Code Reusability**: Repository methods can be shared across services
+
+---
+
 ## Next Steps
 
 1. Consider adding transaction management to repository methods if needed
 2. Add logging to repository methods for better debugging
 3. Create repository interfaces for better testability
 4. Consider adding caching layer in repository if performance becomes an issue
-5. Apply similar repository pattern to other services (Goal, Category, etc.)
+5. ✅ **COMPLETED**: Applied repository pattern to Goal, Category, and Template services
 6. Add comprehensive unit tests for repository methods
+7. Apply similar patterns to any remaining services
+8. Add performance monitoring for repository operations
