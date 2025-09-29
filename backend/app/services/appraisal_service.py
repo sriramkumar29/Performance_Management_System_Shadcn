@@ -7,9 +7,11 @@ with proper validation and status transition management.
 
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import HTTPException, status
 
+from app.models.goal import AppraisalGoal
 from app.models.appraisal import Appraisal, AppraisalStatus
-from app.models.goal import Goal
+from app.models.goal import Goal, AppraisalGoal
 from app.schemas.appraisal import AppraisalCreate, AppraisalUpdate
 from app.services.base_service import BaseService
 from app.repositories.appraisal_repository import AppraisalRepository
@@ -38,6 +40,7 @@ class AppraisalService(BaseService):
     def __init__(self):
         super().__init__(Appraisal)
         self.repository = AppraisalRepository()
+        self.category_repository = CategoryRepository()
         self._valid_transitions = {
             AppraisalStatus.DRAFT: [AppraisalStatus.SUBMITTED],
             AppraisalStatus.SUBMITTED: [AppraisalStatus.APPRAISEE_SELF_ASSESSMENT],
@@ -134,9 +137,6 @@ class AppraisalService(BaseService):
         new_status: AppraisalStatus
     ) -> Appraisal:
         """Update appraisal status with validation."""
-        from sqlalchemy import select
-        from app.models.goal import Goal, AppraisalGoal
-        from fastapi import HTTPException, status
         
         # Get appraisal by ID with relationships
         db_appraisal = await self.get_by_id_or_404(
@@ -463,7 +463,6 @@ class AppraisalService(BaseService):
         appraisal_id: int
     ) -> None:
         """Validate requirements for submitting an appraisal using direct queries."""
-        from fastapi import HTTPException, status
         
         # Get weightage and count from repository
         total_weightage, goal_count = await self.repository.get_weightage_and_count(db, appraisal_id)
@@ -486,3 +485,123 @@ class AppraisalService(BaseService):
             raise EntityNotFoundError(self.entity_name, appraisal_id)
         
         return appraisal
+
+    async def add_single_goal_to_appraisal(
+        self,
+        db: AsyncSession,
+        appraisal_id: int,
+        goal_id: int
+    ) -> None:
+        """Get an existing AppraisalGoal by appraisal_id and goal_id."""
+        existing_appraisal_goal = await self.repository.get_existing_appraisal_goal(db, appraisal_id, goal_id)
+
+        if not existing_appraisal_goal:
+            existing_appraisal_goal = AppraisalGoal(appraisal_id=appraisal_id, goal_id=goal_id)
+            await self.repository.add_appraisal_goal(db, existing_appraisal_goal)
+
+
+    async def update_appraisal_goal(self, db: AsyncSession, appraisal_id: int) -> AppraisalGoal:
+        """Update an existing AppraisalGoal."""
+        db_appraisal = await self.repository.update_appraisal_goal(db, appraisal_id)
+
+        if not db_appraisal:
+            raise EntityNotFoundError("Appraisal", appraisal_id)
+
+        return db_appraisal
+
+
+    async def remove_goal_from_appraisal(
+        self,
+        db: AsyncSession,
+        appraisal_id: int,
+        goal_id: int
+    ) -> None:
+        existing_appraisal_goal = await self.repository.get_appraisal_goal_by_id(db, appraisal_id, goal_id)
+
+        if not existing_appraisal_goal:
+            raise EntityNotFoundError("Appraisal Goal", f"appraisal_id={appraisal_id}, goal_id={goal_id}")
+        
+        await self.repository.remove_appraisal_goal(db, existing_appraisal_goal)
+
+    async def get_appraisal(self, appraisal_id: int) -> Appraisal:
+        """Get an appraisal by ID."""
+        db_appraisal = await self.repository.get_appraisal_by_id(appraisal_id)
+
+        if not db_appraisal:
+            raise EntityNotFoundError("Appraisal", appraisal_id)
+        
+        # Check if appraisal is in Draft status (only allow adding goals in Draft)
+        if db_appraisal.status != AppraisalStatus.DRAFT:
+            raise ValidationError(f"Cannot add goals when appraisal is in {db_appraisal.status} status. Goals can only be added in Draft status.")
+
+        return db_appraisal
+
+    async def get_goals_by_id(self, db: AsyncSession, goal_id: int) -> Goal:
+        db_goal = await self.repository.get_goal_by_id(db, goal_id)
+
+        if not db_goal:
+            raise EntityNotFoundError("Goal", goal_id)
+
+        return db_goal
+
+    async def check_goal_not_already_in_appraisal(self, db: AsyncSession, appraisal_id: int, goal_id: int) -> None:
+        existing_link_any = await self.repository.get_appraisal_goal(db, goal_id)
+
+        if existing_link_any and existing_link_any.appraisal_id == appraisal_id:
+            raise EntityNotFoundError("Appraisal Goal", f"goal_id={goal_id} is already linked with different appraisal")
+
+    async def check_goal_in_appraisal(self, db: AsyncSession, appraisal_id: int, goal_id: int) -> None:
+        existing_link_any = await self.repository.get_appraisal_goal_by_id(db, appraisal_id, goal_id)
+
+        if existing_link_any:
+            raise EntityNotFoundError("Appraisal Goal", f"goal_id={goal_id} is already added to this appraisal")
+        
+
+    async def check_total_weightage(self, db: AsyncSession, appraisal_id: int, db_goal: Goal) -> None:
+        total_weightage = await self.repository.calculate_total_weightage(db, appraisal_id)
+        new_total_weightage = total_weightage + db_goal.goal_weightage
+        
+        if new_total_weightage > 100:
+            raise WeightageValidationError(new_total_weightage)
+
+    async def add_goal_to_appraisal(
+        self,
+        db: AsyncSession,
+        appraisal_id: int,
+        goal_id: int
+    ) -> None:
+        """Add a goal to an appraisal after performing necessary checks."""
+        appraisal_goal = AppraisalGoal(
+            appraisal_id=appraisal_id,
+            goal_id=goal_id
+        )
+        await self.add_appraisal_goal(db, appraisal_goal)
+
+
+    async def load_appraisal(self, db: AsyncSession, db_appraisal: Appraisal) -> Appraisal:
+        return await self.repository.load_appraisal(db, db_appraisal)
+
+    async def if_no_link_exists_delete_appraisal(self, db: AsyncSession, goal_id: int) -> None:
+        remaining_link = await self.repository.get_appraisal_goal(db, goal_id)
+
+        if not remaining_link:
+            goal = await self.repository.get_goal_by_id(db, goal_id)
+
+        if goal:
+            await self.repository.delete_goal(db, goal)
+
+    async def check_if_appraisal_exist(self, appraisal_id: int) -> Appraisal:
+        """Get an appraisal by ID."""
+        db_appraisal = await self.repository.get_appraisal_by_id(appraisal_id)
+
+        if not db_appraisal:
+            raise EntityNotFoundError("Appraisal", appraisal_id)
+
+    async def calculate_current_total_weightage(self, db: AsyncSession, appraisal_id: int):
+        return await self.repository.calculate_total_weightage(db, appraisal_id)
+
+    async def get_individual_goal_weightages(self, db: AsyncSession, appraisal_id: int):
+        return await self.repository.get_individual_goal_weightages(db, appraisal_id)
+        
+    async def get_categories(self, db: AsyncSession):
+        return await self.category_repository.get_categories(db)

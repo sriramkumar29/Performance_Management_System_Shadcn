@@ -7,6 +7,7 @@ for the Category entity.
 
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 from app.models.goal import Category
 from app.repositories.base_repository import BaseRepository
@@ -32,7 +33,6 @@ class CategoryRepository(BaseRepository[Category]):
         name: str
     ) -> Optional[Category]:
         """Get category by name."""
-        from sqlalchemy.future import select
         result = await db.execute(
             select(Category).where(Category.name == name)
         )
@@ -51,3 +51,8 @@ class CategoryRepository(BaseRepository[Category]):
             await db.flush()
             await db.refresh(category)
         return category
+    
+    async def get_categories(self, db: AsyncSession) -> List[Category]:
+        """Get all categories."""
+        result = await db.execute(select(Category).order_by(Category.name))
+        return result.scalars().all()

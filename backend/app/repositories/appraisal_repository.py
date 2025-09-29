@@ -188,3 +188,138 @@ class AppraisalRepository:
             )
         )
         return result.scalars().first()
+    
+    async def get_existing_appraisal_goal(self, db: AsyncSession, appraisal_id: int, goal_id: int) -> Optional[AppraisalGoal]:
+        """Get existing appraisal goal by appraisal and goal IDs."""
+        result = await db.execute(
+            select(AppraisalGoal).where(
+                and_(
+                    AppraisalGoal.appraisal_id == appraisal_id,
+                    AppraisalGoal.goal_id == goal_id
+                )
+            )
+        )
+        return result.scalars().first()
+
+    async def add_appraisal_goal(self, db: AsyncSession, appraisal_goal: AppraisalGoal) -> None:
+        db.add(appraisal_goal)
+        await db.flush()
+        # Persist the new appraisal_goal and commit the transaction
+        await db.commit()
+        # Refresh to ensure the object has up-to-date attributes (ids, defaults)
+        await db.refresh(appraisal_goal)
+
+
+    async def update_appraisal_goal(self, db: AsyncSession, appraisal_id: int) -> AppraisalGoal:
+        query =  select(Appraisal).where(Appraisal.appraisal_id == appraisal_id)
+        query = query.options(
+            selectinload(Appraisal.appraisal_goals)
+            .selectinload(AppraisalGoal.goal)
+            .selectinload(Goal.category)
+        )
+        result = await db.execute(query)
+        return result.scalars().first()
+    
+    async def get_appraisal_goal_by_id(self, db: AsyncSession, appraisal_id: int, goal_id: int) -> Optional[AppraisalGoal]:
+        result = await db.execute(
+            select(AppraisalGoal).where(
+                AppraisalGoal.appraisal_id == appraisal_id,
+                AppraisalGoal.goal_id == goal_id
+            )
+        )
+        appraisal_goal = result.scalars().first()
+        return appraisal_goal
+
+    async def remove_appraisal_goal(self, db: AsyncSession, appraisal_goal: AppraisalGoal) -> None:
+        # Capture identifying fields before delete since the instance will be
+        # detached/expired after deletion and attribute access may raise.
+        try:
+            aid = appraisal_goal.appraisal_id
+            gid = appraisal_goal.goal_id
+        except Exception:
+            aid = None
+            gid = None
+
+        try:
+            print("Deleting appraisal goal...")
+            await db.delete(appraisal_goal)
+            print("Flushing...") 
+            await db.flush()  # Refresh from DB after deletion
+            print("Committing delete...")
+            await db.commit()
+
+            # Expire the session identity map so any cached Appraisal/AppraisalGoal
+            # instances will be reloaded from the DB on next access. Use run_sync
+            # to call the synchronous Session.expire_all on the underlying sync
+            # Session safely from AsyncSession.
+            try:
+                print("Expiring session identity map...") 
+                await db.run_sync(lambda sync_session: sync_session.expire_all())
+            except Exception as e: 
+                from app.exceptions.custom_exceptions import InternalServerError
+                raise InternalServerError(f"Failed to expire session after deleting appraisal goal: {e}")
+
+            # Log the deletion using the captured identifiers
+            print(f"Deleted appraisal goal: {aid}-{gid}")
+        except Exception as exc:
+            # Log the exception details for debugging, then re-raise so global
+            # handlers can convert to HTTP 500 responses as usual.
+            print(f"Exception in remove_appraisal_goal: {exc.__class__.__name__} - {exc}")
+            raise
+
+
+    async def get_appraisal_by_id(self, db: AsyncSession, appraisal_id: int) -> Optional[Appraisal]:
+        result = await db.execute(select(Appraisal).where(Appraisal.appraisal_id == appraisal_id))
+        return result.scalars().first()
+
+    async def get_appraisal_goal(self, db: AsyncSession, goal_id: int) -> Optional[AppraisalGoal]:
+        result = await db.execute(select(AppraisalGoal).where(AppraisalGoal.goal_id == goal_id))
+        return result.scalars().first()
+
+    async def get_appraisal_goal_by_id(self, db: AsyncSession, appraisal_id: int, goal_id: int) -> Optional[AppraisalGoal]:
+        result = await db.execute(
+            select(AppraisalGoal).where(
+                AppraisalGoal.appraisal_id == appraisal_id,
+                AppraisalGoal.goal_id == goal_id
+            )
+        )
+        return result.scalars().first()
+    
+
+    async def calculate_total_weightage(self, db: AsyncSession, appraisal_id: int) -> int:
+        result = await db.execute(
+            select(func.sum(Goal.goal_weightage)).select_from(
+                AppraisalGoal.__table__.join(Goal.__table__)
+            ).where(AppraisalGoal.appraisal_id == appraisal_id)
+        )
+        return result.scalar() or 0
+    
+    async def load_appraisal(self, db: AsyncSession, db_appraisal: Appraisal) -> Appraisal:
+        """Reload an appraisal with all its goals and nested relationships loaded."""
+        query = (
+            select(Appraisal)
+            .options(
+                selectinload(Appraisal.appraisal_goals)
+                .selectinload(AppraisalGoal.goal)
+                .selectinload(Goal.category)
+            )
+            .where(Appraisal.appraisal_id == db_appraisal.appraisal_id)
+        )
+        
+        result = await db.execute(query)
+        return result.scalars().first()
+    
+    async def delete_goal(self, db: AsyncSession, goal: Goal) -> None:
+        await db.delete(goal)
+        await db.commit()
+
+    async def get_individual_goal_weightages(self, db: AsyncSession, appraisal_id: int) -> Goal:
+        query = (
+            select(Goal.goal_id, Goal.goal_title, Goal.goal_weightage).select_from(
+                AppraisalGoal.__table__.join(Goal.__table__)
+            ).where(AppraisalGoal.appraisal_id == appraisal_id)
+        )
+
+        result = await db.execute(query)
+        return result.fetchall()
+    

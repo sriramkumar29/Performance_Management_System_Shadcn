@@ -11,6 +11,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from pydantic import BaseModel
+from app.exceptions import BaseCustomException
 
 from app.db.database import get_db
 from app.models.employee import Employee
@@ -455,43 +456,15 @@ async def add_single_goal_to_appraisal(
     Raises:
         EntityNotFoundError: If appraisal or goal not found
     """
-    from sqlalchemy.future import select
-    from sqlalchemy.orm import selectinload
-    from app.models.goal import AppraisalGoal, Goal, Category
-    from app.exceptions import EntityNotFoundError
     
     # Check if the goal already exists for this appraisal
-    existing_check = await db.execute(
-        select(AppraisalGoal).where(
-            AppraisalGoal.appraisal_id == appraisal_id,
-            AppraisalGoal.goal_id == goal_id
-        )
-    )
+    await appraisal_service.add_single_goal_to_appraisal(db, appraisal_id=appraisal_id, goal_id=goal_id)
     
-    if not existing_check.scalars().first():
-        # Add the goal to the appraisal
-        appraisal_goal = AppraisalGoal(
-            appraisal_id=appraisal_id,
-            goal_id=goal_id
-        )
-        db.add(appraisal_goal)
-        await db.commit()
-    
-    # Get the updated appraisal with relationships
-    result = await db.execute(
-        select(Appraisal)
-        .where(Appraisal.appraisal_id == appraisal_id)
-        .options(
-            selectinload(Appraisal.appraisal_goals)
-            .selectinload(AppraisalGoal.goal)
-            .selectinload(Goal.category)
-        )
-    )
-    db_appraisal = result.scalars().first()
-    
-    if not db_appraisal:
-        raise EntityNotFoundError("Appraisal", appraisal_id)
-    
+    try:
+        db_appraisal = await appraisal_service.update_appraisal_goal(db, appraisal_id)
+    except EntityNotFoundError:
+        raise HTTPException(status_code=404, detail="Appraisal not found")
+
     return AppraisalWithGoals.model_validate(db_appraisal)
 
 
@@ -500,6 +473,7 @@ async def remove_goal_from_appraisal(
     appraisal_id: int = Path(..., gt=0),
     goal_id: int = Path(..., gt=0),
     db: AsyncSession = Depends(get_db),
+    appraisal_service: AppraisalService = Depends(get_appraisal_service),
     current_user: Employee = Depends(get_current_active_user)
 ) -> None:
     """
@@ -514,24 +488,11 @@ async def remove_goal_from_appraisal(
     Raises:
         EntityNotFoundError: If appraisal goal not found
     """
-    from sqlalchemy.future import select
-    from app.models.goal import AppraisalGoal
-    from app.exceptions import EntityNotFoundError
-    
-    # Find the appraisal goal to delete
-    result = await db.execute(
-        select(AppraisalGoal).where(
-            AppraisalGoal.appraisal_id == appraisal_id,
-            AppraisalGoal.goal_id == goal_id
-        )
-    )
-    appraisal_goal = result.scalars().first()
-    
-    if not appraisal_goal:
-        raise EntityNotFoundError("Appraisal Goal", f"appraisal_id={appraisal_id}, goal_id={goal_id}")
-    
-    await db.delete(appraisal_goal)
-    await db.commit()
+    try:
+        await appraisal_service.remove_goal_from_appraisal(db, appraisal_id, goal_id)
+    except BaseCustomException as e:
+        # Convert our application-level exception to a FastAPI HTTPException
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
 
 
 @router.delete("/{appraisal_id}", status_code=status.HTTP_204_NO_CONTENT)
