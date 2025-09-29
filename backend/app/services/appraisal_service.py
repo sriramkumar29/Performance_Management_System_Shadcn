@@ -32,7 +32,7 @@ from app.constants import (
 )
 
 
-class AppraisalService(BaseService[Appraisal, AppraisalCreate, AppraisalUpdate]):
+class AppraisalService(BaseService):
     """Service class for appraisal operations."""
     
     def __init__(self):

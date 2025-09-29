@@ -19,9 +19,12 @@ from starlette.exceptions import HTTPException
 import logging
 
 from app.db.database import engine, Base
-from app.routers import employees, appraisals, goals, appraisal_types, appraisal_goals
+from app.routers import employees, appraisals, goals, appraisal_types, appraisal_goals, frontend_serve
 from app.core.config import settings
 from app.core.exception_handlers import setup_exception_handlers
+from app.db.database import init_db, close_db
+from app.middleware.cors import setup_cors
+from app.middleware.request_logger import log_requests_middleware
 from app.constants import (
     NOT_FOUND, UNAUTHORIZED_HTTP, FORBIDDEN, VALIDATION_ERROR,
     FILE_NOT_FOUND, API_ENDPOINT_NOT_FOUND, ROUTE_NOT_FOUND,
@@ -38,12 +41,10 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create tables on startup
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    await init_db()       # startup
     yield
-    # Clean up resources on shutdown
-    await engine.dispose()
+    await close_db()      # shutdown
+
 
 app = FastAPI(
     title="Performance Appraisal Management System",
@@ -69,31 +70,10 @@ app = FastAPI(
 setup_exception_handlers(app)
 
 # Request logging middleware for debugging
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    """Log incoming requests for debugging purposes."""
-    # Log all requests to API endpoints for debugging
-    if request.url.path.startswith('/api/'):
-        logger.info(f"API Request: {request.method} {request.url.path}")
-        if request.path_params:
-            logger.info(f"Path params: {request.path_params}")
-        
-        # Special logging for employee-related requests
-        if 'employees' in request.url.path:
-            logger.info(f"Employee endpoint accessed: {request.method} {request.url.path}")
-    
-    response = await call_next(request)
-    return response
+app.middleware("http")(log_requests_middleware)
 
 # Configure CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"],
-    expose_headers=["Content-Length", "X-Total-Count"],
-)
+setup_cors(app)
 
 # Include API routers with proper versioning and organization
 api_prefix = "/api"
@@ -154,6 +134,15 @@ app.include_router(
     }
 )
 
+app.include_router(
+    frontend_serve.router, 
+    tags=["Frontend Serve"], 
+    responses={
+        401: {"description": UNAUTHORIZED_HTTP},
+        404: {"description": NOT_FOUND},
+        422: {"description": VALIDATION_ERROR}
+    })
+
 # Health check and API info endpoints
 @app.get("/health", tags=["System"], summary="Health Check")
 async def health_check():
@@ -207,54 +196,57 @@ async def api_info():
     }
 
 # Define the path to your React build directory
-FRONTEND_DIR = Path(__file__).parent / "dist"
+# FRONTEND_DIR = Path(__file__).parent / "dist"
 
-# Check if frontend directory exists
-if FRONTEND_DIR.exists():
-    # Mount static files for React app assets - this handles /assets/* automatically
-    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="assets")
+# # Check if frontend directory exists
+# if FRONTEND_DIR.exists():
+#     # Mount static files for React app assets - this handles /assets/* automatically
+#     app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="assets")
 
-    # Serve React app files
-    @app.get("/assets/{file_path:path}")
-    async def serve_assets(file_path: str):
-        """Serve React app asset files"""
-        file_location = FRONTEND_DIR / "assets" / file_path
-        if file_location.exists():
-            return FileResponse(file_location)
-        raise HTTPException(status_code=404, detail=FILE_NOT_FOUND)
+#     # Serve React app files
+#     @app.get("/assets/{file_path:path}")
+#     async def serve_assets(file_path: str):
+#         """Serve React app asset files"""
+#         file_location = FRONTEND_DIR / "assets" / file_path
+#         if file_location.exists():
+#             # return FileResponse(file_location)
+#             return HTMLResponse(file_location.read_text(encoding='utf-8'), status_code=200)
+#         raise HTTPException(status_code=404, detail=FILE_NOT_FOUND)
 
-    # Catch-all route to serve React app for client-side routing
-    # This MUST be defined AFTER all API routes to avoid conflicts
-    @app.get("/{full_path:path}")
-    async def serve_react_app(request: Request, full_path: str):
-        """
-        Serve the React app for all non-API routes.
-        This enables client-side routing to work properly.
-        """
-        # Explicitly exclude API routes - they should never reach here
-        if full_path.startswith("api"):
-            raise HTTPException(status_code=404, detail=API_ENDPOINT_NOT_FOUND)
+#     # Catch-all route to serve React app for client-side routing
+#     # This MUST be defined AFTER all API routes to avoid conflicts
+#     @app.get("/{full_path:path}")
+#     async def serve_react_app(request: Request, full_path: str):
+#         """
+#         Serve the React app for all non-API routes.
+#         This enables client-side routing to work properly.
+#         """
+#         # Explicitly exclude API routes - they should never reach here
+#         if full_path.startswith("api"):
+#             raise HTTPException(status_code=404, detail=API_ENDPOINT_NOT_FOUND)
         
-        # Exclude FastAPI built-in routes
-        if full_path in ["docs", "redoc", "openapi.json"]:
-            raise HTTPException(status_code=404, detail=ROUTE_NOT_FOUND)
+#         # Exclude FastAPI built-in routes
+#         if full_path in ["docs", "redoc", "openapi.json"]:
+#             raise HTTPException(status_code=404, detail=ROUTE_NOT_FOUND)
         
-        # Serve index.html for all other routes (React client-side routing)
-        index_file = FRONTEND_DIR / "index.html"
-        if index_file.exists():
-            return FileResponse(index_file)
-        else:
-            raise HTTPException(status_code=404, detail=FRONTEND_NOT_FOUND)
+#         # Serve index.html for all other routes (React client-side routing)
+#         index_file = FRONTEND_DIR / "index.html"
+#         if index_file.exists():
+#             # return FileResponse(index_file)
+#             return HTMLResponse(index_file.read_text(encoding='utf-8'), status_code=200)
+#         else:
+#             raise HTTPException(status_code=404, detail=FRONTEND_NOT_FOUND)
 
-    # Root route to serve React app
-    @app.get("/")
-    async def read_root():
-        """Serve the React app at root"""
-        index_file = FRONTEND_DIR / "index.html"
-        if index_file.exists():
-            return FileResponse(index_file)
-        else:
-            raise HTTPException(status_code=404, detail=FRONTEND_NOT_FOUND)
+#     # Root route to serve React app
+#     @app.get("/")
+#     async def read_root():
+#         """Serve the React app at root"""
+#         index_file = FRONTEND_DIR / "index.html"
+#         if index_file.exists():
+#             # return FileResponse(index_file)
+#             return HTMLResponse(index_file.read_text(encoding='utf-8'), status_code=200)
+#         else:
+#             raise HTTPException(status_code=404, detail=FRONTEND_NOT_FOUND)
         
     # # Root route to serve React app
     # @app.get("/", response_class=HTMLResponse)
@@ -318,7 +310,3 @@ if FRONTEND_DIR.exists():
 #         )
 # else:
 #     print("Warning: Frontend directory not found. Frontend serving disabled.")
-    
-    @app.get("/")
-    async def read_root():
-        return {"message": API_RUNNING_FRONTEND_NOT_FOUND}
