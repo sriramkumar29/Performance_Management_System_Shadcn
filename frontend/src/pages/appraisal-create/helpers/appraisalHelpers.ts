@@ -43,7 +43,7 @@ export const loadAppraisal = async (id: number) => {
   if (!res.ok || !res.data) {
     throw new Error(res.error || "Failed to load appraisal");
   }
-  
+
   const data = res.data as any;
   return {
     appraisalId: data.appraisal_id ?? id,
@@ -102,20 +102,20 @@ export const syncGoalChanges = async (
         category_id: goalData.goal.category_id,
       }),
     });
-    
+
     if (!createGoalRes.ok || !createGoalRes.data) {
       throw new Error(createGoalRes.error || "Failed to create goal");
     }
-    
+
     const createdGoalId = (createGoalRes.data as any).goal_id;
     const attachRes = await apiFetch(
       `/api/appraisals/${appraisalId}/goals/${createdGoalId}`,
       { method: "POST" }
     );
-    
+
     if (!attachRes.ok) {
       // Cleanup created goal if attachment fails
-      await apiFetch(`/api/goals/${createdGoalId}`, { method: "DELETE" }).catch(() => {});
+      await apiFetch(`/api/goals/${createdGoalId}`, { method: "DELETE" }).catch(() => { });
       throw new Error(attachRes.error || "Failed to attach goal to appraisal");
     }
   }
@@ -133,7 +133,7 @@ export const syncGoalChanges = async (
         category_id: goalData.goal.category_id,
       }),
     });
-    
+
     if (!updateRes.ok) {
       throw new Error(updateRes.error || `Failed to update goal ${goalData.goal.goal_id}`);
     }
@@ -157,30 +157,30 @@ export const saveAppraisal = async (
     status: "Draft" as AppraisalStatus,
   };
 
-  if (!appraisalId) {
-    // Create new appraisal
-    const res = await apiFetch("/api/appraisals/", {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
-    
-    if (!res.ok || !res.data) {
-      throw new Error(res.error || "Could not save draft");
-    }
-    
-    return (res.data as any).appraisal_id ?? (res.data as any).id;
-  } else {
+  if (appraisalId) {
     // Update existing appraisal
     const res = await apiFetch(`/api/appraisals/${appraisalId}`, {
       method: "PUT",
       body: JSON.stringify(body),
     });
-    
+
     if (!res.ok) {
       throw new Error(res.error || "Could not save changes");
     }
-    
+
     return appraisalId;
+  } else {
+    // Create new appraisal
+    const res = await apiFetch("/api/appraisals/", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok || !res.data) {
+      throw new Error(res.error || "Could not save draft");
+    }
+
+    return (res.data as any).appraisal_id ?? (res.data as any).id;
   }
 };
 
@@ -190,7 +190,7 @@ export const submitAppraisal = async (appraisalId: number) => {
     method: "PUT",
     body: JSON.stringify({ status: "Submitted" }),
   });
-  
+
   if (!res.ok) {
     throw new Error(res.error || "Could not submit for acknowledgement");
   }
