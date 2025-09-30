@@ -169,7 +169,7 @@ const AppraiserEvaluation = () => {
         const missingIdx = goals.findIndex(
           (g) => g.goal.goal_id === ag.goal.goal_id
         );
-        setIdx(missingIdx >= 0 ? missingIdx : 0);
+        setIdx(Math.max(missingIdx, 0));
         return;
       }
     }
@@ -361,9 +361,9 @@ const AppraiserEvaluation = () => {
                       max={5}
                       step={1}
                       value={
-                        current.self_rating != null
-                          ? [current.self_rating]
-                          : [1]
+                        current.self_rating == null
+                          ? [1]
+                          : [current.self_rating]
                       }
                       disabled
                       aria-label="Self Rating"
@@ -434,9 +434,9 @@ const AppraiserEvaluation = () => {
                       max={5}
                       step={1}
                       value={
-                        form[current.goal.goal_id]?.rating != null
-                          ? [form[current.goal.goal_id].rating!]
-                          : [1]
+                        form[current.goal.goal_id]?.rating == null
+                          ? [1]
+                          : [form[current.goal.goal_id].rating!]
                       }
                       onValueChange={(v) =>
                         setCurrentField(current.goal.goal_id, {
@@ -572,7 +572,7 @@ const AppraiserEvaluation = () => {
                     min={1}
                     max={5}
                     step={1}
-                    value={overall.rating != null ? [overall.rating] : [1]}
+                    value={overall.rating == null ? [1] : [overall.rating]}
                     onValueChange={(v) =>
                       setOverall((p) => ({ ...p, rating: v[0] ?? null }))
                     }

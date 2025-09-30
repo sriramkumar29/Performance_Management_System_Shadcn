@@ -75,7 +75,7 @@ class TestAuthRouter:
         )
         
         # Create async mock that returns the result
-        async def mock_execute(*args, **kwargs):
+        def mock_execute(*args, **kwargs):
             return _make_result(first=mock_employee)
         
         mock_session.execute = mock_execute

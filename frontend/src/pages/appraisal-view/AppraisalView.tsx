@@ -260,9 +260,9 @@ const AppraisalView = () => {
                     max={5}
                     step={1}
                     value={
-                      current.self_rating != null
-                        ? [current.self_rating]
-                        : undefined
+                      current.self_rating == null
+                        ? undefined
+                        : [current.self_rating]
                     }
                     disabled
                     className="opacity-70"
@@ -309,9 +309,9 @@ const AppraisalView = () => {
                       max={5}
                       step={1}
                       value={
-                        current.appraiser_rating != null
-                          ? [current.appraiser_rating]
-                          : undefined
+                        current.appraiser_rating == null
+                          ? undefined
+                          : [current.appraiser_rating]
                       }
                       disabled
                       className="opacity-70"
@@ -436,9 +436,9 @@ const AppraisalView = () => {
                       max={5}
                       step={1}
                       value={
-                        appraisal.appraiser_overall_rating != null
-                          ? [appraisal.appraiser_overall_rating]
-                          : undefined
+                        appraisal.appraiser_overall_rating == null
+                          ? undefined
+                          : [appraisal.appraiser_overall_rating]
                       }
                       disabled
                       className="opacity-70"
@@ -487,9 +487,9 @@ const AppraisalView = () => {
                       max={5}
                       step={1}
                       value={
-                        appraisal.reviewer_overall_rating != null
-                          ? [appraisal.reviewer_overall_rating]
-                          : undefined
+                        appraisal.reviewer_overall_rating == null
+                          ? undefined
+                          : [appraisal.reviewer_overall_rating]
                       }
                       disabled
                       className="opacity-70"

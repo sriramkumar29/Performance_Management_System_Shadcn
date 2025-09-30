@@ -18,13 +18,14 @@ function getApiBaseUrl(): string {
   if (import.meta.env.PROD || import.meta.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'production') {
     return '';
   }
-  
+
   // Resolve lazily so test setup can mutate import.meta.env at runtime
   const envUrl = (import.meta as any)?.env?.VITE_API_BASE_URL || '';
-  // Allow tests to override via window.__API_BASE_URL__
-  const win = typeof window !== 'undefined' ? (window as any) : undefined;
-  const result = (envUrl || win?.__API_BASE_URL__ || '') as string;
-  
+
+  // Allow tests (or browser) to override via globalThis.__API_BASE_URL__
+  const globalObj = typeof globalThis === 'undefined' ? undefined : (globalThis as any);
+  const result = (envUrl || globalObj?.__API_BASE_URL__ || '') as string;
+
   // Only log in development mode for debugging
   if (import.meta.env.DEV) {
     console.log('Development mode - API Base URL:', result);
@@ -39,7 +40,7 @@ const API_RETRIES = Number(import.meta.env.VITE_API_RETRIES ?? 3);
 function buildApiUrl(path: string): string {
   const isAbsolute = /^https?:\/\//i.test(path);
   if (isAbsolute) return path;
-  
+
   const cleanPath = path.replace(/^\/+/, '');
   const apiPath = cleanPath.startsWith('api/') ? `/${cleanPath}` : `/api/${cleanPath}`;
   return `${getApiBaseUrl()}${apiPath}`;
@@ -49,13 +50,13 @@ function buildRequestHeaders(init?: RequestInit): Record<string, string> {
   const token = sessionStorage.getItem('auth_token');
   const callerHeaders = new Headers(init?.headers as any);
   const hasContentType = !!callerHeaders.get('Content-Type');
-  
+
   const baseHeaders: Record<string, string> = {};
   if (token) baseHeaders.Authorization = `Bearer ${token}`;
   if (init?.body !== undefined && !(init?.body instanceof FormData) && !hasContentType) {
     baseHeaders['Content-Type'] = 'application/json';
   }
-  
+
   return baseHeaders;
 }
 
@@ -63,7 +64,7 @@ function setupAbortController(init?: RequestInit): { controller: AbortController
   const attemptController = new AbortController();
   const timeoutId = setTimeout(() => attemptController.abort(), API_TIMEOUT);
   let removeAbortListener: (() => void) | null = null;
-  
+
   if (init?.signal) {
     if (init.signal.aborted) {
       attemptController.abort();
@@ -73,12 +74,12 @@ function setupAbortController(init?: RequestInit): { controller: AbortController
       removeAbortListener = () => init.signal?.removeEventListener('abort', onAbort);
     }
   }
-  
+
   const cleanup = () => {
     clearTimeout(timeoutId);
     if (removeAbortListener) removeAbortListener();
   };
-  
+
   return { controller: attemptController, cleanup };
 }
 
@@ -89,11 +90,11 @@ async function handleUnauthorized(path: string, token: string | null, baseHeader
       isRefreshing = true;
       refreshPromise = refreshTokens();
     }
-    
+
     const refreshSuccess = await refreshPromise;
     isRefreshing = false;
     refreshPromise = null;
-    
+
     if (refreshSuccess) {
       // Update token in headers for retry
       const newToken = sessionStorage.getItem('auth_token');
@@ -109,7 +110,7 @@ async function handleUnauthorized(path: string, token: string | null, baseHeader
     // Token invalid/expired or unauthorized for login/refresh requests
     emitUnauthorized();
   }
-  
+
   return false; // No retry needed
 }
 
@@ -141,10 +142,10 @@ async function processFailedResponse<T>(res: Response): Promise<ApiResult<T>> {
 }
 
 async function executeFetchAttempt<T>(
-  fullUrl: string, 
-  init: RequestInit | undefined, 
-  baseHeaders: Record<string, string>, 
-  path: string, 
+  fullUrl: string,
+  init: RequestInit | undefined,
+  baseHeaders: Record<string, string>,
+  path: string,
   token: string | null,
   attempt: number
 ): Promise<{ result?: ApiResult<T>; shouldRetry: boolean; newAttempt: number }> {
@@ -155,7 +156,7 @@ async function executeFetchAttempt<T>(
       ...init,
       headers: {
         ...baseHeaders,
-        ...(init?.headers || {}),
+        ...(init?.headers),
       },
       credentials: 'include', // Important for cookies/sessions
       signal: attemptController.signal,
@@ -168,7 +169,7 @@ async function executeFetchAttempt<T>(
           return { shouldRetry: true, newAttempt: 0 }; // Reset attempt counter for retry
         }
       }
-      
+
       // Retry only for 5xx responses
       if (shouldRetryError(res.status, attempt)) {
         await sleep(1000 * 2 ** attempt + getSecureRandomJitter());
@@ -235,7 +236,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
   const fullUrl = buildApiUrl(path);
   const token = sessionStorage.getItem('auth_token');
   const baseHeaders = buildRequestHeaders(init);
-  
+
   // Debug logging only in development
   if (import.meta.env.DEV) {
     console.log('Final URL being used:', fullUrl);
@@ -244,24 +245,24 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
 
   while (true) {
     const { result, shouldRetry, newAttempt } = await executeFetchAttempt<T>(
-      fullUrl, 
-      init, 
-      baseHeaders, 
-      path, 
-      token, 
+      fullUrl,
+      init,
+      baseHeaders,
+      path,
+      token,
       attempt
     );
-    
+
     if (result) return result;
     if (!shouldRetry) return { ok: false, error: 'Request failed' };
-    
+
     attempt = newAttempt;
   }
 }
 
 function extractMessageFromJsonObject(j: any): string {
   if (typeof j === 'string') return j;
-  
+
   if (j && typeof j === 'object') {
     if (j.detail !== undefined) {
       return typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail);
@@ -270,19 +271,19 @@ function extractMessageFromJsonObject(j: any): string {
       return String(j.message);
     }
   }
-  
+
   return JSON.stringify(j);
 }
 
 async function safeText(res: Response) {
   try {
     const contentType = res.headers.get('content-type') || '';
-    
+
     if (contentType.includes('application/json')) {
       const jsonData = await res.json();
       return extractMessageFromJsonObject(jsonData);
     }
-    
+
     return await res.text();
   } catch {
     return '';
@@ -308,31 +309,31 @@ export const api = {
   get: async <T>(path: string, init?: RequestInit) => {
     return apiFetch<T>(path, { method: 'GET', ...init });
   },
-  
+
   post: async <T>(path: string, data?: unknown, init?: RequestInit) => {
     return apiFetch<T>(path, {
       method: 'POST',
-      body: data !== undefined ? JSON.stringify(data) : undefined,
+      body: data === undefined ? undefined : JSON.stringify(data),
       ...init,
     });
   },
-  
+
   put: async <T>(path: string, data?: unknown, init?: RequestInit) => {
     return apiFetch<T>(path, {
       method: 'PUT',
-      body: data !== undefined ? JSON.stringify(data) : undefined,
+      body: data === undefined ? undefined : JSON.stringify(data),
       ...init,
     });
   },
-  
+
   patch: async <T>(path: string, data?: unknown, init?: RequestInit) => {
     return apiFetch<T>(path, {
       method: 'PATCH',
-      body: data !== undefined ? JSON.stringify(data) : undefined,
+      body: data === undefined ? undefined : JSON.stringify(data),
       ...init,
     });
   },
-  
+
   delete: async <T>(path: string, init?: RequestInit) => {
     return apiFetch<T>(path, { method: 'DELETE', ...init });
   }

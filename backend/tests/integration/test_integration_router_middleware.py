@@ -157,7 +157,7 @@ class TestRouterMiddlewareIntegration:
         
         # Make multiple rapid requests to test rate limiting
         responses = []
-        for i in range(20):  # Make 20 rapid requests
+        for _ in range(20):  # Make 20 rapid requests
             response = await async_client.get("/api/employees/", headers=auth_headers)
             responses.append(response.status_code)
         
