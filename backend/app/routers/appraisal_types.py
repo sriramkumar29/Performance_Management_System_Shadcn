@@ -62,7 +62,10 @@ async def create_appraisal_range(
     await appraisal_type_service.get_by_id(db, appraisal_range.appraisal_type_id)
 
     # Create new appraisal range
-    return await appraisal_range_service.create(db, appraisal_range)
+    try:
+        return await appraisal_range_service.create(db, appraisal_range)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/ranges", response_model=List[AppraisalRangeResponse])
