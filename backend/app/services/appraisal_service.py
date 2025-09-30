@@ -15,6 +15,7 @@ from app.models.goal import Goal, AppraisalGoal
 from app.schemas.appraisal import AppraisalCreate, AppraisalUpdate
 from app.services.base_service import BaseService
 from app.repositories.appraisal_repository import AppraisalRepository
+from app.repositories.category_repository import CategoryRepository
 from app.exceptions import (
     EntityNotFoundError,
     ValidationError,
