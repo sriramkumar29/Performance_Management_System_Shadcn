@@ -151,7 +151,8 @@ async def read_goal_templates(
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
-    current_user: Employee = Depends(get_current_active_user)
+    current_user: Employee = Depends(get_current_active_user),
+    goal_service: GoalService = Depends(get_goal_service)
 ) -> List[GoalTemplateResponse]:
     """
     Get all goal templates.
@@ -165,17 +166,8 @@ async def read_goal_templates(
     Returns:
         List[GoalTemplateResponse]: List of goal templates with categories
     """
-    from sqlalchemy import select
-    from sqlalchemy.orm import selectinload
-    from app.models.goal import GoalTemplate
-    
-    result = await db.execute(
-        select(GoalTemplate)
-        .options(selectinload(GoalTemplate.categories))
-        .offset(skip)
-        .limit(limit)
-    )
-    goal_templates = result.scalars().all()
+
+    goal_templates = await goal_service.get_goal_template(db, skip, limit)
     
     return [GoalTemplateResponse.model_validate(template) for template in goal_templates]
 

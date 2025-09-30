@@ -279,7 +279,7 @@ const ImportFromTemplateModal = ({
                           t.categories
                         )}
                         onValueChange={(val) =>
-                          setCategoryFor(t.temp_id, parseInt(val))
+                          setCategoryFor(t.temp_id, Number.parseInt(val))
                         }
                         disabled={!selected[t.temp_id]?.checked}
                       >

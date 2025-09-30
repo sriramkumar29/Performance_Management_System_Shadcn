@@ -141,7 +141,7 @@ const EditGoalTemplate = () => {
     const weight =
       typeof tempWeightage === "number"
         ? tempWeightage
-        : parseInt(String(tempWeightage || "0"));
+        : Number.parseInt(String(tempWeightage || "0"));
     if (!weight || weight < 1 || weight > 100) {
       toast.error("Weightage must be between 1 and 100");
       return;
@@ -299,7 +299,7 @@ const EditGoalTemplate = () => {
                 value={tempWeightage}
                 onChange={(e) =>
                   setTempWeightage(
-                    e.target.value === "" ? "" : parseInt(e.target.value)
+                    e.target.value === "" ? "" : Number.parseInt(e.target.value)
                   )
                 }
                 disabled={loading || saving}

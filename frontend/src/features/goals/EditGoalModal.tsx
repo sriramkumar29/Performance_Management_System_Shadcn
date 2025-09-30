@@ -325,7 +325,7 @@ const EditGoalModal = ({
                     onValueChange={(value) =>
                       setFormValues((v) => ({
                         ...v,
-                        category_id: parseInt(value) || 0,
+                        category_id: Number.parseInt(value) || 0,
                       }))
                     }
                   >
@@ -365,7 +365,7 @@ const EditGoalModal = ({
                   onChange={(e) =>
                     setFormValues((v) => ({
                       ...v,
-                      goal_weightage: parseInt(e.target.value) || 0,
+                      goal_weightage: Number.parseInt(e.target.value) || 0,
                     }))
                   }
                   className="h-11 focus:ring-2 focus:ring-primary/20 border-border/50"

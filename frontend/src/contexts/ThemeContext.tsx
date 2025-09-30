@@ -29,12 +29,17 @@ interface ThemeProviderProps {
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   // Initialize from localStorage or system preference
   const getInitialTheme = (): "light" | "dark" => {
-    const stored =
-      typeof window !== "undefined" ? localStorage.getItem("theme") : null;
+    let stored: string | null = null;
+    if (typeof globalThis !== "undefined" && "localStorage" in globalThis) {
+      stored = globalThis.localStorage.getItem("theme");
+    }
+
     if (stored === "light" || stored === "dark") return stored;
+    
     const prefersDark =
-      window.matchMedia &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches;
+      typeof globalThis !== "undefined" &&
+      "matchMedia" in globalThis &&
+      globalThis.matchMedia("(prefers-color-scheme: dark)").matches;
     return prefersDark ? "dark" : "light";
   };
 

@@ -31,7 +31,8 @@ from app.constants import (
     CANNOT_SUBMIT_WITHOUT_GOALS,
     ROLE_APPRAISEE,
     ROLE_APPRAISER,
-    ROLE_REVIEWER
+    ROLE_REVIEWER,
+    ENTITY_APPRAISAL_GOAL
 )
 
 
@@ -520,7 +521,7 @@ class AppraisalService(BaseService):
         existing_appraisal_goal = await self.repository.get_appraisal_goal_by_id(db, appraisal_id, goal_id)
 
         if not existing_appraisal_goal:
-            raise EntityNotFoundError("Appraisal Goal", f"appraisal_id={appraisal_id}, goal_id={goal_id}")
+            raise EntityNotFoundError("ENTITY_APPRAISAL_GOAL", f"appraisal_id={appraisal_id}, goal_id={goal_id}")
         
         await self.repository.remove_appraisal_goal(db, existing_appraisal_goal)
 
@@ -549,13 +550,13 @@ class AppraisalService(BaseService):
         existing_link_any = await self.repository.get_appraisal_goal(db, goal_id)
 
         if existing_link_any and existing_link_any.appraisal_id == appraisal_id:
-            raise EntityNotFoundError("Appraisal Goal", f"goal_id={goal_id} is already linked with different appraisal")
+            raise EntityNotFoundError("ENTITY_APPRAISAL_GOAL", f"goal_id={goal_id} is already linked with different appraisal")
 
     async def check_goal_in_appraisal(self, db: AsyncSession, appraisal_id: int, goal_id: int) -> None:
         existing_link_any = await self.repository.get_appraisal_goal_by_id(db, appraisal_id, goal_id)
 
         if existing_link_any:
-            raise EntityNotFoundError("Appraisal Goal", f"goal_id={goal_id} is already added to this appraisal")
+            raise EntityNotFoundError("ENTITY_APPRAISAL_GOAL", f"goal_id={goal_id} is already added to this appraisal")
         
 
     async def check_total_weightage(self, db: AsyncSession, appraisal_id: int, db_goal: Goal) -> None:

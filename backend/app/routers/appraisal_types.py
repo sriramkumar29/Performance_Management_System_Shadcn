@@ -39,24 +39,6 @@ async def create_appraisal_type(
     db_appraisal_type = await appraisal_type_service.create(db, appraisal_type)
     return db_appraisal_type
 
-    # # Check if name already exists
-    # result = await db.execute(select(AppraisalType).where(AppraisalType.name == appraisal_type.name))
-    # existing_type = result.scalars().first()
-    #
-    # if existing_type:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="Appraisal type with this name already exists"
-    #     )
-    
-    # # Create new appraisal type
-    # db_appraisal_type = AppraisalType(**appraisal_type.model_dump())
-    # db.add(db_appraisal_type)
-    # await db.commit()
-    # await db.refresh(db_appraisal_type)
-    
-    
-
 
 @router.get("/", response_model=List[AppraisalTypeResponse])
 async def read_appraisal_types(
@@ -66,11 +48,6 @@ async def read_appraisal_types(
 ):
     """Get all appraisal types."""
     return await appraisal_type_service.get_all(db, skip, limit)
-    
-    # result = await db.execute(select(AppraisalType).offset(skip).limit(limit))
-    # appraisal_types = result.scalars().all()
-    
-    # return appraisal_types
 
 
 # Appraisal Ranges endpoints - Define before parameterized routes
@@ -82,30 +59,10 @@ async def create_appraisal_range(
     """Create a new appraisal range."""
 
     # Check if appraisal type exists
-    appraisal_type = await appraisal_type_service.get_by_id(db, appraisal_range.appraisal_type_id)
+    await appraisal_type_service.get_by_id(db, appraisal_range.appraisal_type_id)
 
     # Create new appraisal range
     return await appraisal_range_service.create(db, appraisal_range)
-    
-    # # Check if appraisal type exists
-    # result = await db.execute(select(AppraisalType).where(AppraisalType.id == appraisal_range.appraisal_type_id))
-    # appraisal_type = result.scalars().first()
-    
-    # if not appraisal_type:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail=APPRAISAL_TYPE_NOT_FOUND
-    #     )
-    
-
-
-    # # Create new appraisal range
-    # db_appraisal_range = AppraisalRange(**appraisal_range.model_dump())
-    # db.add(db_appraisal_range)
-    # await db.commit()
-    # await db.refresh(db_appraisal_range)
-    
-    # return db_appraisal_range
 
 
 @router.get("/ranges", response_model=List[AppraisalRangeResponse])
@@ -118,16 +75,6 @@ async def read_appraisal_ranges(
     """Get all appraisal ranges, optionally filtered by appraisal type."""
 
     return await appraisal_range_service.get_all(db, appraisal_type_id, skip, limit)
-    
-    # query = select(AppraisalRange)
-    
-    # if appraisal_type_id:
-    #     query = query.where(AppraisalRange.appraisal_type_id == appraisal_type_id)
-    
-    # result = await db.execute(query.offset(skip).limit(limit))
-    # appraisal_ranges = result.scalars().all()
-    
-    # return appraisal_ranges
 
 
 @router.get("/ranges/{range_id}", response_model=AppraisalRangeResponse)
@@ -138,17 +85,6 @@ async def read_appraisal_range(
     """Get an appraisal range by ID."""
     
     return await appraisal_range_service.get_by_id(db, range_id)
-    
-    # result = await db.execute(select(AppraisalRange).where(AppraisalRange.id == range_id))
-    # appraisal_range = result.scalars().first()
-    
-    # if not appraisal_range:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_404_NOT_FOUND,
-    #         detail=APPRAISAL_RANGE_NOT_FOUND
-    #     )
-    
-    # return appraisal_range
 
 
 @router.put("/ranges/{range_id}", response_model=AppraisalRangeResponse)
@@ -161,25 +97,6 @@ async def update_appraisal_range(
 
     return await appraisal_range_service.update(db, range_id, appraisal_range)
     
-    # result = await db.execute(select(AppraisalRange).where(AppraisalRange.id == range_id))
-    # db_appraisal_range = result.scalars().first()
-    
-    # if not db_appraisal_range:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_404_NOT_FOUND,
-    #         detail=APPRAISAL_RANGE_NOT_FOUND
-    #     )
-    
-    # # Update appraisal range
-    # update_data = appraisal_range.model_dump(exclude_unset=True)
-    # for key, value in update_data.items():
-    #     setattr(db_appraisal_range, key, value)
-    
-    # await db.commit()
-    # await db.refresh(db_appraisal_range)
-    
-    # return db_appraisal_range
-
 
 @router.delete("/ranges/{range_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_appraisal_range(
@@ -189,20 +106,6 @@ async def delete_appraisal_range(
     """Delete an appraisal range."""
 
     return await appraisal_range_service.delete(db, range_id)
-
-    # result = await db.execute(select(AppraisalRange).where(AppraisalRange.id == range_id))
-    # db_appraisal_range = result.scalars().first()
-    #
-    # if not db_appraisal_range:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_404_NOT_FOUND,
-    #         detail=APPRAISAL_RANGE_NOT_FOUND
-    #     )
-    
-    # await db.delete(db_appraisal_range)
-    # await db.commit()
-    
-    # return None
 
 
 # Appraisal Types parameterized endpoints - Define after specific routes
@@ -214,17 +117,6 @@ async def read_appraisal_type(
     """Get an appraisal type by ID with its ranges."""
     
     return await appraisal_type_service.get_by_id(db, type_id)
-    
-    # result = await db.execute(select(AppraisalType).where(AppraisalType.id == type_id))
-    # appraisal_type = result.scalars().first()
-    
-    # if not appraisal_type:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_404_NOT_FOUND,
-    #         detail=APPRAISAL_TYPE_NOT_FOUND
-    #     )
-    
-    # return appraisal_type
 
 
 @router.put("/{type_id}", response_model=AppraisalTypeResponse)
@@ -237,36 +129,6 @@ async def update_appraisal_type(
     
     return await appraisal_type_service.update(db, type_id, appraisal_type)
 
-    # result = await db.execute(select(AppraisalType).where(AppraisalType.id == type_id))
-    # db_appraisal_type = result.scalars().first()
-    
-    # if not db_appraisal_type:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_404_NOT_FOUND,
-    #         detail=APPRAISAL_TYPE_NOT_FOUND
-    #     )
-    
-    # # Check if name already exists if updating name
-    # if appraisal_type.name and appraisal_type.name != db_appraisal_type.name:
-    #     result = await db.execute(select(AppraisalType).where(AppraisalType.name == appraisal_type.name))
-    #     existing_type = result.scalars().first()
-        
-    #     if existing_type:
-    #         raise HTTPException(
-    #             status_code=status.HTTP_400_BAD_REQUEST,
-    #             detail="Appraisal type with this name already exists"
-    #         )
-    
-    # # Update appraisal type
-    # update_data = appraisal_type.model_dump(exclude_unset=True)
-    # for key, value in update_data.items():
-    #     setattr(db_appraisal_type, key, value)
-    
-    # await db.commit()
-    # await db.refresh(db_appraisal_type)
-    
-    # return db_appraisal_type
-
 
 @router.delete("/{type_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_appraisal_type(
@@ -276,20 +138,6 @@ async def delete_appraisal_type(
     """Delete an appraisal type."""
 
     return await appraisal_type_service.delete(db, type_id)
-
-    # result = await db.execute(select(AppraisalType).where(AppraisalType.id == type_id))
-    # db_appraisal_type = result.scalars().first()
-    #
-    # if not db_appraisal_type:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_404_NOT_FOUND,
-    #         detail=APPRAISAL_TYPE_NOT_FOUND
-    #     )
-    
-    # await db.delete(db_appraisal_type)
-    # await db.commit()
-    
-    # return None
 
 
 # Appraisal Ranges endpoints
@@ -301,46 +149,6 @@ async def create_appraisal_range(
     """Create a new appraisal range."""
 
     return await appraisal_range_service.create(db, appraisal_range)
-    
-    # # Check if appraisal type exists
-    # result = await db.execute(select(AppraisalType).where(AppraisalType.id == appraisal_range.appraisal_type_id))
-    # appraisal_type = result.scalars().first()
-    
-    # if not appraisal_type:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail=APPRAISAL_TYPE_NOT_FOUND
-    #     )
-    
-    # # Check if appraisal type has ranges enabled
-    # if not appraisal_type.has_range:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="This appraisal type does not support ranges"
-    #     )
-    
-    # # Check if name already exists for this appraisal type
-    # result = await db.execute(
-    #     select(AppraisalRange).where(
-    #         (AppraisalRange.appraisal_type_id == appraisal_range.appraisal_type_id) &
-    #         (AppraisalRange.name == appraisal_range.name)
-    #     )
-    # )
-    # existing_range = result.scalars().first()
-    
-    # if existing_range:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="Range with this name already exists for this appraisal type"
-    #     )
-    
-    # # Create new appraisal range
-    # db_appraisal_range = AppraisalRange(**appraisal_range.model_dump())
-    # db.add(db_appraisal_range)
-    # await db.commit()
-    # await db.refresh(db_appraisal_range)
-    
-    # return db_appraisal_range
 
 
 @router.get("/ranges", response_model=List[AppraisalRangeResponse])
@@ -354,16 +162,6 @@ async def read_appraisal_ranges(
     
     return await appraisal_range_service.get_all(db, appraisal_type_id, skip, limit)
     
-    # query = select(AppraisalRange)
-    
-    # if appraisal_type_id:
-    #     query = query.where(AppraisalRange.appraisal_type_id == appraisal_type_id)
-    
-    # result = await db.execute(query.offset(skip).limit(limit))
-    # appraisal_ranges = result.scalars().all()
-    
-    # return appraisal_ranges
-
 
 @router.get("/ranges/{range_id}", response_model=AppraisalRangeResponse)
 async def read_appraisal_range(
@@ -372,17 +170,6 @@ async def read_appraisal_range(
 ):
     """Get an appraisal range by ID."""
     return await appraisal_range_service.get_by_id(db, range_id)
-    
-    # result = await db.execute(select(AppraisalRange).where(AppraisalRange.id == range_id))
-    # appraisal_range = result.scalars().first()
-    
-    # if not appraisal_range:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_404_NOT_FOUND,
-    #         detail=APPRAISAL_RANGE_NOT_FOUND
-    #     )
-    
-    # return appraisal_range
 
 
 @router.put("/ranges/{range_id}", response_model=AppraisalRangeResponse)
@@ -393,41 +180,6 @@ async def update_appraisal_range(
 ):
     """Update an appraisal range."""
     return await appraisal_range_service.update(db, range_id, appraisal_range)
-    
-    # result = await db.execute(select(AppraisalRange).where(AppraisalRange.id == range_id))
-    # db_appraisal_range = result.scalars().first()
-    
-    # if not db_appraisal_range:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_404_NOT_FOUND,
-    #         detail=APPRAISAL_RANGE_NOT_FOUND
-    #     )
-    
-    # # Check if name already exists for this appraisal type if updating name
-    # if appraisal_range.name and appraisal_range.name != db_appraisal_range.name:
-    #     result = await db.execute(
-    #         select(AppraisalRange).where(
-    #             (AppraisalRange.appraisal_type_id == db_appraisal_range.appraisal_type_id) &
-    #             (AppraisalRange.name == appraisal_range.name)
-    #         )
-    #     )
-    #     existing_range = result.scalars().first()
-        
-    #     if existing_range:
-    #         raise HTTPException(
-    #             status_code=status.HTTP_400_BAD_REQUEST,
-    #             detail="Range with this name already exists for this appraisal type"
-    #         )
-    
-    # # Update appraisal range
-    # update_data = appraisal_range.model_dump(exclude_unset=True)
-    # for key, value in update_data.items():
-    #     setattr(db_appraisal_range, key, value)
-    
-    # await db.commit()
-    # await db.refresh(db_appraisal_range)
-    
-    # return db_appraisal_range
 
 
 @router.delete("/ranges/{range_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -437,17 +189,3 @@ async def delete_appraisal_range(
 ):
     """Delete an appraisal range."""
     return await appraisal_range_service.delete(db, range_id)
-    
-    # result = await db.execute(select(AppraisalRange).where(AppraisalRange.id == range_id))
-    # db_appraisal_range = result.scalars().first()
-    
-    # if not db_appraisal_range:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_404_NOT_FOUND,
-    #         detail=APPRAISAL_RANGE_NOT_FOUND
-    #     )
-    
-    # await db.delete(db_appraisal_range)
-    # await db.commit()
-    
-    # return None

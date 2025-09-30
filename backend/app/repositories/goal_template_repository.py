@@ -29,6 +29,15 @@ class GoalTemplateRepository(BaseRepository[GoalTemplate]):
     def id_field(self) -> str:
         return "temp_id"
 
+    async def get_goal_template(self, db: AsyncSession, skip: int, limit: int) -> Optional[GoalTemplate]:
+        result = await db.execute(
+            select(GoalTemplate)
+            .options(selectinload(GoalTemplate.categories))
+            .offset(skip)
+            .limit(limit)
+        )
+        return result.scalars().all()
+
     async def get_with_categories(
         self,
         db: AsyncSession,

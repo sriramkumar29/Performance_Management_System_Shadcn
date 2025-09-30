@@ -165,6 +165,7 @@ ENTITY_REPORTING_MANAGER = "Reporting manager"
 ENTITY_GOAL = "Goal"
 ENTITY_GOAL_TEMPLATE = "Goal template"
 ENTITY_CATEGORY = "Category"
+ENTITY_APPRAISAL_GOAL = "Appraisal goal"
 
 # =============================================================================
 # COMMON PATTERNS FOR DYNAMIC MESSAGES

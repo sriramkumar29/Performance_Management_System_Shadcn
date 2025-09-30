@@ -77,74 +77,6 @@ async def remove_goal_from_appraisal(
     # Re-select with eager-loaded nested relations for safe serialization
     return await appraisal_service.load_appraisal(db, appraisal_id, db_appraisal)
 
-    # # Check if appraisal exists
-    # result = await db.execute(select(Appraisal).where(Appraisal.appraisal_id == appraisal_id))
-    # db_appraisal = result.scalars().first()
-    
-    # if not db_appraisal:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_404_NOT_FOUND,
-    #         detail=APPRAISAL_NOT_FOUND
-    #     )
-    
-    # # Check if appraisal is in Draft status (only allow removing goals in Draft)
-    # if db_appraisal.status != AppraisalStatus.DRAFT:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail=f"Cannot remove goals when appraisal is in {db_appraisal.status} status. Goals can only be removed in Draft status."
-    #     )
-
-    # # Find and remove the appraisal goal
-    # result = await db.execute(
-    #     select(AppraisalGoal).where(
-    #         and_(
-    #             AppraisalGoal.appraisal_id == appraisal_id,
-    #             AppraisalGoal.goal_id == goal_id
-    #         )
-    #     )
-    # )
-    # appraisal_goal = result.scalars().first()
-    
-    # if not appraisal_goal:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_404_NOT_FOUND,
-    #         detail=GOAL_NOT_IN_APPRAISAL
-    #     )
-
-    # # Delete the appraisal-goal link first
-    # await db.delete(appraisal_goal)
-    # # Flush to ensure subsequent queries see the deletion within this transaction
-    # await db.flush()
-
-    # # If this goal is no longer linked to any appraisal, delete the goal itself
-    # result = await db.execute(
-    #     select(AppraisalGoal).where(AppraisalGoal.goal_id == goal_id)
-    # )
-    # remaining_link = result.scalars().first()
-    # if not remaining_link:
-    #     # Safe to delete the goal row
-    #     result = await db.execute(select(Goal).where(Goal.goal_id == goal_id))
-    #     db_goal = result.scalars().first()
-    #     if db_goal:
-    #         await db.delete(db_goal)
-
-    # # Commit deletions
-    # await db.commit()
-
-    # Re-select with eager-loaded nested relations for safe serialization
-    # result = await db.execute(
-    #     select(Appraisal)
-    #     .options(
-    #         selectinload(Appraisal.appraisal_goals)
-    #         .selectinload(AppraisalGoal.goal)
-    #         .selectinload(Goal.category)
-    #     )
-    #     .where(Appraisal.appraisal_id == db_appraisal.appraisal_id)
-    # )
-    # loaded_appraisal = result.scalars().first()
-    
-    # return loaded_appraisal
-
 
 @router.get("/{appraisal_id}/weightage-summary")
 async def get_appraisal_weightage_summary(
@@ -178,42 +110,11 @@ async def get_appraisal_weightage_summary(
         ]
     }
 
-    # Check if appraisal exists
-    # result = await db.execute(select(Appraisal).where(Appraisal.appraisal_id == appraisal_id))
-    # db_appraisal = result.scalars().first()
-    
-    # if not db_appraisal:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_404_NOT_FOUND,
-    #         detail=APPRAISAL_NOT_FOUND
-    #     )
-    
-    # # Calculate current total weightage
-    # result = await db.execute(
-    #     select(func.sum(Goal.goal_weightage)).select_from(
-    #         AppraisalGoal.__table__.join(Goal.__table__)
-    #     ).where(AppraisalGoal.appraisal_id == appraisal_id)
-    # )
-    # current_total_weightage = result.scalar() or 0
-
-
-    # # Get individual goal weightages
-    # result = await db.execute(
-    #     select(Goal.goal_id, Goal.goal_title, Goal.goal_weightage).select_from(
-    #         AppraisalGoal.__table__.join(Goal.__table__)
-    #     ).where(AppraisalGoal.appraisal_id == appraisal_id)
-    # )
-    # goals = result.fetchall()
-
 
 
 @router.get("/categories", response_model=List[dict])
 async def get_categories(db: AsyncSession = Depends(get_db), appraisal_service = Depends(get_appraisal_service)):
     """Get all categories for dropdown selection."""
-    
-    # result = await db.execute(select(Category).order_by(Category.name))
-    # categories = result.scalars().all()
-
     categories = await appraisal_service.get_categories(db)
     
     return [

@@ -140,6 +140,10 @@ class GoalTemplateService(BaseService[GoalTemplate, GoalTemplateCreate, GoalTemp
         if not template:
             raise EntityNotFoundError(f"{self.entity_name} with ID {entity_id} not found")
         return template
+
+    async def get_goal_template(self, db: AsyncSession, skip: int, limit: int) -> List[GoalTemplate]:
+        """Get multiple goal templates with pagination."""
+        return await self.repository.get_goal_template(db, skip, limit)
     
     async def get_template_with_categories(
         self,
@@ -212,6 +216,8 @@ class GoalTemplateService(BaseService[GoalTemplate, GoalTemplateCreate, GoalTemp
         # Reload with categories for response
         return await self.get_template_with_categories(db, template_id)
     
+
+
 
 
 
