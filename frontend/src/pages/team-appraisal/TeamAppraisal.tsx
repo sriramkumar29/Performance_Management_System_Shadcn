@@ -104,9 +104,9 @@ const TeamAppraisal = () => {
         const listRActive = aReviewerActive.data || [];
         const listRCompleted = aReviewerCompleted.data || [];
         const map = new Map<number, Appraisal>();
-        [...listA, ...listRActive, ...listRCompleted].forEach((item) =>
-          map.set(item.appraisal_id, item)
-        );
+        for (const item of [...listA, ...listRActive, ...listRCompleted]) {
+          map.set(item.appraisal_id, item);
+        }
         setAppraisals(Array.from(map.values()));
       }
       if (e.ok && e.data) setEmployees(e.data);

@@ -302,9 +302,9 @@ const ReviewerEvaluation = () => {
                         max={5}
                         step={1}
                         value={
-                          current.self_rating != null
-                            ? [current.self_rating]
-                            : [1]
+                          current.self_rating == null
+                            ? [1]
+                            : [current.self_rating]
                         }
                         disabled
                         className="opacity-70"
@@ -347,9 +347,9 @@ const ReviewerEvaluation = () => {
                         max={5}
                         step={1}
                         value={
-                          current.appraiser_rating != null
-                            ? [current.appraiser_rating]
-                            : [1]
+                          current.appraiser_rating == null
+                            ? [1]
+                            : [current.appraiser_rating]
                         }
                         disabled
                         className="opacity-70"
@@ -451,9 +451,9 @@ const ReviewerEvaluation = () => {
                       max={5}
                       step={1}
                       value={
-                        appraisal.appraiser_overall_rating != null
-                          ? [appraisal.appraiser_overall_rating]
-                          : [1]
+                        appraisal.appraiser_overall_rating == null
+                          ? [1]
+                          : [appraisal.appraiser_overall_rating]
                       }
                       disabled
                       className="opacity-70"
@@ -497,7 +497,7 @@ const ReviewerEvaluation = () => {
                       min={1}
                       max={5}
                       step={1}
-                      value={overall.rating != null ? [overall.rating] : [3]}
+                      value={overall.rating == null ? [3] : [overall.rating]}
                       onValueChange={(v) =>
                         setOverall((p) => ({ ...p, rating: v[0] ?? null }))
                       }

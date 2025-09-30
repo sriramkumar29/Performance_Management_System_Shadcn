@@ -150,7 +150,7 @@ const SelfAssessment = () => {
         const missingIdx = goals.findIndex(
           (g) => g.goal.goal_id === ag.goal.goal_id
         );
-        setIdx(missingIdx >= 0 ? missingIdx : 0);
+        setIdx(Math.max(missingIdx, 0));
         toast.error("Please provide rating and comment for all goals");
         return;
       }
@@ -332,9 +332,9 @@ const SelfAssessment = () => {
                     max={5}
                     step={1}
                     value={
-                      form[current.goal.goal_id]?.rating != null
-                        ? [form[current.goal.goal_id].rating!]
-                        : [1]
+                      form[current.goal.goal_id]?.rating == null
+                        ? [1]
+                        : [form[current.goal.goal_id].rating!]
                     }
                     onValueChange={(v: number[]) =>
                       setCurrentField(current.goal.goal_id, {

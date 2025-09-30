@@ -8,11 +8,12 @@ export function onUnauthorized(listener: UnauthorizedListener) {
 }
 
 export function emitUnauthorized() {
-  unauthorizedListeners.forEach((cb) => {
+  for (const cb of unauthorizedListeners) {
     try {
       cb();
     } catch {
       // no-op
     }
-  });
+  }
 }
+

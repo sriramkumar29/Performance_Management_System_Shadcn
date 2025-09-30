@@ -62,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const parts = token.split(".");
       if (parts.length < 2) return null;
       const payload = parts[1];
-      const base64 = payload.replaceAll(/-/g, "+").replaceAll(/_/g, "/");
+      const base64 = payload.replaceAll("-", "+").replaceAll("_", "/");
       const padded = base64.padEnd(
         base64.length + (4 - (base64.length % 4 || 4)),
         "="
