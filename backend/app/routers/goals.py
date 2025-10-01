@@ -33,7 +33,8 @@ from app.services.goal_service import (
     GoalService,
     GoalTemplateService, 
     CategoryService,
-    AppraisalGoalService
+    AppraisalGoalService,
+    
 )
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
@@ -152,7 +153,7 @@ async def read_goal_templates(
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
     current_user: Employee = Depends(get_current_active_user),
-    goal_service: GoalService = Depends(get_goal_service)
+    template_service: GoalTemplateService = Depends(get_goal_template_service)
 ) -> List[GoalTemplateResponse]:
     """
     Get all goal templates.
@@ -167,7 +168,7 @@ async def read_goal_templates(
         List[GoalTemplateResponse]: List of goal templates with categories
     """
 
-    goal_templates = await goal_service.get_goal_template(db, skip, limit)
+    goal_templates = await template_service.get_goal_template(db, skip, limit)
     
     return [GoalTemplateResponse.model_validate(template) for template in goal_templates]
 
