@@ -16,8 +16,9 @@ from pathlib import Path
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
 from starlette.exceptions import HTTPException
-import logging
 
+from app.core.logging_config import setup_logging, get_logger
+from app.utils.logger import log_exception
 from app.db.database import engine, Base
 from app.routers import employees, appraisals, goals, appraisal_types, appraisal_goals, frontend_serve
 from app.core.config import settings
@@ -31,19 +32,34 @@ from app.constants import (
     FRONTEND_NOT_FOUND, API_RUNNING_FRONTEND_NOT_FOUND
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%d-%m-%Y %H:%M:%S'
-)
-logger = logging.getLogger(__name__)
+# Setup logging first
+setup_logging()
+logger = get_logger(__name__)
 
 @asynccontextmanager
+@log_exception(logger)
 async def lifespan(app: FastAPI):
-    await init_db()       # startup
+    """Application lifespan manager with logging."""
+    logger.info("Application startup initiated")
+    
+    try:
+        await init_db()
+        logger.info("Database initialization completed successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {str(e)}")
+        raise
+    
+    logger.info("Application startup completed")
     yield
-    await close_db()      # shutdown
+    
+    logger.info("Application shutdown initiated")
+    try:
+        await close_db()
+        logger.info("Database connections closed successfully")
+    except Exception as e:
+        logger.error(f"Error during database cleanup: {str(e)}")
+    
+    logger.info("Application shutdown completed")
 
 
 app = FastAPI(

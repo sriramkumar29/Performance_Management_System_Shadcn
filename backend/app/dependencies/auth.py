@@ -2,7 +2,8 @@
 Authentication dependencies for the Performance Management System.
 
 This module provides authentication and authorization dependencies
-for FastAPI routes with proper service layer integration.
+for FastAPI routes with proper service layer integration and
+comprehensive logging.
 """
 
 from fastapi import Depends, Security, HTTPException, status
@@ -14,6 +15,9 @@ from app.models.employee import Employee
 from app.services.auth_service import AuthService
 from app.exceptions import UnauthorizedError
 from app.constants import ROLE_ADMIN, ROLE_MANAGER_LOWER
+from app.utils.logger import get_logger, build_log_context, sanitize_log_data
+
+logger = get_logger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/api/employees/login",  # Keep existing token URL for compatibility
@@ -45,12 +49,30 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid or user not found
     """
+    context = build_log_context()
+    
     try:
-        return await auth_service.get_current_user_from_token(db, token=token)
+        # Sanitize token for logging (show only first/last few chars)
+        token_preview = f"{token[:10]}...{token[-4:]}" if len(token) > 14 else "***"
+        logger.debug(f"{context}AUTH_REQUEST: Validating JWT token - {token_preview}")
+        
+        user = await auth_service.get_current_user_from_token(db, token=token)
+        
+        logger.info(f"{context}AUTH_SUCCESS: Authenticated user - ID: {user.emp_id}, Email: {sanitize_log_data(user.emp_email)}")
+        return user
+        
     except UnauthorizedError as e:
+        logger.warning(f"{context}AUTH_FAILED: Token validation failed - {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except Exception as e:
+        logger.error(f"{context}AUTH_ERROR: Unexpected error during authentication - {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication failed",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -70,10 +92,29 @@ def get_current_active_user(
     Raises:
         HTTPException: If user is inactive
     """
-    if not current_user.emp_status:
+    context = build_log_context(user_id=current_user.emp_id)
+    
+    try:
+        logger.debug(f"{context}USER_STATUS_CHECK: Verifying user active status - ID: {current_user.emp_id}")
+        
+        if not current_user.emp_status:
+            logger.warning(f"{context}USER_INACTIVE: User account is disabled - ID: {current_user.emp_id}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Inactive user"
+            )
+        
+        logger.info(f"{context}USER_ACTIVE: Active user verified - ID: {current_user.emp_id}")
+        return current_user
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        logger.error(f"{context}USER_CHECK_ERROR: Unexpected error during user status check - {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Inactive user"
+            detail="User validation failed"
         )
     
     return current_user
@@ -84,36 +125,90 @@ def require_manager_role(
     current_user: Employee = Depends(get_current_active_user)
 ) -> Employee:
     """Require manager role."""
-    if current_user.emp_roles and ROLE_MANAGER_LOWER in current_user.emp_roles.lower():
-        return current_user
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Manager role required"
-    )
+    context = build_log_context(user_id=current_user.emp_id)
+    
+    try:
+        logger.debug(f"{context}ROLE_CHECK: Verifying manager role - User: {current_user.emp_id}, Roles: {sanitize_log_data(current_user.emp_roles)}")
+        
+        if current_user.emp_roles and ROLE_MANAGER_LOWER in current_user.emp_roles.lower():
+            logger.info(f"{context}ROLE_APPROVED: Manager role verified - User: {current_user.emp_id}")
+            return current_user
+        
+        logger.warning(f"{context}ROLE_DENIED: Manager role required but not found - User: {current_user.emp_id}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Manager role required"
+        )
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        logger.error(f"{context}ROLE_ERROR: Unexpected error during manager role check - {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Role validation failed"
+        )
 
 
 def require_admin_role(
     current_user: Employee = Depends(get_current_active_user)
 ) -> Employee:
     """Require admin role."""
-    if current_user.emp_roles and ROLE_ADMIN in current_user.emp_roles.lower():
-        return current_user
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Admin role required"
-    )
+    context = build_log_context(user_id=current_user.emp_id)
+    
+    try:
+        logger.debug(f"{context}ROLE_CHECK: Verifying admin role - User: {current_user.emp_id}, Roles: {sanitize_log_data(current_user.emp_roles)}")
+        
+        if current_user.emp_roles and ROLE_ADMIN in current_user.emp_roles.lower():
+            logger.info(f"{context}ROLE_APPROVED: Admin role verified - User: {current_user.emp_id}")
+            return current_user
+        
+        logger.warning(f"{context}ROLE_DENIED: Admin role required but not found - User: {current_user.emp_id}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin role required"
+        )
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        logger.error(f"{context}ROLE_ERROR: Unexpected error during admin role check - {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Role validation failed"
+        )
 
 
 def require_hr_role(
     current_user: Employee = Depends(get_current_active_user)
 ) -> Employee:
     """Require HR role."""
-    if current_user.emp_roles and "hr" in current_user.emp_roles.lower():
-        return current_user
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="HR role required"
-    )
+    context = build_log_context(user_id=current_user.emp_id)
+    
+    try:
+        logger.debug(f"{context}ROLE_CHECK: Verifying HR role - User: {current_user.emp_id}, Roles: {sanitize_log_data(current_user.emp_roles)}")
+        
+        if current_user.emp_roles and "hr" in current_user.emp_roles.lower():
+            logger.info(f"{context}ROLE_APPROVED: HR role verified - User: {current_user.emp_id}")
+            return current_user
+        
+        logger.warning(f"{context}ROLE_DENIED: HR role required but not found - User: {current_user.emp_id}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="HR role required"
+        )
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        logger.error(f"{context}ROLE_ERROR: Unexpected error during HR role check - {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Role validation failed"
+        )
 
 
 # Legacy compatibility - keep the old get_current_manager function
@@ -133,6 +228,19 @@ def get_current_manager(
     Raises:
         HTTPException: If user is not a manager (optional check)
     """
-    # For backward compatibility, assume all users can be managers for now
-    # You can implement role-based logic here later
-    return current_user
+    context = build_log_context(user_id=current_user.emp_id)
+    
+    try:
+        logger.debug(f"{context}LEGACY_MANAGER_CHECK: Validating manager access (legacy compatibility) - User: {current_user.emp_id}")
+        
+        # For backward compatibility, assume all users can be managers for now
+        # You can implement role-based logic here later
+        logger.info(f"{context}LEGACY_MANAGER_APPROVED: Manager access granted (legacy mode) - User: {current_user.emp_id}")
+        return current_user
+        
+    except Exception as e:
+        logger.error(f"{context}LEGACY_MANAGER_ERROR: Unexpected error during legacy manager check - {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Manager validation failed"
+        )

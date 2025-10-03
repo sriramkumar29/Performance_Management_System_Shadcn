@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-import logging
+import traceback
 from typing import Union
 
 from app.exceptions import (
@@ -22,8 +22,9 @@ from app.exceptions import (
     BadRequestError,
     InternalServerError
 )
+from app.utils.logger import get_logger, build_log_context, sanitize_log_data
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def setup_exception_handlers(app: FastAPI) -> None:
@@ -33,6 +34,8 @@ def setup_exception_handlers(app: FastAPI) -> None:
     Args:
         app: FastAPI application instance
     """
+    context = build_log_context()
+    logger.info(f"{context}EXCEPTION_HANDLERS_SETUP: Initializing global exception handlers")
     
     @app.exception_handler(BaseCustomException)
     async def custom_exception_handler(
@@ -40,9 +43,15 @@ def setup_exception_handlers(app: FastAPI) -> None:
         exc: BaseCustomException
     ) -> JSONResponse:
         """Handle custom application exceptions."""
+        request_id = getattr(request.state, 'request_id', 'unknown')
+        context = build_log_context(request_id=request_id)
+        
         logger.warning(
-            f"Custom exception: {exc.__class__.__name__} - {exc.detail} - "
-            f"Path: {request.url.path} - Method: {request.method}"
+            f"{context}CUSTOM_EXCEPTION: {exc.__class__.__name__} - "
+            f"Message: {sanitize_log_data(exc.detail)} | "
+            f"Path: {sanitize_log_data(request.url.path)} | "
+            f"Method: {request.method} | "
+            f"Status: {exc.status_code}"
         )
         
         return JSONResponse(
@@ -51,7 +60,8 @@ def setup_exception_handlers(app: FastAPI) -> None:
                 "error": {
                     "type": exc.__class__.__name__,
                     "message": exc.detail,
-                    "status_code": exc.status_code
+                    "status_code": exc.status_code,
+                    "request_id": request_id
                 }
             },
             headers=exc.headers
@@ -63,9 +73,14 @@ def setup_exception_handlers(app: FastAPI) -> None:
         exc: StarletteHTTPException
     ) -> JSONResponse:
         """Handle HTTP exceptions."""
+        request_id = getattr(request.state, 'request_id', 'unknown')
+        context = build_log_context(request_id=request_id)
+        
         logger.warning(
-            f"HTTP exception: {exc.status_code} - {exc.detail} - "
-            f"Path: {request.url.path} - Method: {request.method}"
+            f"{context}HTTP_EXCEPTION: Status {exc.status_code} - "
+            f"Message: {sanitize_log_data(str(exc.detail))} | "
+            f"Path: {sanitize_log_data(request.url.path)} | "
+            f"Method: {request.method}"
         )
         
         return JSONResponse(
@@ -74,7 +89,8 @@ def setup_exception_handlers(app: FastAPI) -> None:
                 "error": {
                     "type": "HTTPException",
                     "message": exc.detail,
-                    "status_code": exc.status_code
+                    "status_code": exc.status_code,
+                    "request_id": request_id
                 }
             }
         )
@@ -85,9 +101,14 @@ def setup_exception_handlers(app: FastAPI) -> None:
         exc: RequestValidationError
     ) -> JSONResponse:
         """Handle request validation errors."""
+        request_id = getattr(request.state, 'request_id', 'unknown')
+        context = build_log_context(request_id=request_id)
+        
         logger.warning(
-            f"Validation error: {exc.errors()} - "
-            f"Path: {request.url.path} - Method: {request.method}"
+            f"{context}VALIDATION_ERROR: Request validation failed - "
+            f"Errors: {sanitize_log_data(str(exc.errors()))} | "
+            f"Path: {sanitize_log_data(request.url.path)} | "
+            f"Method: {request.method}"
         )
         
         # Format validation errors for better readability
@@ -126,11 +147,16 @@ def setup_exception_handlers(app: FastAPI) -> None:
         exc: Exception
     ) -> JSONResponse:
         """Handle unexpected exceptions."""
+        request_id = getattr(request.state, 'request_id', 'unknown')
+        context = build_log_context(request_id=request_id)
+        
         logger.error(
-            f"Unexpected error: {exc.__class__.__name__} - {str(exc)} - "
-            f"Path: {request.url.path} - Method: {request.method}",
-            exc_info=True
+            f"{context}UNEXPECTED_ERROR: {exc.__class__.__name__} - "
+            f"Message: {sanitize_log_data(str(exc))} | "
+            f"Path: {sanitize_log_data(request.url.path)} | "
+            f"Method: {request.method}"
         )
+        logger.debug(f"{context}UNEXPECTED_ERROR_TRACEBACK: {traceback.format_exc()}")
         
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -138,10 +164,14 @@ def setup_exception_handlers(app: FastAPI) -> None:
                 "error": {
                     "type": "InternalServerError",
                     "message": "An unexpected error occurred",
-                    "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR
+                    "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "request_id": request_id
                 }
             }
         )
+    
+    # Log successful setup completion
+    logger.info(f"{context}EXCEPTION_HANDLERS_COMPLETE: Global exception handlers configured successfully")
 
 
 # Utility functions for consistent error responses

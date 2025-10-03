@@ -10,13 +10,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.goal import Goal
 from app.repositories.base_repository import BaseRepository
+from app.exceptions.domain_exceptions import RepositoryException
+from app.utils.logger import get_logger, build_log_context, log_execution_time
 
 
 class GoalRepository(BaseRepository[Goal]):
-    """Repository for Goal database operations."""
+    """Repository for Goal database operations with comprehensive logging."""
 
     def __init__(self):
         super().__init__(Goal)
+        self.logger = get_logger(__name__)
 
     @property
     def entity_name(self) -> str:

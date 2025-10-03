@@ -8,7 +8,6 @@ and maintain consistency across the application.
 from fastapi import HTTPException, status
 from typing import Any, Dict, Optional
 
-
 class BaseCustomException(HTTPException):
     """Base class for all custom exceptions."""
     
@@ -129,3 +128,48 @@ class DuplicateEntityError(ConflictError):
     
     def __init__(self, entity_name: str, field_name: str = "name") -> None:
         super().__init__(f"{entity_name} with this {field_name} already exists")
+
+
+# Additional service-specific exceptions
+class BaseServiceException(InternalServerError):
+    """Base exception for service layer errors."""
+    
+    def __init__(self, detail: str, details: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(detail)
+        self.details = details
+
+
+class UnauthorizedActionError(UnauthorizedError):
+    """Raised when an unauthorized action is attempted."""
+    
+    def __init__(self, detail: str = "Unauthorized action") -> None:
+        super().__init__(detail)
+
+
+class TokenError(UnauthorizedError):
+    """Raised when token operations fail."""
+    
+    def __init__(self, detail: str = "Token error") -> None:
+        super().__init__(detail)
+
+
+class DuplicateResourceError(ConflictError):
+    """Raised when trying to create a duplicate resource."""
+    
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+
+
+class BaseRepositoryException(InternalServerError):
+    """Base exception for repository layer errors."""
+    
+    def __init__(self, detail: str, details: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(detail)
+        self.details = details
+
+
+class BusinessRuleViolationError(BadRequestError):
+    """Raised when business rules are violated."""
+    
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
