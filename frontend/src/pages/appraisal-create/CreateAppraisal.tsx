@@ -484,80 +484,93 @@ const CreateAppraisal = () => {
   };
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 py-4 sm:py-6">
-      <div className="mb-4 flex items-center justify-start">
-        <div className="flex items-center gap-3">
+    <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-6 sm:py-8 animate-fade-in-up">
+      <div className="mb-6 flex items-center justify-start">
+        <div className="flex items-center gap-4">
           <Button
             variant="outline"
             onClick={() => navigate(-1)}
             aria-label="Go back"
             title="Go back"
+            className="hover-lift"
           >
             <ArrowLeft className="h-4 w-4" />
             <span className="hidden sm:inline sm:ml-2">Back</span>
           </Button>
-          <h1 className="text-xl sm:text-2xl font-semibold">
-            {createdAppraisalId ? "Edit Appraisal" : "Create New Appraisal"}
-          </h1>
-          <Badge
-            variant="outline"
-            className="px-2 py-0.5 text-xs"
-            data-testid="appraisal-status-badge"
-          >
-            {statusLabel}
-          </Badge>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+              {createdAppraisalId ? "Edit Appraisal" : "Create New Appraisal"}
+            </h1>
+            <Badge
+              variant="outline"
+              className="px-3 py-1 text-sm font-semibold shadow-soft"
+              data-testid="appraisal-status-badge"
+            >
+              {statusLabel}
+            </Badge>
+          </div>
         </div>
       </div>
 
       {/* Appraisal Details */}
-      <AppraisalDetailsForm
-        formValues={formValues}
-        setFormValues={setFormValues}
-        employees={eligibleAppraisees}
-        eligibleReviewers={eligibleReviewers}
-        appraisalTypes={appraisalTypes}
-        ranges={ranges}
-        setRanges={setRanges}
-        selectedTypeId={selectedTypeId}
-        setSelectedTypeId={setSelectedTypeId}
-        isCollapsed={isAppraisalDetailsCollapsed}
-        onToggleCollapse={() =>
-          setIsAppraisalDetailsCollapsed(!isAppraisalDetailsCollapsed)
-        }
-        isLocked={isLocked}
-        onFetchRanges={fetchRanges}
-      />
+      <div className="animate-slide-up">
+        <AppraisalDetailsForm
+          formValues={formValues}
+          setFormValues={setFormValues}
+          employees={eligibleAppraisees}
+          eligibleReviewers={eligibleReviewers}
+          appraisalTypes={appraisalTypes}
+          ranges={ranges}
+          setRanges={setRanges}
+          selectedTypeId={selectedTypeId}
+          setSelectedTypeId={setSelectedTypeId}
+          isCollapsed={isAppraisalDetailsCollapsed}
+          onToggleCollapse={() =>
+            setIsAppraisalDetailsCollapsed(!isAppraisalDetailsCollapsed)
+          }
+          isLocked={isLocked}
+          onFetchRanges={fetchRanges}
+        />
+      </div>
 
       {/* Goals Section */}
-      <GoalsSection
-        goals={goals}
-        canAddGoals={canAddGoals}
-        isLocked={isLocked}
-        addGoalDisabledReason={addGoalDisabledReason}
-        appraiseeSelected={appraiseeSelected}
-        reviewerSelected={reviewerSelected}
-        typeSelected={typeSelected}
-        periodSelected={periodSelected}
-        onAddGoal={() => setAddGoalModalOpen(true)}
-        onImportFromTemplate={() => setImportFromTemplateOpen(true)}
-        onEditGoal={handleEditGoalLocal}
-        onRemoveGoal={handleRemoveGoal}
-      />
+      <div
+        className="mt-6 animate-slide-up"
+        style={{ animationDelay: "100ms" }}
+      >
+        <GoalsSection
+          goals={goals}
+          canAddGoals={canAddGoals}
+          isLocked={isLocked}
+          addGoalDisabledReason={addGoalDisabledReason}
+          appraiseeSelected={appraiseeSelected}
+          reviewerSelected={reviewerSelected}
+          typeSelected={typeSelected}
+          periodSelected={periodSelected}
+          onAddGoal={() => setAddGoalModalOpen(true)}
+          onImportFromTemplate={() => setImportFromTemplateOpen(true)}
+          onEditGoal={handleEditGoalLocal}
+          onRemoveGoal={handleRemoveGoal}
+        />
+      </div>
 
       {/* Footer Actions */}
-      <div className="mt-6 grid grid-cols-2 gap-3 items-center sm:flex sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-8 grid grid-cols-2 gap-4 items-center sm:flex sm:flex-row sm:items-center sm:justify-between bg-card/50 backdrop-blur-sm rounded-xl p-4 border border-border/50 shadow-soft">
         <div className="flex gap-3">
           <Button
+            variant="outline"
             onClick={handleCancel}
             disabled={loading}
             aria-label="Cancel"
             title="Cancel"
+            className="hover-scale"
           >
             <X className="h-4 w-4" />
             <span className="hidden sm:inline sm:ml-2">Cancel</span>
           </Button>
           {!createdAppraisalId && (
             <Button
+              variant="elevated"
               onClick={handleSubmit}
               disabled={!canSaveDraft || loading}
               data-testid="save-draft"
@@ -572,6 +585,7 @@ const CreateAppraisal = () => {
           )}
           {createdAppraisalId && createdAppraisalStatus === "Draft" && (
             <Button
+              variant="elevated"
               onClick={handleSubmit}
               disabled={!canSaveDraft || loading}
               aria-label={getSaveButtonLabel(loading, false)}
@@ -587,10 +601,12 @@ const CreateAppraisal = () => {
         <div className="justify-self-end sm:self-auto">
           <Button
             data-testid="submit-for-acknowledgement-button"
+            variant="elevated"
             onClick={handleFinish}
             disabled={!canSubmitForAck || loading}
             aria-label="Submit for acknowledgement"
             title="Submit for acknowledgement"
+            className="shadow-glow"
           >
             <Send className="h-4 w-4" />
             <span className="hidden sm:inline sm:ml-2">

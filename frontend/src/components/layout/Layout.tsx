@@ -63,20 +63,20 @@ const Layout = ({ children }: LayoutProps) => {
   return (
     <>
       <Navbar showTeamTab={showTeamTab} />
-      <main className="px-3 sm:px-6 py-4 sm:py-6">
+      <main className="px-3 sm:px-6 py-4 sm:py-6 min-h-screen">
         <div className="container w-full">
           {showMainHeader && (
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-6 animate-fade-in-up">
               <h1
                 data-testid="performance-management-title"
-                className="text-2xl font-semibold text-foreground"
+                className="text-3xl font-bold text-foreground bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent"
               >
                 {getPageTitle()}
               </h1>
               {showCreateAppraisalButton && <CreateAppraisalButton />}
             </div>
           )}
-          {children}
+          <div className="animate-fade-in">{children}</div>
         </div>
       </main>
       <Toaster />

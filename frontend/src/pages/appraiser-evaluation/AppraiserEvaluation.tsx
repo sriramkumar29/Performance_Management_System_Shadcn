@@ -249,11 +249,11 @@ const AppraiserEvaluation = () => {
     >
       <div className="mx-auto max-w-5xl space-y-6">
         {/* Header Card */}
-        <Card className="shadow-medium border-0 glass-effect">
+        <Card className="shadow-soft hover-lift border-0 glass-effect">
           <CardHeader className="pb-4">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="space-y-2">
-                <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+                <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
                   Appraiser Evaluation
                 </h1>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -296,7 +296,7 @@ const AppraiserEvaluation = () => {
 
         {/* Goal Assessment Card */}
         {!isOverallPage && current && (
-          <Card className="shadow-medium border-0 glass-effect animate-slide-up">
+          <Card className="shadow-soft hover-lift border-0 glass-effect animate-slide-up">
             <CardHeader className="pb-4">
               <div className="flex items-start gap-3">
                 <div className="p-2 rounded-lg bg-primary/10">
@@ -531,7 +531,7 @@ const AppraiserEvaluation = () => {
 
         {/* Overall Evaluation Card */}
         {isOverallPage && (
-          <Card className="shadow-medium border-0 glass-effect animate-slide-up">
+          <Card className="shadow-soft hover-lift border-0 glass-effect animate-slide-up">
             <CardHeader className="pb-4">
               <div className="flex items-start gap-3">
                 <div className="p-2 rounded-lg bg-primary/10">

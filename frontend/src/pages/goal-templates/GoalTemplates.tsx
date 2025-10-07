@@ -21,7 +21,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../../components/ui/alert-dialog";
-import { Skeleton } from "../../components/ui/skeleton";
 
 interface Category {
   id: number;
@@ -32,17 +31,29 @@ interface GoalTemplate {
   temp_id: number;
   temp_title: string;
   temp_description: string;
-  temp_performance_factor: string;
-  temp_importance: string;
   temp_weightage: number;
-  categories: Category[];
+  temp_importance: string;
+  temp_performance_factor: string;
+  categories?: Category[];
+}
+
+/**
+ * Helper to check if user is a manager or above (Director or CEO).
+ */
+function isManagerOrAbove(
+  roles: string | string[] | undefined,
+  level: number | undefined
+): boolean {
+  if (!roles || level === undefined) return false;
+  const arr = Array.isArray(roles) ? roles : [roles];
+  return arr.includes("Manager") || (level !== undefined && level >= 3);
 }
 
 const GoalTemplates = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
   const [templates, setTemplates] = useState<GoalTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -51,32 +62,28 @@ const GoalTemplates = () => {
     null
   );
 
-  const isManagerOrAbove = (roles?: string, level?: number | null) => {
-    if (
-      roles &&
-      /manager|lead|head|director|vp|chief|cxo|cto|ceo|admin/i.test(roles)
-    )
-      return true;
-    if (typeof level === "number") return level > 2;
-    return false;
-  };
-
   const loadTemplates = async () => {
     setLoading(true);
     try {
-      const res = await apiFetch<GoalTemplate[]>("/api/goals/templates");
-      if (res.ok && res.data) setTemplates(res.data);
+      const res = await apiFetch("/api/goals/templates");
+      if (!res.ok) throw new Error(res.error || "Failed to load templates");
+      setTemplates((res.data as GoalTemplate[]) || []);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to load templates");
     } finally {
       setLoading(false);
     }
   };
 
   const handleCreateSuccess = () => {
-    loadTemplates(); // Refresh the templates list
+    setShowCreateModal(false);
+    void loadTemplates();
   };
 
   const handleEditSuccess = () => {
-    loadTemplates(); // Refresh the templates list
+    setShowEditModal(false);
+    setEditingTemplateId(null);
+    void loadTemplates();
   };
 
   const handleEditClick = (templateId: number) => {
@@ -98,27 +105,29 @@ const GoalTemplates = () => {
   );
 
   return (
-    <div className="mx-auto max-w-6xl p-4 sm:p-6">
+    <div className="mx-auto max-w-7xl p-4 sm:p-6 animate-fade-in-up">
       <div className="flex items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3 sm:gap-4">
           <Button
             variant="outline"
             size="sm"
             onClick={() => navigate("/")}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 hover:shadow-soft transition-all"
             aria-label="Back"
             title="Back"
           >
             <ArrowLeft className="h-4 w-4" />
             <span className="hidden sm:inline sm:ml-2">Back</span>
           </Button>
-          <h1 className="text-2xl font-bold">Manage Goal Templates</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Manage Goal Templates
+          </h1>
         </div>
         <div className="flex items-center gap-2">
           {isManagerOrAbove(user?.emp_roles, user?.emp_roles_level) && (
             <Button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 shadow-soft hover:shadow-glow transition-all"
               aria-label="Create Template"
               title="Create Template"
               data-testid="create-template"
@@ -130,43 +139,47 @@ const GoalTemplates = () => {
         </div>
       </div>
 
+      <Card className="mb-6 glass-card shadow-soft">
+        <CardContent className="p-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-4">
+            <span className="flex items-center gap-2 text-lg font-semibold">
+              <Search className="h-5 w-5" />
+              Search Templates
+            </span>
+            <span className="text-sm font-normal text-muted-foreground">
+              {loading ? "Loading…" : `${visible.length} template(s) found`}
+            </span>
+          </div>
+
+          <div>
+            <Input
+              id="filter"
+              placeholder="Search by title or category..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="w-full max-w-md transition-shadow focus:shadow-sm motion-reduce:transition-none"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-4">
-          <span className="flex items-center gap-2 text-lg font-semibold">
-            <Search className="h-5 w-5" />
-            Search Templates
-          </span>
-          <span className="text-sm font-normal text-muted-foreground">
-            {loading ? "Loading…" : `${visible.length} template(s) found`}
-          </span>
-        </div>
-
-        <div className="mb-4">
-          <Input
-            id="filter"
-            placeholder="Search by title or category..."
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="w-full max-w-md transition-shadow focus:shadow-sm motion-reduce:transition-none"
-          />
-        </div>
-
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="shadow-sm">
+              <Card key={i} className="shadow-soft">
                 <CardContent className="p-6">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <Skeleton className="h-5 w-1/3" />
-                      <Skeleton className="h-5 w-16 rounded-full" />
+                      <div className="animate-shimmer bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 h-5 w-1/3 rounded" />
+                      <div className="animate-shimmer bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 h-5 w-16 rounded-full" />
                     </div>
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-5/6" />
+                    <div className="animate-shimmer bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 h-4 w-full rounded" />
+                    <div className="animate-shimmer bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 h-4 w-5/6 rounded" />
                     <div className="flex gap-2">
-                      <Skeleton className="h-6 w-16 rounded-full" />
-                      <Skeleton className="h-6 w-20 rounded-full" />
-                      <Skeleton className="h-6 w-12 rounded-full" />
+                      <div className="animate-shimmer bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 h-6 w-16 rounded-full" />
+                      <div className="animate-shimmer bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 h-6 w-20 rounded-full" />
+                      <div className="animate-shimmer bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 h-6 w-12 rounded-full" />
                     </div>
                   </div>
                 </CardContent>
@@ -190,7 +203,7 @@ const GoalTemplates = () => {
             {visible.map((t) => (
               <Card
                 key={t.temp_id}
-                className="hover:shadow-md transition-shadow"
+                className="hover-lift shadow-soft transition-all"
                 data-testid="template-item"
               >
                 <CardContent className="p-6">
@@ -202,12 +215,12 @@ const GoalTemplates = () => {
                         </h3>
                         <Badge
                           variant="secondary"
-                          className="text-xs bg-amber-100 text-amber-800 border-amber-200"
+                          className="text-xs font-semibold shadow-soft"
                         >
                           {t.temp_weightage}% Weight
                         </Badge>
                       </div>
-                      <p className="text-muted-foreground mb-3 line-clamp-2">
+                      <p className="text-muted-foreground mb-3 line-clamp-2 leading-relaxed">
                         {t.temp_description}
                       </p>
                       <div className="flex flex-wrap gap-2 mb-3">
@@ -215,7 +228,7 @@ const GoalTemplates = () => {
                           <Badge
                             key={c.id}
                             variant="outline"
-                            className="text-xs bg-slate-50 text-slate-700 border-slate-200"
+                            className="text-xs bg-gradient-to-br from-slate-50 to-slate-100 text-slate-700 border-slate-200 hover:scale-105 transition-transform"
                           >
                             {c.name}
                           </Badge>
@@ -223,11 +236,16 @@ const GoalTemplates = () => {
                       </div>
                       <div className="flex gap-4 text-xs text-muted-foreground">
                         <span>
-                          Importance: <strong>{t.temp_importance}</strong>
+                          Importance:{" "}
+                          <strong className="text-foreground">
+                            {t.temp_importance}
+                          </strong>
                         </span>
                         <span>
                           Performance Factor:{" "}
-                          <strong>{t.temp_performance_factor}</strong>
+                          <strong className="text-foreground">
+                            {t.temp_performance_factor}
+                          </strong>
                         </span>
                       </div>
                     </div>
@@ -240,7 +258,7 @@ const GoalTemplates = () => {
                           size="sm"
                           variant="outline"
                           onClick={() => handleEditClick(t.temp_id)}
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 hover:shadow-soft transition-all"
                           aria-label="Edit template"
                           title="Edit template"
                         >
@@ -253,7 +271,7 @@ const GoalTemplates = () => {
                               size="sm"
                               variant="destructive"
                               disabled={deletingId === t.temp_id}
-                              className="flex items-center gap-2"
+                              className="flex items-center gap-2 hover:shadow-glow transition-all"
                               aria-label={
                                 deletingId === t.temp_id
                                   ? "Deleting…"
@@ -273,19 +291,21 @@ const GoalTemplates = () => {
                               </span>
                             </Button>
                           </AlertDialogTrigger>
-                          <AlertDialogContent>
+                          <AlertDialogContent className="shadow-large">
                             <AlertDialogHeader>
-                              <AlertDialogTitle>
+                              <AlertDialogTitle className="text-xl">
                                 Delete template?
                               </AlertDialogTitle>
-                              <AlertDialogDescription>
+                              <AlertDialogDescription className="text-base">
                                 This action cannot be undone. This will
-                                permanently delete the goal template “
-                                {t.temp_title}”.
+                                permanently delete the goal template "
+                                {t.temp_title}".
                               </AlertDialogDescription>
                             </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogFooter className="gap-2">
+                              <AlertDialogCancel className="hover:shadow-soft transition-shadow">
+                                Cancel
+                              </AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={async () => {
                                   try {
@@ -306,6 +326,7 @@ const GoalTemplates = () => {
                                     setDeletingId(null);
                                   }
                                 }}
+                                className="hover:shadow-glow transition-shadow"
                               >
                                 Confirm delete
                               </AlertDialogAction>

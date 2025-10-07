@@ -227,11 +227,11 @@ const SelfAssessment = () => {
     >
       <div className="mx-auto max-w-4xl space-y-6">
         {/* Header Card */}
-        <Card className="shadow-medium border-0 glass-effect">
+        <Card className="shadow-soft hover-lift border-0 glass-effect">
           <CardHeader className="pb-4">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="space-y-2">
-                <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+                <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   Self Assessment
                 </h1>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -272,7 +272,7 @@ const SelfAssessment = () => {
 
         {/* Goal Assessment Card */}
         {current && (
-          <Card className="shadow-medium border-0 glass-effect animate-slide-up">
+          <Card className="shadow-soft hover-lift border-0 glass-effect animate-slide-up">
             <CardHeader className="pb-4">
               <div className="flex items-start gap-3">
                 <div className="p-2 rounded-lg bg-primary/10">

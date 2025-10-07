@@ -271,7 +271,7 @@ const TeamAppraisal = () => {
     <div className="space-y-6 text-foreground">
       {/* Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="transition-all duration-200 hover:shadow-md lg:col-span-1">
+        <Card className="shadow-soft hover-lift transition-all lg:col-span-1">
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Users className="h-4 w-4 icon-team-members" />
@@ -279,7 +279,7 @@ const TeamAppraisal = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-left">
-            <div className="text-xl sm:text-2xl font-bold text-foreground">
+            <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
               {directReportsCount}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -287,7 +287,7 @@ const TeamAppraisal = () => {
             </p>
           </CardContent>
         </Card>
-        <Card className="transition-all duration-200 hover:shadow-md">
+        <Card className="shadow-soft hover-lift transition-all">
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <FileEdit className="h-4 w-4 icon-drafts" />
@@ -295,13 +295,13 @@ const TeamAppraisal = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-left">
-            <div className="text-xl sm:text-2xl font-bold text-foreground">
+            <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
               {drafts.length}
             </div>
             <p className="text-xs text-muted-foreground">Editable appraisals</p>
           </CardContent>
         </Card>
-        <Card className="transition-all duration-200 hover:shadow-md">
+        <Card className="shadow-soft hover-lift transition-all">
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Activity className="h-4 w-4 icon-active" />
@@ -309,7 +309,7 @@ const TeamAppraisal = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-left">
-            <div className="text-xl sm:text-2xl font-bold text-foreground">
+            <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
               {active.length}
             </div>
             <p className="text-xs text-muted-foreground">In progress</p>
@@ -320,7 +320,7 @@ const TeamAppraisal = () => {
       {/* Sections grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Draft Appraisals */}
-        <Card className="transition-all duration-200 hover:shadow-md lg:col-span-1">
+        <Card className="shadow-soft hover-lift transition-all lg:col-span-1">
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
@@ -439,11 +439,11 @@ const TeamAppraisal = () => {
           </CardContent>
         </Card>
         {/* Team Appraisals (Active + Completed with filter) */}
-        <Card className="transition-all duration-200 hover:shadow-md lg:col-span-2">
+        <Card className="shadow-soft hover-lift transition-all lg:col-span-2">
           <CardHeader className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                <Activity className="h-5 w-5 icon-team-appraisals" />
+              <CardTitle className="text-xl sm:text-2xl font-bold flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                <Activity className="h-5 w-5 text-emerald-600" />
                 Team Appraisals
               </CardTitle>
               <div className="flex items-center gap-2">

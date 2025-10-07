@@ -172,7 +172,7 @@ const ReviewerEvaluation = () => {
     return (
       <div className="min-h-screen bg-background p-6" aria-busy={loading}>
         <div className="max-w-4xl mx-auto">
-          <Card className="glass-effect shadow-medium border-0 p-8 animate-fade-in">
+          <Card className="glass-effect shadow-soft hover-lift border-0 p-8 animate-fade-in">
             <div className="flex items-center justify-center h-32">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
@@ -194,14 +194,14 @@ const ReviewerEvaluation = () => {
     <div className="min-h-screen bg-background p-6" aria-busy={loading}>
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header Card */}
-        <Card className="glass-effect shadow-medium border-0 p-6 animate-fade-in">
+        <Card className="glass-effect shadow-soft hover-lift border-0 p-6 animate-fade-in">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="p-3 rounded-xl bg-primary text-primary-foreground">
                 <Eye className="h-6 w-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">
+                <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                   Reviewer Evaluation
                 </h1>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
@@ -248,7 +248,7 @@ const ReviewerEvaluation = () => {
 
         {/* Goal Review Card */}
         {!isOverallPage && current && (
-          <Card className="glass-effect shadow-medium border-0 p-6 animate-fade-in">
+          <Card className="glass-effect shadow-soft hover-lift border-0 p-6 animate-fade-in">
             <div className="space-y-6">
               {/* Goal Header */}
               <div className="flex items-start gap-4">
@@ -416,14 +416,14 @@ const ReviewerEvaluation = () => {
 
         {/* Overall Evaluation Card */}
         {isOverallPage && (
-          <Card className="glass-effect shadow-medium border-0 p-6 animate-fade-in">
+          <Card className="glass-effect shadow-soft hover-lift border-0 p-6 animate-fade-in">
             <div className="space-y-6">
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-xl bg-primary text-primary-foreground">
                   <Star className="h-6 w-6" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-foreground">
+                  <h2 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                     Overall Evaluation
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1">

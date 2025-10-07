@@ -184,7 +184,7 @@ const EditGoalTemplate = () => {
   };
 
   return (
-    <div className="mx-auto max-w-4xl p-4 sm:p-6">
+    <div className="mx-auto max-w-5xl animate-fade-in-up p-4 sm:p-6">
       <div className="flex items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3 sm:gap-4">
           <Button
@@ -198,7 +198,7 @@ const EditGoalTemplate = () => {
             <ArrowLeft className="h-4 w-4" />
             <span className="hidden sm:inline sm:ml-2">Back</span>
           </Button>
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             {isEdit ? "Edit Goal Template" : "Create Template"}
           </h1>
         </div>
@@ -216,15 +216,17 @@ const EditGoalTemplate = () => {
         </div>
       </div>
 
-      <Card className="shadow-lg">
+      <Card className="shadow-soft hover-lift">
         <CardHeader>
-          <CardTitle className="text-lg">
+          <CardTitle className="text-xl font-semibold">
             {isEdit ? "Update Template Details" : "Template Information"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="title" className="font-medium">
+              Title
+            </Label>
             <Input
               id="title"
               value={tempTitle}
@@ -239,7 +241,9 @@ const EditGoalTemplate = () => {
             </p>
           </div>
           <div>
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description" className="font-medium">
+              Description
+            </Label>
             <Textarea
               id="description"
               value={tempDescription}
@@ -257,7 +261,9 @@ const EditGoalTemplate = () => {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="perf">Performance Factor</Label>
+              <Label htmlFor="perf" className="font-medium">
+                Performance Factor
+              </Label>
               <Input
                 id="perf"
                 value={tempPerformanceFactor}
@@ -271,7 +277,9 @@ const EditGoalTemplate = () => {
               </p>
             </div>
             <div>
-              <Label htmlFor="importance">Importance</Label>
+              <Label htmlFor="importance" className="font-medium">
+                Importance
+              </Label>
               <Select
                 value={tempImportance}
                 onValueChange={setTempImportance}
@@ -290,7 +298,9 @@ const EditGoalTemplate = () => {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="weight">Weightage (%)</Label>
+              <Label htmlFor="weight" className="font-medium">
+                Weightage (%)
+              </Label>
               <Input
                 id="weight"
                 type="number"
@@ -366,7 +376,7 @@ const EditGoalTemplate = () => {
                 <Badge
                   key={c}
                   variant="outline"
-                  className="flex items-center gap-2 bg-rose-50 text-rose-700 border-rose-200"
+                  className="flex items-center gap-2 bg-gradient-to-br from-rose-50 to-rose-100 text-rose-700 border-rose-200 hover:scale-105 transition-transform"
                 >
                   {c}
                   <button
@@ -396,7 +406,7 @@ const EditGoalTemplate = () => {
               type="button"
               onClick={save}
               disabled={saving || loading}
-              className="w-full sm:w-auto px-6"
+              className="w-full sm:w-auto px-6 shadow-soft hover:shadow-glow transition-all"
               data-testid="save-template"
             >
               {getButtonText(saving, isEdit)}

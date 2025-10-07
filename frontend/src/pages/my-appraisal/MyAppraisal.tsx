@@ -646,7 +646,7 @@ const MyAppraisal = () => {
     <div className="space-y-6 text-foreground">
       {/* Overview cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="transition-all duration-200 hover:shadow-md">
+        <Card className="shadow-soft hover-lift transition-all">
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">
             <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2">
               <Calendar className="h-4 w-4 icon-appraisal-type" />
@@ -665,7 +665,7 @@ const MyAppraisal = () => {
           </CardContent>
         </Card>
 
-        <Card className="transition-all duration-200 hover:shadow-md">
+        <Card className="shadow-soft hover-lift transition-all">
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">
             <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2">
               <Clock className="h-4 w-4 icon-due-date" />
@@ -679,7 +679,7 @@ const MyAppraisal = () => {
           </CardContent>
         </Card>
 
-        <Card className="transition-all duration-200 hover:shadow-md">
+        <Card className="shadow-soft hover-lift transition-all">
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">
             <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2">
               <TrendingUp className="h-4 w-4 icon-overall-progress" />
@@ -704,11 +704,11 @@ const MyAppraisal = () => {
       {/* Sections grid */}
       <div className="grid grid-cols-1 gap-6">
         {/* My Appraisals (Active + Completed with filter) */}
-        <Card className="transition-all duration-200 hover:shadow-md">
+        <Card className="shadow-soft hover-lift transition-all">
           <CardHeader className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-2 min-w-0 flex-nowrap">
-              <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2 min-w-0 flex-1 truncate">
-                <CheckCircle2 className="h-5 w-5 icon-my-appraisals" />
+              <CardTitle className="text-xl sm:text-2xl font-bold flex items-center gap-2 min-w-0 flex-1 truncate bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+                <CheckCircle2 className="h-5 w-5 text-blue-600" />
                 My Appraisals
               </CardTitle>
               <div className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap flex-nowrap">
