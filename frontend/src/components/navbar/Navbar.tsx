@@ -8,36 +8,78 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { Button } from "../ui/button";
+import { cn } from "../../utils/cn";
 // Theme toggle re-enabled with dark mode support
 
-const Navbar = () => {
+interface NavbarProps {
+  showTeamTab?: boolean;
+}
+
+const Navbar = ({ showTeamTab = false }: NavbarProps) => {
   const { user: authUser, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isDarkMode, toggleTheme } = useTheme();
 
   const handleSignOut = () => {
     logout();
     navigate("/login", { replace: true });
   };
+
+  // Don't show navigation tabs on login page
+  const showNavTabs = !location.pathname.startsWith('/login');
+
   return (
     <header className="w-full sticky top-0 z-50 glass-effect border-t-2 border-t-primary shadow-medium">
       <div className="container h-14 sm:h-16 flex items-center justify-between">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">
-              PM
-            </span>
-          </div>
-          <h1 className="text-sm sm:text-lg lg:text-xl font-bold text-foreground hidden sm:block">
-            Performance Management
-          </h1>
-          <h1 className="text-sm font-bold text-foreground sm:hidden">
-            Performance Management
-          </h1>
+        <div className="flex items-center gap-4 sm:gap-6">
+          <Link to="/" className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-sm">
+                PM
+              </span>
+            </div>
+            <h1 className="text-sm sm:text-lg lg:text-xl font-bold text-foreground hidden sm:block">
+              Performance Management
+            </h1>
+            <h1 className="text-sm font-bold text-foreground sm:hidden">
+              Performance Management
+            </h1>
+          </Link>
+          
+          {/* Navigation tabs */}
+          {showNavTabs && (
+            <nav className="flex items-center gap-1 sm:gap-2">
+              <Link
+                to="/my-appraisal"
+                className={cn(
+                  "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                  location.pathname === "/my-appraisal" || location.pathname === "/"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
+              >
+                My Appraisal
+              </Link>
+              {showTeamTab && (
+                <Link
+                  to="/team-appraisal"
+                  className={cn(
+                    "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                    location.pathname === "/team-appraisal"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  Team Appraisal
+                </Link>
+              )}
+            </nav>
+          )}
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
