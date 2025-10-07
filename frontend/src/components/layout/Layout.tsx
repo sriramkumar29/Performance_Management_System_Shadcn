@@ -43,15 +43,17 @@ const Layout = ({ children }: LayoutProps) => {
   const hideHeaderRoutes = [
     "/login",
     "/goal-templates",
-    "/goal-templates/new",
     "/appraisal/create",
+    "/self-assessment",
+    "/appraiser-evaluation",
+    "/reviewer-evaluation",
   ];
 
   // Check if current path starts with any hide route or matches edit template pattern
   const shouldHideHeader =
     hideHeaderRoutes.some((route) => location.pathname.startsWith(route)) ||
-    /^\/goal-templates\/\d+\/edit$/.test(location.pathname) ||
-    /^\/appraisal\/edit\/\d+$/.test(location.pathname);
+    /^\/appraisal\/edit\/\d+$/.test(location.pathname) ||
+    /^\/appraisal\/\d+$/.test(location.pathname);
 
   const showMainHeader = !shouldHideHeader;
 

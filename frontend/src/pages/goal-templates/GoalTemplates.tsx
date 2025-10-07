@@ -4,6 +4,8 @@ import { apiFetch } from "../../utils/api";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
+import CreateTemplateModal from "../../components/modals/CreateTemplateModal";
+import EditTemplateModal from "../../components/modals/EditTemplateModal";
 import { Card, CardContent } from "../../components/ui/card";
 import { useAuth } from "../../contexts/AuthContext";
 import { toast } from "sonner";
@@ -43,6 +45,11 @@ const GoalTemplates = () => {
   const [templates, setTemplates] = useState<GoalTemplate[]>([]);
   const [filter, setFilter] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<number | null>(
+    null
+  );
 
   const isManagerOrAbove = (roles?: string, level?: number | null) => {
     if (
@@ -62,6 +69,19 @@ const GoalTemplates = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCreateSuccess = () => {
+    loadTemplates(); // Refresh the templates list
+  };
+
+  const handleEditSuccess = () => {
+    loadTemplates(); // Refresh the templates list
+  };
+
+  const handleEditClick = (templateId: number) => {
+    setEditingTemplateId(templateId);
+    setShowEditModal(true);
   };
 
   useEffect(() => {
@@ -97,7 +117,7 @@ const GoalTemplates = () => {
         <div className="flex items-center gap-2">
           {isManagerOrAbove(user?.emp_roles, user?.emp_roles_level) && (
             <Button
-              onClick={() => navigate("/goal-templates/new")}
+              onClick={() => setShowCreateModal(true)}
               className="flex items-center gap-2"
               aria-label="Create Template"
               title="Create Template"
@@ -219,9 +239,7 @@ const GoalTemplates = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() =>
-                            navigate(`/goal-templates/${t.temp_id}/edit`)
-                          }
+                          onClick={() => handleEditClick(t.temp_id)}
                           className="flex items-center gap-2"
                           aria-label="Edit template"
                           title="Edit template"
@@ -303,6 +321,19 @@ const GoalTemplates = () => {
           </div>
         )}
       </div>
+
+      <CreateTemplateModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
+        onSuccess={handleCreateSuccess}
+      />
+
+      <EditTemplateModal
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        onSuccess={handleEditSuccess}
+        templateId={editingTemplateId}
+      />
     </div>
   );
 };

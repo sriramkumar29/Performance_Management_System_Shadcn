@@ -209,7 +209,7 @@ class AppraisalService(BaseService):
             
         except Exception as e:
             # Handle unexpected errors
-            error_msg = f"Failed to create appraisal"
+            error_msg = "Failed to create appraisal"
             log_exception(self.logger, e, context, "create_appraisal", error_msg)
             raise BaseServiceException(error_msg, details={"original_error": str(e)})
     
@@ -326,7 +326,7 @@ class AppraisalService(BaseService):
             
         except Exception as e:
             # Handle unexpected errors
-            error_msg = f"Failed to retrieve appraisals with filters"
+            error_msg = "Failed to retrieve appraisals with filters"
             log_exception(self.logger, e, context, "get_appraisals_with_filters", error_msg)
             raise BaseServiceException(error_msg, details={"original_error": str(e)})
     
@@ -1335,6 +1335,6 @@ class AppraisalService(BaseService):
             raise e
             
         except Exception as e:
-            error_msg = f"Failed to retrieve categories"
+            error_msg = "Failed to retrieve categories"
             log_exception(self.logger, e, context, "get_categories", error_msg)
             raise BaseServiceException(error_msg, details={"original_error": str(e)})
