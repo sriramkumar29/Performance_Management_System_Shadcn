@@ -44,7 +44,7 @@ class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
         """Initialize the EmployeeService."""
         super().__init__(Employee)
         self.repository = EmployeeRepository()
-        self.logger = get_logger(f"app.services.{self.__class__.__name__}")
+        self.logger = get_logger(f"app.services.{self.__module__}")
         self.logger.debug("EmployeeService initialized successfully")
     
     @property

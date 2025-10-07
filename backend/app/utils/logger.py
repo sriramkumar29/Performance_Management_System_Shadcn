@@ -46,7 +46,7 @@ def log_execution_time(logger: Optional[logging.Logger] = None, include_args: bo
         async def async_wrapper(*args, **kwargs):
             log = logger or get_logger(func.__module__)
             start_time = time.time()
-            func_name = f"{func.__module__}.{func.__name__}"
+            func_name = f"{func.__module__}.{func.__qualname__}"
             
             # Extract context information
             user_id = extract_user_id_from_args(*args, **kwargs)
@@ -77,7 +77,7 @@ def log_execution_time(logger: Optional[logging.Logger] = None, include_args: bo
         def sync_wrapper(*args, **kwargs):
             log = logger or get_logger(func.__module__)
             start_time = time.time()
-            func_name = f"{func.__module__}.{func.__name__}"
+            func_name = f"{func.__module__}.{func.__qualname__}"
             
             log.debug(f"Starting execution of {func_name}")
             
@@ -109,10 +109,11 @@ def log_exception(logger: Optional[logging.Logger] = None, reraise: bool = True)
         reraise: Whether to reraise the exception after logging.
     """
     def decorator(func: Callable) -> Callable:
+        
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
             log = logger or get_logger(func.__module__)
-            func_name = f"{func.__module__}.{func.__name__}"
+            func_name = f"{func.__module__}.{func.__qualname__}"
             
             try:
                 return await func(*args, **kwargs)
@@ -128,7 +129,7 @@ def log_exception(logger: Optional[logging.Logger] = None, reraise: bool = True)
         @wraps(func)
         def sync_wrapper(*args, **kwargs):
             log = logger or get_logger(func.__module__)
-            func_name = f"{func.__module__}.{func.__name__}"
+            func_name = f"{func.__module__}.{func.__qualname__}"
             
             try:
                 return func(*args, **kwargs)
@@ -167,7 +168,7 @@ def log_function_call(
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
             log = logger or get_logger(func.__module__)
-            func_name = f"{func.__module__}.{func.__name__}"
+            func_name = f"{func.__module__}.{func.__qualname__}"
             
             # Log function call
             call_info = f"Calling {func_name}"
@@ -194,7 +195,7 @@ def log_function_call(
         @wraps(func)
         def sync_wrapper(*args, **kwargs):
             log = logger or get_logger(func.__module__)
-            func_name = f"{func.__module__}.{func.__name__}"
+            func_name = f"{func.__module__}.{func.__qualname__}"
             
             # Log function call
             call_info = f"Calling {func_name}"

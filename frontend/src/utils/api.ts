@@ -264,9 +264,15 @@ function extractMessageFromJsonObject(j: any): string {
   if (typeof j === 'string') return j;
 
   if (j && typeof j === 'object') {
+    // Handle the new backend error structure: { error: { message: "..." } }
+    if (j.error && typeof j.error === 'object' && j.error.message !== undefined) {
+      return String(j.error.message);
+    }
+    // Handle legacy detail field
     if (j.detail !== undefined) {
       return typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail);
     }
+    // Handle direct message field
     if (j.message !== undefined) {
       return String(j.message);
     }

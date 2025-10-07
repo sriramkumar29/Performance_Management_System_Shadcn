@@ -605,6 +605,9 @@ async def add_goals_to_appraisal(
     """
     Add goals to an appraisal with comprehensive logging.
     
+    This endpoint follows the three-layer architecture:
+    Router -> Service -> Repository
+    
     Args:
         appraisal_id: Appraisal ID
         request: Request containing goal IDs to add
@@ -618,54 +621,26 @@ async def add_goals_to_appraisal(
     Raises:
         HTTPException: Converted from domain exceptions
     """
-    from sqlalchemy.future import select
-    from sqlalchemy.orm import selectinload  
-    from app.models.goal import AppraisalGoal, Goal, Category
-    from app.exceptions import EntityNotFoundError
-    
     user_id = current_user.emp_id
     context = build_log_context(user_id=str(user_id))
     
     logger.info(f"{context}API_REQUEST: POST /{appraisal_id}/goals - Add goals to appraisal - Goals count: {len(request.goal_ids)}")
     
     try:
-        # Add each goal to the appraisal if it doesn't already exist
-        goals_added = 0
-        for goal_id in request.goal_ids:
-            existing_check = await db.execute(
-                select(AppraisalGoal).where(
-                    AppraisalGoal.appraisal_id == appraisal_id,
-                    AppraisalGoal.goal_id == goal_id
-                )
-            )
-            
-            if not existing_check.scalars().first():
-                appraisal_goal = AppraisalGoal(
-                    appraisal_id=appraisal_id,
-                    goal_id=goal_id
-                )
-                db.add(appraisal_goal)
-                goals_added += 1
+        # Delegate to service layer - handles business logic and validation
+        db_appraisal = await appraisal_service.add_goals_to_appraisal(
+            db,
+            appraisal_id=appraisal_id,
+            goal_ids=request.goal_ids
+        )
+        
+        # Get the updated appraisal with full relationships for response
+        updated_appraisal = await appraisal_service.get_appraisal_with_goals(db, appraisal_id)
         
         await db.commit()
         
-        # Get the updated appraisal with relationships
-        result = await db.execute(
-            select(Appraisal)
-            .where(Appraisal.appraisal_id == appraisal_id)
-            .options(
-                selectinload(Appraisal.appraisal_goals)
-                .selectinload(AppraisalGoal.goal)
-                .selectinload(Goal.category)
-            )
-        )
-        db_appraisal = result.scalars().first()
-        
-        if not db_appraisal:
-            raise EntityNotFoundError("Appraisal", appraisal_id)
-        
-        logger.info(f"{context}API_SUCCESS: Added {goals_added} goals to appraisal - Appraisal ID: {appraisal_id}")
-        return AppraisalWithGoals.model_validate(db_appraisal)
+        logger.info(f"{context}API_SUCCESS: Added {len(request.goal_ids)} goals to appraisal - Appraisal ID: {appraisal_id}")
+        return AppraisalWithGoals.model_validate(updated_appraisal)
         
     except BaseDomainException as e:
         # Convert domain exceptions to HTTP exceptions

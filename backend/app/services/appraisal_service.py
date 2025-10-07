@@ -353,12 +353,12 @@ class AppraisalService(BaseService):
             # Validate goals exist and belong to appraisee
             await self._validate_goal_ids(db, goal_ids)
             
-            # Add goals to appraisal
-            await self._add_goals_to_appraisal(db, db_appraisal, goal_ids)
+            # Add goals to appraisal using batch processing
+            goals_added = await self._add_goals_to_appraisal(db, db_appraisal, goal_ids)
             
             await db.refresh(db_appraisal)
             
-            self.logger.info(f"{context}SERVICE_SUCCESS: Added {len(goal_ids)} goals to appraisal {appraisal_id}")
+            self.logger.info(f"{context}SERVICE_SUCCESS: Added {goals_added} goals to appraisal {appraisal_id} (requested: {len(goal_ids)}, duplicates: {len(goal_ids) - goals_added})")
             return db_appraisal
             
         except (BaseRepositoryException, BusinessRuleViolationError, DomainValidationError, DomainEntityNotFoundError) as e:
@@ -733,17 +733,36 @@ class AppraisalService(BaseService):
         db: AsyncSession,
         appraisal: Appraisal,
         goal_ids: List[int]
-    ) -> None:
-        """Add goals to appraisal as AppraisalGoal records with proper error handling."""
+    ) -> int:
+        """
+        Add goals to appraisal as AppraisalGoal records with proper error handling.
+        
+        Uses batch processing for better performance and returns count of goals added.
+        
+        Args:
+            db: Database session
+            appraisal: Appraisal entity
+            goal_ids: List of goal IDs to add
+            
+        Returns:
+            int: Number of goals actually added (excluding duplicates)
+            
+        Raises:
+            BaseRepositoryException: Repository-level errors
+            BaseServiceException: Service-level errors
+        """
         context = build_log_context()
         
         self.logger.info(f"{context}SERVICE_OPERATION: Adding {len(goal_ids)} goals to appraisal {appraisal.appraisal_id}")
         
         try:
-            for goal_id in goal_ids:
-                await self.repository.add_goal_to_appraisal(db, appraisal.appraisal_id, goal_id)
+            # Use batch repository method for better performance
+            goals_added = await self.repository.add_multiple_goals_to_appraisal(
+                db, appraisal.appraisal_id, goal_ids
+            )
                 
-            self.logger.info(f"{context}SERVICE_SUCCESS: Added {len(goal_ids)} goals to appraisal {appraisal.appraisal_id}")
+            self.logger.info(f"{context}SERVICE_SUCCESS: Added {goals_added} goals to appraisal {appraisal.appraisal_id} (duplicates skipped: {len(goal_ids) - goals_added})")
+            return goals_added
             
         except BaseRepositoryException as e:
             # Handle repository exceptions

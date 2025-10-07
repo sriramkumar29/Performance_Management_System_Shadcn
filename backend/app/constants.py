@@ -33,7 +33,7 @@ GOAL_NAME_EXISTS = "Goal with this name already exists"
 # ERROR MESSAGES - Authentication & Authorization
 # =============================================================================
 
-INVALID_EMAIL_OR_PASSWORD = "Invalid email or password"
+INVALID_EMAIL_OR_PASSWORD = "Incorrect email or password"
 INVALID_REFRESH_TOKEN = "Invalid refresh token"
 REFRESH_TOKEN_EXPIRED = "Refresh token expired"
 ACCESS_DENIED = "Access denied"

@@ -35,6 +35,7 @@ from app.exceptions.domain_exceptions import (
     BaseDomainException, map_domain_exception_to_http_status,
     EmployeeNotFoundError, EmployeeServiceError
 )
+from app.exceptions.custom_exceptions import UnauthorizedError
 from fastapi import HTTPException
 
 router = APIRouter()
@@ -100,6 +101,14 @@ async def login(
             }
         )
         
+    except UnauthorizedError as e:
+        # Handle authentication errors specifically
+        logger.warning(f"{context}AUTH_ERROR: Login failed - {e.detail}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=e.detail  # This will be extracted directly as the error message
+        )
+        
     except Exception as e:
         # Handle unexpected errors
         logger.error(f"{context}UNEXPECTED_ERROR: Login failed - {str(e)}")
@@ -157,6 +166,14 @@ async def refresh_token(
                 "message": e.message,
                 "details": e.details
             }
+        )
+        
+    except UnauthorizedError as e:
+        # Handle authentication errors specifically
+        logger.warning(f"{context}AUTH_ERROR: Token refresh failed - {e.detail}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=e.detail
         )
         
     except Exception as e:

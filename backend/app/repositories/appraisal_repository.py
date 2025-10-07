@@ -159,6 +159,72 @@ class AppraisalRepository(BaseRepository[Appraisal]):
             raise RepositoryException(error_msg, details={"appraisal_id": appraisal_id, "goal_id": goal_id, "original_error": str(e)})
 
     @log_execution_time()
+    async def add_multiple_goals_to_appraisal(self, db: AsyncSession, appraisal_id: int, goal_ids: List[int]) -> int:
+        """
+        Batch add multiple goals to an appraisal with comprehensive logging.
+        
+        Args:
+            db: Database session
+            appraisal_id: Appraisal ID
+            goal_ids: List of goal IDs to add
+            
+        Returns:
+            int: Number of goals actually added (excluding duplicates)
+            
+        Raises:
+            RepositoryException: If operation fails
+        """
+        context = build_log_context()
+        
+        self.logger.info(f"{context}REPO_ADD_MULTIPLE_GOALS: Adding {len(goal_ids)} goals to appraisal - Appraisal ID: {appraisal_id}, Goal IDs: {goal_ids}")
+        
+        try:
+            # Check for existing goals to avoid duplicates
+            existing_result = await db.execute(
+                select(AppraisalGoal.goal_id).where(
+                    and_(
+                        AppraisalGoal.appraisal_id == appraisal_id,
+                        AppraisalGoal.goal_id.in_(goal_ids)
+                    )
+                )
+            )
+            existing_goal_ids = set(existing_result.scalars().all())
+            
+            # Filter out existing goals
+            new_goal_ids = [goal_id for goal_id in goal_ids if goal_id not in existing_goal_ids]
+            
+            if existing_goal_ids:
+                self.logger.debug(f"{context}REPO_ADD_MULTIPLE_GOALS_DUPLICATES: Found {len(existing_goal_ids)} existing goals - Appraisal ID: {appraisal_id}, Existing: {list(existing_goal_ids)}")
+            
+            # Batch create new AppraisalGoal records
+            if new_goal_ids:
+                new_appraisal_goals = [
+                    AppraisalGoal(appraisal_id=appraisal_id, goal_id=goal_id)
+                    for goal_id in new_goal_ids
+                ]
+                
+                db.add_all(new_appraisal_goals)
+                await db.flush()
+                
+                self.logger.info(f"{context}REPO_ADD_MULTIPLE_GOALS_SUCCESS: Added {len(new_goal_ids)} new goals to appraisal - Appraisal ID: {appraisal_id}, New goals: {new_goal_ids}")
+            else:
+                self.logger.debug(f"{context}REPO_ADD_MULTIPLE_GOALS_NO_NEW: All goals already exist - Appraisal ID: {appraisal_id}")
+            
+            return len(new_goal_ids)
+            
+        except IntegrityError as e:
+            await db.rollback()
+            error_msg = f"Failed to add multiple goals to appraisal due to constraint violation"
+            self.logger.error(f"{context}REPO_ADD_MULTIPLE_GOALS_INTEGRITY_ERROR: {error_msg} - Appraisal ID: {appraisal_id}, Goal IDs: {goal_ids}, Error: {str(e)}")
+            raise RepositoryException(error_msg, details={"appraisal_id": appraisal_id, "goal_ids": goal_ids, "constraint_error": str(e)})
+            
+        except Exception as e:
+            await db.rollback()
+            error_msg = f"Unexpected error adding multiple goals to appraisal"
+            self.logger.error(f"{context}REPO_ADD_MULTIPLE_GOALS_ERROR: {error_msg} - Appraisal ID: {appraisal_id}, Goal IDs: {goal_ids}, Error: {str(e)}")
+            raise RepositoryException(error_msg, details={"appraisal_id": appraisal_id, "goal_ids": goal_ids, "original_error": str(e)})
+
+    @log_execution_time()
     async def get_weightage_and_count(self, db: AsyncSession, appraisal_id: int) -> tuple[int, int]:
         """Get total weightage and goal count for an appraisal with comprehensive logging."""
         context = build_log_context()
