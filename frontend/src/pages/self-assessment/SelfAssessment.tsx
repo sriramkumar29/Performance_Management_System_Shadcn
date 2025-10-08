@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { apiFetch } from "../../utils/api";
 import { Card, CardContent, CardHeader } from "../../components/ui/card";
 import { Slider } from "../../components/ui/slider";
@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Send,
   Home,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -63,6 +64,8 @@ const getProgressIndicatorClass = (i: number, idx: number) => {
 const SelfAssessment = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isReadOnly = searchParams.get("readonly") === "true";
   const [loading, setLoading] = useState(false);
   const [appraisal, setAppraisal] = useState<AppraisalWithGoals | null>(null);
   const [idx, setIdx] = useState(0);
@@ -76,8 +79,13 @@ const SelfAssessment = () => {
     );
     if (res.ok && res.data) {
       setAppraisal(res.data);
-      // Guard: only allow in Appraisee Self Assessment stage
-      if (res.data.status !== "Appraisee Self Assessment") {
+      // Guard: allow in Appraisee Self Assessment stage for editing,
+      // or in Appraiser/Reviewer Evaluation for read-only viewing
+      const allowedStatuses = isReadOnly
+        ? ["Appraiser Evaluation", "Reviewer Evaluation"]
+        : ["Appraisee Self Assessment"];
+
+      if (!allowedStatuses.includes(res.data.status)) {
         toast.info(`This appraisal is in '${res.data.status}' stage`);
         navigate("/");
         setLoading(false);
@@ -100,7 +108,8 @@ const SelfAssessment = () => {
 
   useEffect(() => {
     load();
-  }, [id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, isReadOnly]);
 
   const goals = appraisal?.appraisal_goals || [];
   const current = goals[idx];
@@ -232,7 +241,7 @@ const SelfAssessment = () => {
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="space-y-2">
                 <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Self Assessment
+                  Self Assessment {isReadOnly && "(Read-Only)"}
                 </h1>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -241,6 +250,15 @@ const SelfAssessment = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                {isReadOnly && (
+                  <Badge
+                    variant="outline"
+                    className="px-3 py-1 text-sm font-medium bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1"
+                  >
+                    <Eye className="h-3 w-3" />
+                    View Only
+                  </Badge>
+                )}
                 <Badge
                   variant="outline"
                   className="px-3 py-1 text-sm font-medium bg-purple-50 text-purple-700 border-purple-200"
@@ -337,10 +355,12 @@ const SelfAssessment = () => {
                         : [form[current.goal.goal_id].rating!]
                     }
                     onValueChange={(v: number[]) =>
+                      !isReadOnly &&
                       setCurrentField(current.goal.goal_id, {
                         rating: Number(v[0]),
                       })
                     }
+                    disabled={isReadOnly}
                     className="w-full"
                   />
                   <div className="flex justify-between text-xs text-muted-foreground mt-1">
@@ -370,10 +390,12 @@ const SelfAssessment = () => {
                   placeholder="Share specific examples, achievements, challenges, and outcomes that demonstrate your performance for this goal..."
                   value={form[current.goal.goal_id]?.comment ?? ""}
                   onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    !isReadOnly &&
                     setCurrentField(current.goal.goal_id, {
                       comment: e.target.value,
                     })
                   }
+                  disabled={isReadOnly}
                   className="resize-none focus:ring-2 focus:ring-primary/20 border-border/50"
                 />
                 <div className="text-xs text-muted-foreground">
@@ -410,21 +432,23 @@ const SelfAssessment = () => {
                 {canNext ? (
                   <Button
                     onClick={handleNext}
-                    disabled={loading || !validateCurrent()}
+                    disabled={loading || (!isReadOnly && !validateCurrent())}
                     className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
                     Next Goal
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
                 ) : (
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={loading || !validateCurrent()}
-                    className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
-                  >
-                    <Send className="h-4 w-4 mr-2" />
-                    Submit Assessment
-                  </Button>
+                  !isReadOnly && (
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={loading || !validateCurrent()}
+                      className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      Submit Assessment
+                    </Button>
+                  )
                 )}
               </div>
             </CardContent>

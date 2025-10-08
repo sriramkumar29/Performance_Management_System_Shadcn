@@ -2,12 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
+import CreateAppraisalButton from "../../features/appraisal/CreateAppraisalButton";
+import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Avatar, AvatarFallback } from "../../components/ui/avatar";
@@ -21,16 +17,17 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import {
-  Users,
-  FileEdit,
   Activity,
   Calendar,
   UserRound,
   ArrowRight,
   ArrowLeft,
   Edit,
-  Filter,
-  ChevronDown,
+  Users,
+  User,
+  UserCheck,
+  CheckCircle,
+  Clock,
 } from "lucide-react";
 import PeriodFilter, { type Period } from "../../components/PeriodFilter";
 
@@ -53,6 +50,11 @@ type Employee = {
   emp_reporting_manager_id?: number | null;
 };
 type AppraisalType = { id: number; name: string };
+type AppraisalTypeRange = {
+  id: number;
+  appraisal_type_id: number;
+  range_name: string;
+};
 
 const TeamAppraisal = () => {
   const { user } = useAuth();
@@ -61,6 +63,7 @@ const TeamAppraisal = () => {
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [types, setTypes] = useState<AppraisalType[]>([]);
+  const [ranges, setRanges] = useState<AppraisalTypeRange[]>([]);
   // Modal removed; navigation will be used instead
   const [period, setPeriod] = useState<Period>(() => {
     const now = new Date();
@@ -77,7 +80,7 @@ const TeamAppraisal = () => {
     const load = async () => {
       if (!user?.emp_id) return;
       setLoading(true);
-      const [aAppraiser, aReviewerActive, aReviewerCompleted, e, t] =
+      const [aAppraiser, aReviewerActive, aReviewerCompleted, e, t, r] =
         await Promise.all([
           apiFetch<Appraisal[]>(
             `/api/appraisals/?appraiser_id=${encodeURIComponent(user.emp_id)}`
@@ -94,6 +97,7 @@ const TeamAppraisal = () => {
           ),
           apiFetch<Employee[]>(`/api/employees/`),
           apiFetch<AppraisalType[]>(`/api/appraisal-types/`),
+          apiFetch<AppraisalTypeRange[]>(`/api/appraisal-types/ranges`),
         ]);
       if (
         (aAppraiser.ok && aAppraiser.data) ||
@@ -111,6 +115,7 @@ const TeamAppraisal = () => {
       }
       if (e.ok && e.data) setEmployees(e.data);
       if (t.ok && t.data) setTypes(t.data);
+      if (r.ok && r.data) setRanges(r.data);
       setLoading(false);
     };
     load();
@@ -124,8 +129,25 @@ const TeamAppraisal = () => {
     const map = new Map(types.map((t) => [t.id, t.name]));
     return (id: number) => map.get(id) || `Type #${id}`;
   }, [types]);
+  const rangeNameById = useMemo(() => {
+    const map = new Map(ranges.map((r) => [r.id, r.range_name]));
+    return (id: number | null | undefined) => (id ? map.get(id) || "" : "");
+  }, [ranges]);
   const displayStatus = (s: string) =>
     s === "Submitted" ? "Waiting Acknowledgement" : s;
+
+  // Helper function to get progress percentage based on status
+  const getStatusProgress = (status: string): number => {
+    const progressMap: Record<string, number> = {
+      Draft: 0,
+      Submitted: 20,
+      "Appraisee Self Assessment": 40,
+      "Appraiser Evaluation": 60,
+      "Reviewer Evaluation": 80,
+      Complete: 100,
+    };
+    return progressMap[status] || 0;
+  };
 
   const appraisalsInPeriod = useMemo(() => {
     if (!period.startDate || !period.endDate) return appraisals;
@@ -139,24 +161,29 @@ const TeamAppraisal = () => {
   const drafts = appraisalsInPeriod.filter(
     (a) => a.status === "Draft" && a.appraiser_id === (user?.emp_id || -1)
   );
-  // Active for appraiser: statuses they can act on
-  const appraiserActiveStatuses = new Set<string>([
-    "Submitted",
-    "Appraisee Self Assessment",
-    "Appraiser Evaluation",
-  ]);
+
+  // Active for appraiser: all non-draft, non-complete appraisals they're conducting
+  // This includes Submitted, Self Assessment, Appraiser Evaluation, AND Reviewer Evaluation
   const activeAsAppraiser = appraisalsInPeriod.filter(
     (a) =>
       a.appraiser_id === (user?.emp_id || -1) &&
-      appraiserActiveStatuses.has(a.status)
+      a.status !== "Draft" &&
+      a.status !== "Complete"
   );
-  // Active for reviewer: only items in Reviewer Evaluation assigned to them
+
+  // Active for reviewer: all non-draft, non-complete appraisals assigned to them
+  // Reviewers should see appraisals throughout the entire process to track progress
+  // (but not already counted as appraiser to avoid duplicates)
   const activeAsReviewer = appraisalsInPeriod.filter(
     (a) =>
       a.reviewer_id === (user?.emp_id || -1) &&
-      a.status === "Reviewer Evaluation"
+      a.status !== "Draft" &&
+      a.status !== "Complete" &&
+      a.appraiser_id !== (user?.emp_id || -1) // Avoid duplicates
   );
+
   const active = [...activeAsAppraiser, ...activeAsReviewer];
+
   const completedTeam = appraisalsInPeriod.filter(
     (a) =>
       a.status === "Complete" &&
@@ -164,7 +191,7 @@ const TeamAppraisal = () => {
         a.reviewer_id === (user?.emp_id || -1))
   );
 
-  // Number of direct reports under current manager (org structure)
+  // Number of direct reports (team members)
   const directReportsCount = useMemo(
     () =>
       employees.filter(
@@ -173,45 +200,9 @@ const TeamAppraisal = () => {
     [employees, user?.emp_id]
   );
 
-  // Combined list (Active + Completed) with filter controls
-  const combinedTeam = useMemo(
-    () =>
-      [...active, ...completedTeam].sort(
-        (a, b) =>
-          new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
-      ),
-    [active, completedTeam]
-  );
-  const [teamFilter, setTeamFilter] = useState<"Active" | "Completed" | "All">(
-    "Active"
-  );
-  const filteredTeam = useMemo(() => {
-    switch (teamFilter) {
-      case "Active":
-        return active;
-      case "Completed":
-        return completedTeam;
-      default:
-        return combinedTeam;
-    }
-  }, [teamFilter, active, completedTeam, combinedTeam]);
-
   // Search filters
   const [searchName, setSearchName] = useState("");
   const [searchTypeId, setSearchTypeId] = useState<string>("all");
-  const filteredTeamSearch = useMemo(() => {
-    const name = searchName.trim().toLowerCase();
-    return filteredTeam.filter((a) => {
-      const matchName = name
-        ? empNameById(a.appraisee_id).toLowerCase().includes(name)
-        : true;
-      const matchType =
-        searchTypeId === "all"
-          ? true
-          : a.appraisal_type_id === Number(searchTypeId);
-      return matchName && matchType;
-    });
-  }, [filteredTeam, searchName, searchTypeId, empNameById]);
 
   const formatDate = (iso: string) => {
     try {
@@ -225,493 +216,483 @@ const TeamAppraisal = () => {
     navigate(`/appraisal/edit/${appraisalId}`);
   };
 
+  const getAvatarClassName = (status: string) => {
+    if (status === "Draft") return "bg-orange-50 text-orange-600";
+    if (status === "Complete") return "bg-muted text-foreground";
+    return "bg-primary/10 text-primary";
+  };
+
   // After navigation, list will refresh on mount/useEffect; modal close handler removed
 
   // Pagination (5 per page) for each section
   const ITEMS_PER_PAGE = 5;
-  const [draftsPage, setDraftsPage] = useState(1);
   const [teamPage, setTeamPage] = useState(1);
-  const [showFilters, setShowFilters] = useState(false);
 
-  const draftsTotalPages = Math.max(
-    1,
-    Math.ceil(drafts.length / ITEMS_PER_PAGE)
-  );
+  // Combined appraisals including drafts
+  const [teamFilterWithDraft, setTeamFilterWithDraft] = useState<
+    "Active" | "Completed" | "Draft"
+  >("Active");
+
+  const filteredTeamWithDraft = useMemo(() => {
+    switch (teamFilterWithDraft) {
+      case "Active":
+        return active;
+      case "Completed":
+        return completedTeam;
+      case "Draft":
+        return drafts;
+      default:
+        return active;
+    }
+  }, [teamFilterWithDraft, active, completedTeam, drafts]);
+
+  const filteredTeamSearchWithDraft = useMemo(() => {
+    const name = searchName.trim().toLowerCase();
+    return filteredTeamWithDraft.filter((a) => {
+      const matchName = name
+        ? empNameById(a.appraisee_id).toLowerCase().includes(name)
+        : true;
+      const matchType =
+        searchTypeId === "all"
+          ? true
+          : a.appraisal_type_id === Number(searchTypeId);
+      return matchName && matchType;
+    });
+  }, [filteredTeamWithDraft, searchName, searchTypeId, empNameById]);
+
   const teamTotalPages = Math.max(
     1,
-    Math.ceil(filteredTeamSearch.length / ITEMS_PER_PAGE)
+    Math.ceil(filteredTeamSearchWithDraft.length / ITEMS_PER_PAGE)
   );
 
-  const draftsPaged = useMemo(
-    () =>
-      drafts.slice(
-        (draftsPage - 1) * ITEMS_PER_PAGE,
-        draftsPage * ITEMS_PER_PAGE
-      ),
-    [drafts, draftsPage]
-  );
   const teamPaged = useMemo(
     () =>
-      filteredTeamSearch.slice(
+      filteredTeamSearchWithDraft.slice(
         (teamPage - 1) * ITEMS_PER_PAGE,
         teamPage * ITEMS_PER_PAGE
       ),
-    [filteredTeamSearch, teamPage]
+    [filteredTeamSearchWithDraft, teamPage]
   );
 
   // Reset to first page when data changes
   useEffect(() => {
-    setDraftsPage(1);
-  }, [drafts.length]);
-  useEffect(() => {
     setTeamPage(1);
-  }, [filteredTeamSearch.length, teamFilter, searchName, searchTypeId]);
+  }, [
+    filteredTeamSearchWithDraft.length,
+    teamFilterWithDraft,
+    searchName,
+    searchTypeId,
+  ]);
 
   return (
     <div className="space-y-6 text-foreground">
-      {/* Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="shadow-soft hover-lift transition-all lg:col-span-1">
-          <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="h-4 w-4 icon-team-members" />
-              Team Members
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-left">
-            <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-              {directReportsCount}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Employees reporting to you
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="shadow-soft hover-lift transition-all">
-          <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <FileEdit className="h-4 w-4 icon-drafts" />
-              Drafts
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-left">
-            <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-              {drafts.length}
-            </div>
-            <p className="text-xs text-muted-foreground">Editable appraisals</p>
-          </CardContent>
-        </Card>
-        <Card className="shadow-soft hover-lift transition-all">
-          <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Activity className="h-4 w-4 icon-active" />
-              Active
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-left">
-            <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-              {active.length}
-            </div>
-            <p className="text-xs text-muted-foreground">In progress</p>
-          </CardContent>
-        </Card>
+      {/* Create Appraisal and Manage Templates buttons */}
+      <div className="flex justify-end">
+        <CreateAppraisalButton />
       </div>
 
-      {/* Sections grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Draft Appraisals */}
-        <Card className="shadow-soft hover-lift transition-all lg:col-span-1">
-          <CardHeader>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                <FileEdit className="h-5 w-5 icon-drafts" />
-                Drafts
-              </CardTitle>
-              {drafts.length > 0 && (
-                <div
-                  className="inline-flex items-center gap-1 rounded-full border border-border bg-background/60 px-1.5 py-1 shadow-sm backdrop-blur"
-                  aria-live="polite"
-                >
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setDraftsPage((p) => Math.max(1, p - 1))}
-                    disabled={draftsPage <= 1}
-                    aria-label="Previous page"
-                    title="Previous page"
-                    className="rounded-full hover:bg-primary/10"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="hidden sm:inline px-2 text-xs font-medium text-muted-foreground">
-                    Page {draftsPage} <span className="mx-1">/</span>{" "}
-                    {draftsTotalPages}
-                  </span>
-                  <span className="sr-only sm:hidden">
-                    Page {draftsPage} of {draftsTotalPages}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() =>
-                      setDraftsPage((p) => Math.min(draftsTotalPages, p + 1))
-                    }
-                    disabled={draftsPage >= draftsTotalPages}
-                    aria-label="Next page"
-                    title="Next page"
-                    className="rounded-full hover:bg-primary/10"
-                  >
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="animate-pulse">
-                    <div className="h-16 bg-muted rounded-lg"></div>
-                  </div>
+      {/* Filter Components - Always visible at the top */}
+      <div className="w-full">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="w-full md:flex-1 min-w-0">
+            <Label className="mb-1 block">Search</Label>
+            <Input
+              placeholder="Search employee name"
+              value={searchName}
+              onChange={(e) => setSearchName(e.target.value)}
+            />
+          </div>
+          <div className="w-full md:w-40 flex-none">
+            <Label className="mb-1 block">Type</Label>
+            <Select
+              value={searchTypeId}
+              onValueChange={(v) => setSearchTypeId(v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                {types.map((t) => (
+                  <SelectItem key={t.id} value={String(t.id)}>
+                    {t.name}
+                  </SelectItem>
                 ))}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {drafts.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <FileEdit className="h-12 w-12 mx-auto mb-4 icon-drafts" />
-                    <p>No drafts</p>
-                  </div>
-                ) : (
-                  draftsPaged.map((a) => (
-                    <div
-                      key={a.appraisal_id}
-                      className="rounded-lg border border-border bg-card p-3 sm:p-4 text-sm transition-all duration-200 hover:shadow-sm overflow-hidden"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <Avatar>
-                            <AvatarFallback className="bg-primary/10 text-primary">
-                              <UserRound className="h-4 w-4" />
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="space-y-1 min-w-0">
-                            <div className="font-medium text-foreground truncate">
-                              {empNameById(a.appraisee_id)} •{" "}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full md:basis-full xl:flex-1 min-w-0">
+            <PeriodFilter
+              defaultPreset="This Year"
+              value={period}
+              onChange={setPeriod}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Active/Completed/Draft buttons with Pagination */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Button
+            variant={teamFilterWithDraft === "Active" ? "default" : "outline"}
+            onClick={() => setTeamFilterWithDraft("Active")}
+            className={
+              teamFilterWithDraft === "Active"
+                ? "bg-primary text-primary-foreground"
+                : ""
+            }
+          >
+            Active
+            <Badge
+              variant="secondary"
+              className="ml-2 bg-background/20 text-current border-0"
+            >
+              {active.length}
+            </Badge>
+          </Button>
+          <Button
+            variant={
+              teamFilterWithDraft === "Completed" ? "default" : "outline"
+            }
+            onClick={() => setTeamFilterWithDraft("Completed")}
+            className={
+              teamFilterWithDraft === "Completed"
+                ? "bg-primary text-primary-foreground"
+                : ""
+            }
+          >
+            Completed
+            <Badge
+              variant="secondary"
+              className="ml-2 bg-background/20 text-current border-0"
+            >
+              {completedTeam.length}
+            </Badge>
+          </Button>
+          <Button
+            variant={teamFilterWithDraft === "Draft" ? "default" : "outline"}
+            onClick={() => setTeamFilterWithDraft("Draft")}
+            className={
+              teamFilterWithDraft === "Draft"
+                ? "bg-primary text-primary-foreground"
+                : ""
+            }
+          >
+            Draft
+            <Badge
+              variant="secondary"
+              className="ml-2 bg-background/20 text-current border-0"
+            >
+              {drafts.length}
+            </Badge>
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Team Members Badge */}
+          <Badge
+            variant="outline"
+            className="px-3 py-1.5 text-sm font-medium border-emerald-200 bg-emerald-50 text-emerald-700"
+          >
+            <Users className="h-4 w-4 mr-1.5" />
+            Team Members: {directReportsCount}
+          </Badge>
+          {filteredTeamSearchWithDraft.length > 0 && (
+            <div
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-background/60 px-1.5 py-1 shadow-sm backdrop-blur flex-shrink-0 whitespace-nowrap"
+              aria-live="polite"
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTeamPage((p) => Math.max(1, p - 1))}
+                disabled={teamPage <= 1}
+                title="Previous page"
+                aria-label="Previous page"
+                className="rounded-full hover:bg-primary/10"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <span className="hidden sm:inline px-2 text-xs font-medium text-muted-foreground">
+                Page {teamPage} <span className="mx-1">/</span> {teamTotalPages}
+              </span>
+              <span className="sr-only sm:hidden">
+                Page {teamPage} of {teamTotalPages}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() =>
+                  setTeamPage((p) => Math.min(teamTotalPages, p + 1))
+                }
+                disabled={teamPage >= teamTotalPages}
+                title="Next page"
+                aria-label="Next page"
+                className="rounded-full hover:bg-primary/10"
+              >
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Appraisal Cards */}
+      {loading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="animate-pulse">
+              <div className="h-40 bg-muted rounded-lg"></div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredTeamSearchWithDraft.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Activity className="h-12 w-12 mx-auto mb-4 icon-team-appraisals" />
+              <p>No items</p>
+            </div>
+          ) : (
+            teamPaged.map((a) => (
+              <Card
+                key={a.appraisal_id}
+                className="shadow-soft hover:shadow-md transition-all border-l-4"
+                style={{
+                  borderLeftColor:
+                    a.status === "Complete"
+                      ? "#10b981"
+                      : a.status === "Draft"
+                      ? "#f97316"
+                      : "#3b82f6",
+                }}
+              >
+                <CardContent className="p-5 sm:p-6">
+                  {/* Header Section */}
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback
+                            className={getAvatarClassName(a.status)}
+                          >
+                            <UserRound className="h-5 w-5" />
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-foreground">
+                            {empNameById(a.appraisee_id)}
+                          </h3>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm text-muted-foreground">
                               {typeNameById(a.appraisal_type_id)}
-                            </div>
-                            <div className="text-sm text-muted-foreground flex items-center gap-1">
-                              <Calendar className="h-3 w-3 icon-due-date" />
-                              {formatDate(a.start_date)} –{" "}
-                              {formatDate(a.end_date)}
-                            </div>
-                            <div className="pt-1">
+                            </span>
+                            {rangeNameById(a.appraisal_type_range_id) && (
                               <Badge
                                 variant="outline"
-                                className="border-orange-200 text-orange-700 bg-orange-50"
+                                className="bg-blue-50 text-blue-700 border-blue-200"
                               >
-                                Draft
+                                {rangeNameById(a.appraisal_type_range_id)}
                               </Badge>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="ml-auto flex items-center gap-3 flex-none shrink-0 whitespace-nowrap self-center">
-                          <Button
-                            variant="outline"
-                            onClick={() => handleEditDraft(a.appraisal_id)}
-                            className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
-                            aria-label="Edit draft appraisal"
-                            title="Edit draft appraisal"
-                          >
-                            <Edit className="h-4 w-4" />
-                            <span className="hidden sm:inline sm:ml-2">
-                              Edit
-                            </span>
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        {/* Team Appraisals (Active + Completed with filter) */}
-        <Card className="shadow-soft hover-lift transition-all lg:col-span-2">
-          <CardHeader className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <CardTitle className="text-xl sm:text-2xl font-bold flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                <Activity className="h-5 w-5 text-emerald-600" />
-                Team Appraisals
-              </CardTitle>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowFilters((v) => !v)}
-                  aria-expanded={showFilters}
-                  aria-controls="team-filters"
-                  title="Toggle filters"
-                >
-                  <Filter className="h-4 w-4" />
-                  <span className="hidden sm:inline sm:ml-2">Filters</span>
-                  <ChevronDown
-                    className={
-                      (showFilters ? "rotate-180 " : "") +
-                      "h-4 w-4 ml-2 transition-transform"
-                    }
-                  />
-                </Button>
-                {filteredTeamSearch.length > 0 && (
-                  <div
-                    className="inline-flex items-center gap-1 rounded-full border border-border bg-background/60 px-1.5 py-1 shadow-sm backdrop-blur"
-                    aria-live="polite"
-                  >
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setTeamPage((p) => Math.max(1, p - 1))}
-                      disabled={teamPage <= 1}
-                      aria-label="Previous page"
-                      title="Previous page"
-                      className="rounded-full hover:bg-primary/10"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="hidden sm:inline px-2 text-xs font-medium text-muted-foreground">
-                      Page {teamPage} <span className="mx-1">/</span>{" "}
-                      {teamTotalPages}
-                    </span>
-                    <span className="sr-only sm:hidden">
-                      Page {teamPage} of {teamTotalPages}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() =>
-                        setTeamPage((p) => Math.min(teamTotalPages, p + 1))
-                      }
-                      disabled={teamPage >= teamTotalPages}
-                      aria-label="Next page"
-                      title="Next page"
-                      className="rounded-full hover:bg-primary/10"
-                    >
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-            {showFilters && (
-              <div id="team-filters" className="w-full sm:w-auto">
-                <div className="flex flex-wrap items-end gap-3">
-                  <div className="w-full sm:w-56 md:w-60">
-                    <Label className="mb-1 block">Search</Label>
-                    <Input
-                      placeholder="Search employee name"
-                      value={searchName}
-                      onChange={(e) => setSearchName(e.target.value)}
-                    />
-                  </div>
-                  <div className="w-full md:w-40 flex-none">
-                    <Label className="mb-1 block">Type</Label>
-                    <Select
-                      value={searchTypeId}
-                      onValueChange={(v) => setSearchTypeId(v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="All types" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All types</SelectItem>
-                        {types.map((t) => (
-                          <SelectItem key={t.id} value={String(t.id)}>
-                            {t.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="w-full md:basis-full xl:flex-1 min-w-0">
-                    <PeriodFilter
-                      defaultPreset="This Year"
-                      value={period}
-                      onChange={setPeriod}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardHeader>
-          <CardContent>
-            {/* Filters */}
-            <div className="flex flex-wrap items-center mb-3 gap-3">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={teamFilter === "Active" ? "default" : "outline"}
-                  onClick={() => setTeamFilter("Active")}
-                  className={
-                    teamFilter === "Active"
-                      ? "bg-primary text-primary-foreground"
-                      : ""
-                  }
-                >
-                  Active
-                </Button>
-                <Button
-                  variant={teamFilter === "Completed" ? "default" : "outline"}
-                  onClick={() => setTeamFilter("Completed")}
-                  className={
-                    teamFilter === "Completed"
-                      ? "bg-primary text-primary-foreground"
-                      : ""
-                  }
-                >
-                  Completed
-                </Button>
-                <Button
-                  variant={teamFilter === "All" ? "default" : "outline"}
-                  onClick={() => setTeamFilter("All")}
-                  className={
-                    teamFilter === "All"
-                      ? "bg-primary text-primary-foreground"
-                      : ""
-                  }
-                >
-                  All
-                </Button>
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="animate-pulse">
-                    <div className="h-16 bg-muted rounded-lg"></div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {filteredTeamSearch.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Activity className="h-12 w-12 mx-auto mb-4 icon-team-appraisals" />
-                    <p>No items</p>
-                  </div>
-                ) : (
-                  teamPaged.map((a) => (
-                    <div
-                      key={a.appraisal_id}
-                      className="rounded-lg border border-border bg-card p-3 sm:p-4 text-sm transition-all duration-200 hover:shadow-sm overflow-hidden"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <Avatar>
-                            <AvatarFallback
-                              className={
-                                a.status === "Complete"
-                                  ? "bg-muted text-foreground"
-                                  : "bg-primary/10 text-primary"
-                              }
-                            >
-                              <UserRound className="h-4 w-4" />
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="space-y-1 min-w-0">
-                            <div className="font-medium text-foreground truncate">
-                              {empNameById(a.appraisee_id)} •{" "}
-                              {typeNameById(a.appraisal_type_id)}
-                            </div>
-                            <div className="text-sm text-muted-foreground flex items-center gap-1">
-                              <Calendar className="h-3 w-3 icon-due-date" />
-                              {formatDate(a.start_date)} –{" "}
-                              {formatDate(a.end_date)}
-                            </div>
-                            <div className="pt-1">
-                              {a.status === "Complete" ? (
-                                <Badge
-                                  variant="default"
-                                  className="bg-green-100 text-green-800 border-green-200"
-                                >
-                                  Completed
-                                </Badge>
-                              ) : (
-                                <Badge
-                                  variant="secondary"
-                                  className="bg-blue-100 text-blue-800 border-blue-200"
-                                >
-                                  {displayStatus(a.status)}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="ml-auto flex items-center gap-3 flex-none shrink-0 whitespace-nowrap self-center">
-                          {a.status === "Appraiser Evaluation" && (
-                            <Button
-                              onClick={() =>
-                                navigate(
-                                  `/appraiser-evaluation/${a.appraisal_id}`
-                                )
-                              }
-                              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                              aria-label="Evaluate appraisal"
-                              title="Evaluate appraisal"
-                            >
-                              <ArrowRight className="h-4 w-4" />
-                              <span className="hidden sm:inline sm:ml-2">
-                                Evaluate
-                              </span>
-                            </Button>
-                          )}
-                          {a.status === "Reviewer Evaluation" &&
-                            a.reviewer_id === (user?.emp_id || -1) && (
-                              <Button
-                                onClick={() =>
-                                  navigate(
-                                    `/reviewer-evaluation/${a.appraisal_id}`
-                                  )
-                                }
-                                className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                                aria-label="Evaluate appraisal"
-                                title="Evaluate appraisal"
-                              >
-                                <ArrowRight className="h-4 w-4" />
-                                <span className="hidden sm:inline sm:ml-2">
-                                  Evaluate
-                                </span>
-                              </Button>
                             )}
-                          {a.status === "Complete" && (
-                            <Button
-                              variant="outline"
-                              onClick={() =>
-                                navigate(`/appraisal/${a.appraisal_id}`)
-                              }
-                              className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
-                              aria-label="View appraisal"
-                              title="View appraisal"
-                            >
-                              <ArrowRight className="h-4 w-4" />
-                              <span className="hidden sm:inline sm:ml-2">
-                                View
-                              </span>
-                            </Button>
-                          )}
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground ml-13">
+                        <Calendar className="h-4 w-4" />
+                        <span>Due: {formatDate(a.end_date)}</span>
+                      </div>
                     </div>
-                  ))
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                    <div className="flex items-center gap-2">
+                      {a.status === "Draft" && (
+                        <Button
+                          variant="outline"
+                          onClick={() => handleEditDraft(a.appraisal_id)}
+                          className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
+                          aria-label="Edit draft appraisal"
+                          title="Edit draft appraisal"
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          <span className="hidden sm:inline">Edit</span>
+                        </Button>
+                      )}
+                      {a.status === "Appraiser Evaluation" &&
+                        a.appraiser_id === (user?.emp_id || -1) && (
+                          <Button
+                            onClick={() =>
+                              navigate(
+                                `/appraiser-evaluation/${a.appraisal_id}`
+                              )
+                            }
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                            aria-label="Evaluate appraisal"
+                            title="Evaluate appraisal"
+                          >
+                            <span className="hidden sm:inline">Evaluate</span>
+                            <ArrowRight className="h-4 w-4 sm:ml-2" />
+                          </Button>
+                        )}
+                      {a.status === "Reviewer Evaluation" &&
+                        a.reviewer_id === (user?.emp_id || -1) && (
+                          <Button
+                            onClick={() =>
+                              navigate(`/reviewer-evaluation/${a.appraisal_id}`)
+                            }
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                            aria-label="Review appraisal"
+                            title="Review appraisal"
+                          >
+                            <span className="hidden sm:inline">Review</span>
+                            <ArrowRight className="h-4 w-4 sm:ml-2" />
+                          </Button>
+                        )}
+                      {/* Only show View button for Complete status */}
+                      {a.status === "Complete" && (
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            navigate(`/appraisal/${a.appraisal_id}`)
+                          }
+                          className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
+                          aria-label="View appraisal"
+                          title="View appraisal"
+                        >
+                          <span className="hidden sm:inline">View</span>
+                          <ArrowRight className="h-4 w-4 sm:ml-2" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
 
-      {/* Modal removed; editing handled by routing */}
+                  {/* People Section */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 p-3 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8 bg-primary/10">
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          <User className="h-4 w-4" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-muted-foreground">
+                          Appraiser
+                        </p>
+                        <p className="text-sm font-medium truncate">
+                          {empNameById(a.appraiser_id)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8 bg-purple-100">
+                        <AvatarFallback className="bg-purple-100 text-purple-700">
+                          <UserCheck className="h-4 w-4" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-muted-foreground">
+                          Reviewer
+                        </p>
+                        <p className="text-sm font-medium truncate">
+                          {empNameById(a.reviewer_id)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Progress Section - Step Indicator */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">
+                        {displayStatus(a.status)}
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <div className="flex items-center justify-between">
+                        {[
+                          {
+                            label: "Submitted",
+                            status: "Submitted",
+                            progress: 20,
+                          },
+                          {
+                            label: "Self Assessment",
+                            status: "Appraisee Self Assessment",
+                            progress: 40,
+                          },
+                          {
+                            label: "Appraiser Evaluation",
+                            status: "Appraiser Evaluation",
+                            progress: 60,
+                          },
+                          {
+                            label: "Reviewer Evaluation",
+                            status: "Reviewer Evaluation",
+                            progress: 80,
+                          },
+                          {
+                            label: "Complete",
+                            status: "Complete",
+                            progress: 100,
+                          },
+                        ].map((step, idx) => {
+                          const currentProgress = getStatusProgress(a.status);
+                          const isCompleted = currentProgress > step.progress;
+                          const isCurrent = a.status === step.status;
+
+                          return (
+                            <div
+                              key={idx}
+                              className="flex flex-col items-center relative z-10 flex-1"
+                            >
+                              <div
+                                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
+                                  isCompleted
+                                    ? "bg-primary text-primary-foreground"
+                                    : isCurrent
+                                    ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2"
+                                    : "bg-muted text-muted-foreground border-2 border-muted-foreground/20"
+                                }`}
+                              >
+                                {isCompleted ? (
+                                  <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                                ) : (
+                                  <span className="text-[10px] sm:text-xs">
+                                    {idx + 1}
+                                  </span>
+                                )}
+                              </div>
+                              <span
+                                className={`text-[9px] sm:text-[11px] mt-1.5 text-center leading-tight max-w-[70px] sm:max-w-none ${
+                                  isCompleted || isCurrent
+                                    ? "text-foreground font-medium"
+                                    : "text-muted-foreground"
+                                }`}
+                              >
+                                {step.label}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* Connecting Lines */}
+                      <div className="absolute top-4 sm:top-5 left-0 right-0 h-[2px] bg-muted -z-0 mx-4 sm:mx-5">
+                        <div
+                          className="h-full bg-primary transition-all duration-500"
+                          style={{
+                            width: `${
+                              (getStatusProgress(a.status) / 100) * 100
+                            }%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -47,6 +47,8 @@ const Layout = ({ children }: LayoutProps) => {
     "/self-assessment",
     "/appraiser-evaluation",
     "/reviewer-evaluation",
+    "/my-appraisal", // Hide header on My Appraisal page
+    "/team-appraisal", // Hide header on Team Appraisal page
   ];
 
   // Check if current path starts with any hide route or matches edit template pattern

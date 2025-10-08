@@ -2,25 +2,20 @@ import { useEffect, useMemo, useState } from "react";
 import { apiFetch, api } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
+import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
-import { Progress } from "../../components/ui/progress";
+import { Avatar, AvatarFallback } from "../../components/ui/avatar";
 import PeriodFilter, { type Period } from "../../components/PeriodFilter";
 import {
   Calendar,
-  Clock,
-  TrendingUp,
   CheckCircle2,
   ArrowRight,
   ArrowLeft,
-  Filter,
-  ChevronDown,
+  User,
+  UserCheck,
+  CheckCircle,
+  Clock,
 } from "lucide-react";
 import { Label } from "../../components/ui/label";
 import {
@@ -33,6 +28,21 @@ import {
 import { Input } from "../../components/ui/input";
 
 type AppraisalType = { id: number; name: string; has_range?: boolean };
+
+type AppraisalTypeRange = {
+  id: number;
+  appraisal_type_id: number;
+  range_name: string;
+  min_score: number;
+  max_score: number;
+};
+
+type Employee = {
+  emp_id: number;
+  emp_name: string;
+  emp_email?: string;
+  emp_roles?: string;
+};
 
 type Appraisal = {
   appraisal_id: number;
@@ -101,44 +111,6 @@ const useAppraisalTypes = () => {
   return { types, typesStatus };
 };
 
-// Helper function to calculate completion percentage
-const calculateCompletionPct = (
-  selectedAppraisal: Appraisal | null,
-  detailsById: Record<number, AppraisalWithGoals | undefined>
-): number | null => {
-  if (!selectedAppraisal) return null;
-  const details = detailsById[selectedAppraisal.appraisal_id];
-  if (!details) return null;
-  const goals = details.appraisal_goals || [];
-  if (!goals.length) return 0;
-
-  const total = goals.reduce(
-    (acc, g) => acc + (g.goal?.goal_weightage ?? 0),
-    0
-  );
-  if (total <= 0) return 0;
-
-  const status = selectedAppraisal.status;
-  const useAppraiser =
-    status === "Appraiser Evaluation" ||
-    status === "Reviewer Evaluation" ||
-    status === "Complete";
-
-  const completed = goals.reduce((acc, g) => {
-    let done: boolean;
-    if (useAppraiser) {
-      done = g.appraiser_rating != null;
-    } else if (status === "Appraisee Self Assessment") {
-      done = g.self_rating != null;
-    } else {
-      done = false;
-    }
-    return acc + (done ? g.goal?.goal_weightage ?? 0 : 0);
-  }, 0);
-
-  return Math.round((completed / total) * 100);
-};
-
 // Helper function for appraisal filtering by period and type
 const useAppraisalFiltering = (
   appraisals: Appraisal[],
@@ -160,8 +132,7 @@ const useAppraisalFiltering = (
   const myActives = useMemo(
     () =>
       appraisalsInPeriod.filter(
-        (a) =>
-          a.status === "Submitted" || a.status === "Appraisee Self Assessment"
+        (a) => a.status !== "Draft" && a.status !== "Complete"
       ),
     [appraisalsInPeriod]
   );
@@ -318,49 +289,27 @@ const useSelfAssessmentHandler = (
   };
 };
 
-// Helper component for appraisal status badge
-const AppraisalStatusBadge = ({
-  status,
-  displayStatus,
-}: {
-  status: string;
-  displayStatus: (s: string) => string;
-}) => {
-  if (status === "Complete") {
-    return (
-      <Badge className="bg-green-100 text-green-800 border-green-200">
-        Completed
-      </Badge>
-    );
-  }
-
-  return (
-    <Badge
-      variant="secondary"
-      className={
-        status === "Submitted"
-          ? "bg-yellow-100 text-yellow-800 border-yellow-200"
-          : "bg-blue-100 text-blue-800 border-blue-200"
-      }
-    >
-      {displayStatus(status)}
-    </Badge>
-  );
-};
-
 // Helper component for appraisal action buttons
 const AppraisalActionButtons = ({
   appraisal,
   onSelfAssessment,
   navigate,
+  currentUserId,
 }: {
   appraisal: Appraisal;
   onSelfAssessment: (a: Appraisal) => void;
   navigate: (path: string) => void;
+  currentUserId: number;
 }) => {
+  const isAppraisee = appraisal.appraisee_id === currentUserId;
+  const isAppraiser = appraisal.appraiser_id === currentUserId;
+  const isReviewer = appraisal.reviewer_id === currentUserId;
+
+  // Appraisee actions: Self Assessment
   if (
-    appraisal.status === "Submitted" ||
-    appraisal.status === "Appraisee Self Assessment"
+    isAppraisee &&
+    (appraisal.status === "Submitted" ||
+      appraisal.status === "Appraisee Self Assessment")
   ) {
     const buttonText =
       appraisal.status === "Submitted"
@@ -380,6 +329,63 @@ const AppraisalActionButtons = ({
     );
   }
 
+  // Appraiser actions: Evaluate
+  if (isAppraiser && appraisal.status === "Appraiser Evaluation") {
+    return (
+      <Button
+        onClick={() =>
+          navigate(`/appraiser-evaluation/${appraisal.appraisal_id}`)
+        }
+        className="bg-primary hover:bg-primary/90 text-primary-foreground"
+        aria-label="Evaluate appraisal"
+        title="Evaluate appraisal"
+      >
+        <span className="hidden sm:inline">Evaluate</span>
+        <ArrowRight className="h-4 w-4 sm:ml-2" />
+      </Button>
+    );
+  }
+
+  // Reviewer actions: Evaluate
+  if (isReviewer && appraisal.status === "Reviewer Evaluation") {
+    return (
+      <Button
+        onClick={() =>
+          navigate(`/reviewer-evaluation/${appraisal.appraisal_id}`)
+        }
+        className="bg-primary hover:bg-primary/90 text-primary-foreground"
+        aria-label="Review appraisal"
+        title="Review appraisal"
+      >
+        <span className="hidden sm:inline">Review</span>
+        <ArrowRight className="h-4 w-4 sm:ml-2" />
+      </Button>
+    );
+  }
+
+  // Appraisee can view their self assessment during Appraiser/Reviewer Evaluation
+  if (
+    isAppraisee &&
+    (appraisal.status === "Appraiser Evaluation" ||
+      appraisal.status === "Reviewer Evaluation")
+  ) {
+    return (
+      <Button
+        variant="outline"
+        onClick={() =>
+          navigate(`/self-assessment/${appraisal.appraisal_id}?readonly=true`)
+        }
+        className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
+        aria-label="View self assessment"
+        title="View self assessment"
+      >
+        <span className="hidden sm:inline">View</span>
+        <ArrowRight className="h-4 w-4 sm:ml-2" />
+      </Button>
+    );
+  }
+
+  // All roles: View completed appraisals
   if (appraisal.status === "Complete") {
     return (
       <Button
@@ -395,93 +401,9 @@ const AppraisalActionButtons = ({
     );
   }
 
+  // No view button for appraiser/reviewer before Complete status
   return null;
 };
-
-// Helper component for filters section
-const AppraisalFilters = ({
-  showFilters,
-  searchName,
-  onSearchNameChange,
-  searchTypeId,
-  onSearchTypeIdChange,
-  types,
-  period,
-  onPeriodChange,
-}: {
-  showFilters: boolean;
-  searchName: string;
-  onSearchNameChange: (value: string) => void;
-  searchTypeId: string;
-  onSearchTypeIdChange: (value: string) => void;
-  types: AppraisalType[];
-  period: Period;
-  onPeriodChange: (period: Period) => void;
-}) => {
-  if (!showFilters) return null;
-
-  return (
-    <div id="my-filters" className="w-full">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="w-full md:flex-1 min-w-0">
-          <Label className="mb-1 block">Search</Label>
-          <Input
-            placeholder="Search appraisal type"
-            value={searchName}
-            onChange={(e) => onSearchNameChange(e.target.value)}
-          />
-        </div>
-        <div className="w-full md:w-40 flex-none">
-          <Label className="mb-1 block">Type</Label>
-          <Select value={searchTypeId} onValueChange={onSearchTypeIdChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="All types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
-              {types.map((t) => (
-                <SelectItem key={t.id} value={String(t.id)}>
-                  {t.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="w-full md:basis-full xl:flex-1 min-w-0">
-          <PeriodFilter
-            defaultPreset="This Year"
-            value={period}
-            onChange={onPeriodChange}
-          />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Helper component for tab filter buttons
-const TabFilterButtons = ({
-  currentFilter,
-  onFilterChange,
-}: {
-  currentFilter: FilterType;
-  onFilterChange: (filter: FilterType) => void;
-}) => (
-  <div className="flex items-center gap-2">
-    {(["Active", "Completed", "All"] as const).map((filter) => (
-      <Button
-        key={filter}
-        variant={currentFilter === filter ? "default" : "outline"}
-        onClick={() => onFilterChange(filter)}
-        className={
-          currentFilter === filter ? "bg-primary text-primary-foreground" : ""
-        }
-      >
-        {filter}
-      </Button>
-    ))}
-  </div>
-);
 
 const MyAppraisal = () => {
   const { user } = useAuth();
@@ -493,6 +415,8 @@ const MyAppraisal = () => {
   const [detailsById, setDetailsById] = useState<
     Record<number, AppraisalWithGoals | undefined>
   >({});
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [ranges, setRanges] = useState<AppraisalTypeRange[]>([]);
   const [period, setPeriod] = useState<Period>(() => {
     const y = new Date().getFullYear();
     const start = new Date(y, 0, 1).toISOString().slice(0, 10);
@@ -504,11 +428,23 @@ const MyAppraisal = () => {
   const ITEMS_PER_PAGE = 5;
   const [myPage, setMyPage] = useState(1);
   // Filter for combined list
-  const [myFilter, setMyFilter] = useState<FilterType>("All");
-  // Show/hide advanced filters and type filter
-  const [showFilters, setShowFilters] = useState(false);
+  const [myFilter, setMyFilter] = useState<FilterType>("Active");
+  // Type filter and search
   const [searchTypeId, setSearchTypeId] = useState<string>("all");
   const [searchName, setSearchName] = useState("");
+
+  // Load employees and ranges
+  useEffect(() => {
+    const loadData = async () => {
+      const [empRes, rangeRes] = await Promise.all([
+        apiFetch<Employee[]>("/api/employees/"),
+        apiFetch<AppraisalTypeRange[]>("/api/appraisal-types/ranges"),
+      ]);
+      if (empRes.ok && empRes.data) setEmployees(empRes.data);
+      if (rangeRes.ok && rangeRes.data) setRanges(rangeRes.data);
+    };
+    loadData();
+  }, []);
 
   useEffect(() => {
     if (!user?.emp_id) return;
@@ -516,14 +452,18 @@ const MyAppraisal = () => {
     const loadAppraisals = async () => {
       setAppraisalsLoading(true);
       setAppraisalsError(null);
+
+      // Fetch only appraisals where user is the appraisee (their own appraisals)
       const res = await apiFetch<Appraisal[]>(
         `/api/appraisals/?appraisee_id=${encodeURIComponent(user.emp_id)}`
       );
+
       if (res.ok && res.data) {
         setAppraisals(res.data);
       } else {
         setAppraisalsError(res.error || "Failed to fetch appraisals");
       }
+
       setAppraisalsLoading(false);
     };
     loadAppraisals();
@@ -534,6 +474,59 @@ const MyAppraisal = () => {
       return new Date(iso).toLocaleDateString();
     } catch {
       return iso;
+    }
+  };
+
+  // Helper to get employee name
+  const empNameById = useMemo(() => {
+    const map = new Map(employees.map((e) => [e.emp_id, e.emp_name]));
+    return (id: number) => map.get(id) || "Unknown";
+  }, [employees]);
+
+  // Helper to get range name
+  const rangeNameById = useMemo(() => {
+    const map = new Map(ranges.map((r) => [r.id, r.range_name]));
+    return (id: number | null | undefined) => (id ? map.get(id) || "" : "");
+  }, [ranges]);
+
+  // Get appraisal status progress
+  const getStatusProgress = (status: string): number => {
+    const statusMap: Record<string, number> = {
+      Draft: 0,
+      Submitted: 20,
+      "Appraisee Self Assessment": 40,
+      "Appraiser Evaluation": 60,
+      "Reviewer Evaluation": 80,
+      Complete: 100,
+    };
+    return statusMap[status] || 0;
+  };
+
+  // Handle acknowledge action
+  const handleAcknowledge = async (appraisalId: number) => {
+    try {
+      const res = await apiFetch(`/api/appraisals/${appraisalId}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "Appraisee Self Assessment" }),
+      });
+      if (res.ok) {
+        // Refresh appraisals - fetch only where user is appraisee
+        const refreshRes = await apiFetch<Appraisal[]>(
+          `/api/appraisals/?appraisee_id=${encodeURIComponent(
+            user?.emp_id || ""
+          )}`
+        );
+
+        if (refreshRes.ok && refreshRes.data) {
+          setAppraisals(refreshRes.data);
+        }
+        setActionError(null);
+      } else {
+        setActionError(res.error || "Failed to acknowledge appraisal");
+      }
+    } catch (error) {
+      console.error("Error acknowledging appraisal:", error);
+      setActionError("Unable to acknowledge appraisal");
     }
   };
 
@@ -551,9 +544,6 @@ const MyAppraisal = () => {
   const displayStatus = (status: string) =>
     status === "Submitted" ? "Waiting Acknowledgement" : status;
   const selectedAppraisal = useSelectedAppraisal(appraisals || [], period);
-  const dueDateStr = selectedAppraisal
-    ? formatDate(selectedAppraisal.end_date)
-    : "—";
 
   const { myActives, myCompleted, combinedMine } = useAppraisalFiltering(
     appraisals,
@@ -641,185 +631,305 @@ const MyAppraisal = () => {
     navigate
   );
 
-  const completionPct = calculateCompletionPct(selectedAppraisal, detailsById);
   return (
     <div className="space-y-6 text-foreground">
-      {/* Overview cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="shadow-soft hover-lift transition-all">
-          <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-            <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2">
-              <Calendar className="h-4 w-4 icon-appraisal-type" />
-              Appraisal Type
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-left">
-            <div className="text-2xl font-bold text-foreground">
-              {selectedAppraisal
-                ? typeNameById(
-                    selectedAppraisal.appraisal_type_id,
-                    selectedAppraisal
-                  )
-                : "—"}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-soft hover-lift transition-all">
-          <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-            <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2">
-              <Clock className="h-4 w-4 icon-due-date" />
-              Due Date
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-left">
-            <div className="text-2xl font-bold text-foreground">
-              {dueDateStr}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-soft hover-lift transition-all">
-          <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-            <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 icon-overall-progress" />
-              Overall Progress
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-left">
-            {completionPct == null ? (
-              <div className="text-2xl font-bold text-muted-foreground">—</div>
-            ) : (
-              <div className="space-y-2">
-                <div className="text-2xl font-bold text-foreground">
-                  {completionPct}%
-                </div>
-                <Progress value={completionPct} className="h-2" />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Sections grid */}
-      <div className="grid grid-cols-1 gap-6">
-        {/* My Appraisals (Active + Completed with filter) */}
-        <Card className="shadow-soft hover-lift transition-all">
-          <CardHeader className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-2 min-w-0 flex-nowrap">
-              <CardTitle className="text-xl sm:text-2xl font-bold flex items-center gap-2 min-w-0 flex-1 truncate bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                <CheckCircle2 className="h-5 w-5 text-blue-600" />
-                My Appraisals
-              </CardTitle>
-              <div className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap flex-nowrap">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowFilters((v) => !v)}
-                  aria-expanded={showFilters}
-                  aria-controls="my-filters"
-                  title="Toggle filters"
-                >
-                  <Filter className="h-4 w-4" />
-                  <span className="hidden sm:inline sm:ml-2">Filters</span>
-                  <ChevronDown
-                    className={
-                      (showFilters ? "rotate-180 " : "") +
-                      "h-4 w-4 ml-2 transition-transform"
-                    }
-                  />
-                </Button>
-                {filteredMineSearch.length > 0 && (
-                  <PaginationControls
-                    currentPage={myPage}
-                    totalPages={listTotalPages}
-                    onPageChange={setMyPage}
-                  />
-                )}
-              </div>
-            </div>
-            <AppraisalFilters
-              showFilters={showFilters}
-              searchName={searchName}
-              onSearchNameChange={setSearchName}
-              searchTypeId={searchTypeId}
-              onSearchTypeIdChange={setSearchTypeId}
-              types={types}
-              period={period}
-              onPeriodChange={setPeriod}
+      {/* Filter Components - Always visible at the top */}
+      <div className="w-full">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="w-full md:flex-1 min-w-0">
+            <Label className="mb-1 block">Search</Label>
+            <Input
+              placeholder="Search appraisal type"
+              value={searchName}
+              onChange={(e) => setSearchName(e.target.value)}
             />
-          </CardHeader>
-          <CardContent>
-            {actionError && (
-              <div className="text-sm text-destructive mb-4 p-3 bg-destructive/10 rounded-md border border-destructive/20">
-                {actionError}
-              </div>
-            )}
-            {appraisalsError && (
-              <div className="text-sm text-destructive mb-4 p-3 bg-destructive/10 rounded-md border border-destructive/20">
-                {appraisalsError}
-              </div>
-            )}
-            {appraisalsLoading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="animate-pulse">
-                    <div className="h-20 bg-muted rounded-lg"></div>
-                  </div>
+          </div>
+          <div className="w-full md:w-40 flex-none">
+            <Label className="mb-1 block">Type</Label>
+            <Select value={searchTypeId} onValueChange={setSearchTypeId}>
+              <SelectTrigger>
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                {types.map((t) => (
+                  <SelectItem key={t.id} value={String(t.id)}>
+                    {t.name}
+                  </SelectItem>
                 ))}
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center gap-3 mb-4">
-                  <TabFilterButtons
-                    currentFilter={myFilter}
-                    onFilterChange={setMyFilter}
-                  />
-                </div>
-                <div className="space-y-3">
-                  {filteredMineSearch.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <CheckCircle2 className="h-12 w-12 mx-auto mb-4 icon-my-appraisals" />
-                      <p>No items</p>
-                    </div>
-                  ) : (
-                    listPaged.map((a: any) => (
-                      <div
-                        key={a.appraisal_id}
-                        className="rounded-lg border border-border bg-card p-3 sm:p-4 text-sm transition-all duration-200 hover:shadow-sm"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-1">
-                            <div className="font-medium text-foreground">
-                              {typeNameById(a.appraisal_type_id, a)}
-                            </div>
-                            <div className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Calendar className="h-3 w-3 icon-due-date" />
-                              {formatDate(a.start_date)} –{" "}
-                              {formatDate(a.end_date)}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <AppraisalStatusBadge
-                              status={a.status}
-                              displayStatus={displayStatus}
-                            />
-                            <AppraisalActionButtons
-                              appraisal={a}
-                              onSelfAssessment={startOrContinueSelfAssessment}
-                              navigate={navigate}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full md:basis-full xl:flex-1 min-w-0">
+            <PeriodFilter
+              defaultPreset="This Year"
+              value={period}
+              onChange={setPeriod}
+            />
+          </div>
+        </div>
       </div>
+
+      {/* Active/Completed buttons with Pagination */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Button
+            variant={myFilter === "Active" ? "default" : "outline"}
+            onClick={() => setMyFilter("Active")}
+            className={
+              myFilter === "Active" ? "bg-primary text-primary-foreground" : ""
+            }
+          >
+            Active
+            <Badge
+              variant="secondary"
+              className="ml-2 bg-background/20 text-current border-0"
+            >
+              {myActives.length}
+            </Badge>
+          </Button>
+          <Button
+            variant={myFilter === "Completed" ? "default" : "outline"}
+            onClick={() => setMyFilter("Completed")}
+            className={
+              myFilter === "Completed"
+                ? "bg-primary text-primary-foreground"
+                : ""
+            }
+          >
+            Completed
+            <Badge
+              variant="secondary"
+              className="ml-2 bg-background/20 text-current border-0"
+            >
+              {myCompleted.length}
+            </Badge>
+          </Button>
+        </div>
+        {filteredMineSearch.length > 0 && (
+          <PaginationControls
+            currentPage={myPage}
+            totalPages={listTotalPages}
+            onPageChange={setMyPage}
+          />
+        )}
+      </div>
+
+      {/* Error Messages */}
+      {actionError && (
+        <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md border border-destructive/20">
+          {actionError}
+        </div>
+      )}
+      {appraisalsError && (
+        <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md border border-destructive/20">
+          {appraisalsError}
+        </div>
+      )}
+
+      {/* Appraisal Cards */}
+      {appraisalsLoading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="animate-pulse">
+              <div className="h-40 bg-muted rounded-lg"></div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredMineSearch.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <CheckCircle2 className="h-12 w-12 mx-auto mb-4 icon-my-appraisals" />
+              <p>No items</p>
+            </div>
+          ) : (
+            listPaged.map((a: any) => (
+              <Card
+                key={a.appraisal_id}
+                className="shadow-soft hover:shadow-md transition-all border-l-4"
+                style={{
+                  borderLeftColor:
+                    a.status === "Complete"
+                      ? "#10b981"
+                      : a.status === "Submitted"
+                      ? "#f59e0b"
+                      : "#3b82f6",
+                }}
+              >
+                <CardContent className="p-5 sm:p-6">
+                  {/* Header Section */}
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="text-lg font-semibold text-foreground">
+                          {typeNameById(a.appraisal_type_id, a)}
+                        </h3>
+                        {rangeNameById(a.appraisal_type_range_id) && (
+                          <Badge
+                            variant="outline"
+                            className="bg-blue-50 text-blue-700 border-blue-200"
+                          >
+                            {rangeNameById(a.appraisal_type_range_id)}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        <span>Due: {formatDate(a.end_date)}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {a.status === "Submitted" &&
+                        a.appraisee_id === (user?.emp_id || 0) && (
+                          <Button
+                            onClick={() => handleAcknowledge(a.appraisal_id)}
+                            variant="outline"
+                            size="sm"
+                            className="border-green-300 text-green-700 hover:bg-green-50"
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Acknowledge
+                          </Button>
+                        )}
+                      <AppraisalActionButtons
+                        appraisal={a}
+                        onSelfAssessment={startOrContinueSelfAssessment}
+                        navigate={navigate}
+                        currentUserId={user?.emp_id || 0}
+                      />
+                    </div>
+                  </div>
+
+                  {/* People Section */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 p-3 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8 bg-primary/10">
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          <User className="h-4 w-4" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-muted-foreground">
+                          Appraiser
+                        </p>
+                        <p className="text-sm font-medium truncate">
+                          {empNameById(a.appraiser_id)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8 bg-purple-100">
+                        <AvatarFallback className="bg-purple-100 text-purple-700">
+                          <UserCheck className="h-4 w-4" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-muted-foreground">
+                          Reviewer
+                        </p>
+                        <p className="text-sm font-medium truncate">
+                          {empNameById(a.reviewer_id)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Progress Section - Step Indicator */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">
+                        {displayStatus(a.status)}
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <div className="flex items-center justify-between">
+                        {[
+                          {
+                            label: "Submitted",
+                            status: "Submitted",
+                            progress: 20,
+                          },
+                          {
+                            label: "Self Assessment",
+                            status: "Appraisee Self Assessment",
+                            progress: 40,
+                          },
+                          {
+                            label: "Appraiser Evaluation",
+                            status: "Appraiser Evaluation",
+                            progress: 60,
+                          },
+                          {
+                            label: "Reviewer Evaluation",
+                            status: "Reviewer Evaluation",
+                            progress: 80,
+                          },
+                          {
+                            label: "Complete",
+                            status: "Complete",
+                            progress: 100,
+                          },
+                        ].map((step, idx) => {
+                          const currentProgress = getStatusProgress(a.status);
+                          const isCompleted = currentProgress > step.progress;
+                          const isCurrent = a.status === step.status;
+
+                          return (
+                            <div
+                              key={idx}
+                              className="flex flex-col items-center relative z-10 flex-1"
+                            >
+                              <div
+                                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
+                                  isCompleted
+                                    ? "bg-primary text-primary-foreground"
+                                    : isCurrent
+                                    ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2"
+                                    : "bg-muted text-muted-foreground border-2 border-muted-foreground/20"
+                                }`}
+                              >
+                                {isCompleted ? (
+                                  <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                                ) : (
+                                  <span className="text-[10px] sm:text-xs">
+                                    {idx + 1}
+                                  </span>
+                                )}
+                              </div>
+                              <span
+                                className={`text-[9px] sm:text-[11px] mt-1.5 text-center leading-tight max-w-[70px] sm:max-w-none ${
+                                  isCompleted || isCurrent
+                                    ? "text-foreground font-medium"
+                                    : "text-muted-foreground"
+                                }`}
+                              >
+                                {step.label}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* Connecting Lines */}
+                      <div className="absolute top-4 sm:top-5 left-0 right-0 h-[2px] bg-muted -z-0 mx-4 sm:mx-5">
+                        <div
+                          className="h-full bg-primary transition-all duration-500"
+                          style={{
+                            width: `${
+                              (getStatusProgress(a.status) / 100) * 100
+                            }%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 };
