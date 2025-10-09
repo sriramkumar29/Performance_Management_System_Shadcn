@@ -196,7 +196,7 @@ const EditGoalModal = ({
         if (!o) handleCancel();
       }}
     >
-      <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto nice-scrollbar p-4 sm:p-6">
+      <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[85vh] sm:max-h-[90vh] overflow-auto nice-scrollbar p-4 sm:p-6">
         <DialogHeader className="pb-3">
           <div className="flex items-center justify-between gap-3">
             <div className="p-2 rounded-lg bg-primary/10">

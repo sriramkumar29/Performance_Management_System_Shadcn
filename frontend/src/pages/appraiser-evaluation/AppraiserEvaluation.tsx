@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import type React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiFetch } from "../../utils/api";
@@ -22,6 +22,8 @@ import {
   BarChart3,
   Home,
 } from "lucide-react";
+import { PageHeaderSkeleton } from "../../components/PageHeaderSkeleton";
+import { GoalsSkeleton } from "../../components/GoalsSkeleton";
 
 interface GoalCategory {
   id: number;
@@ -79,7 +81,7 @@ const AppraiserEvaluation = () => {
     comment: string;
   }>({ rating: null, comment: "" });
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     const res = await apiFetch<AppraisalWithGoals>(
@@ -108,11 +110,16 @@ const AppraiserEvaluation = () => {
       // notifications removed; silently ignore or handle elsewhere
     }
     setLoading(false);
-  };
+  }, [id, navigate]);
 
   useEffect(() => {
     load();
   }, [id]);
+
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const goals = appraisal?.appraisal_goals || [];
   const isOverallPage = idx === goals.length;
@@ -122,21 +129,24 @@ const AppraiserEvaluation = () => {
   const canPrev = idx > 0;
   const canNext = idx < total;
 
-  const setCurrentField = (
-    goalId: number,
-    patch: Partial<{ rating: number | null; comment: string }>
-  ) => {
-    setForm((prev) => ({
-      ...prev,
-      [goalId]: {
-        rating: prev[goalId]?.rating ?? null,
-        comment: prev[goalId]?.comment ?? "",
-        ...patch,
-      },
-    }));
-  };
+  const setCurrentField = useCallback(
+    (
+      goalId: number,
+      patch: Partial<{ rating: number | null; comment: string }>
+    ) => {
+      setForm((prev) => ({
+        ...prev,
+        [goalId]: {
+          rating: prev[goalId]?.rating ?? null,
+          comment: prev[goalId]?.comment ?? "",
+          ...patch,
+        },
+      }));
+    },
+    []
+  );
 
-  const validateCurrent = () => {
+  const validateCurrent = useCallback(() => {
     if (isOverallPage) {
       return !!(
         overall.rating &&
@@ -147,20 +157,20 @@ const AppraiserEvaluation = () => {
     if (!current) return false;
     const cur = form[current.goal.goal_id] || { rating: null, comment: "" };
     return !!(cur.rating && cur.comment && cur.comment.trim().length > 0);
-  };
+  }, [isOverallPage, overall, current, form]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (!validateCurrent()) {
       return;
     }
     if (canNext) setIdx((i) => i + 1);
-  };
+  }, [validateCurrent, canNext]);
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     if (canPrev) setIdx((i) => i - 1);
-  };
+  }, [canPrev]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!appraisal) return;
     // ensure all goals filled
     for (const ag of goals) {
@@ -216,17 +226,14 @@ const AppraiserEvaluation = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [appraisal, goals, form, overall, navigate]);
 
   if (!appraisal)
     return (
       <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
         <div className="mx-auto max-w-5xl">
-          <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-muted rounded-lg w-1/3"></div>
-            <div className="h-32 bg-muted rounded-xl"></div>
-            <div className="h-96 bg-muted rounded-xl"></div>
-          </div>
+          <PageHeaderSkeleton />
+          <GoalsSkeleton count={5} />
         </div>
         {/* Mobile-only floating Home button for better discoverability */}
         <Button

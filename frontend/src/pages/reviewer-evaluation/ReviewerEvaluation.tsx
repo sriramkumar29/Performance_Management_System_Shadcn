@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiFetch } from "../../utils/api";
 import { Card } from "../../components/ui/card";
@@ -21,6 +21,8 @@ import {
   Home,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PageHeaderSkeleton } from "../../components/PageHeaderSkeleton";
+import { GoalsSkeleton } from "../../components/GoalsSkeleton";
 
 interface GoalCategory {
   id: number;
@@ -85,7 +87,7 @@ const ReviewerEvaluation = () => {
     return "bg-border";
   };
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     const res = await apiFetch<AppraisalWithGoals>(
@@ -107,11 +109,16 @@ const ReviewerEvaluation = () => {
       toast.error(res.error || "Failed to load appraisal");
     }
     setLoading(false);
-  };
+  }, [id, navigate]);
 
   useEffect(() => {
     load();
   }, [id]);
+
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const goals = appraisal?.appraisal_goals || [];
   const isOverallPage = idx === goals.length;
@@ -122,16 +129,20 @@ const ReviewerEvaluation = () => {
   const canPrev = idx > 0;
   const canNext = idx < total;
 
-  const validateOverall = () => !!(overall.rating && overall.comment.trim());
+  const validateOverall = useCallback(
+    () => !!(overall.rating && overall.comment.trim()),
+    [overall]
+  );
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (canNext) setIdx((i) => i + 1);
-  };
-  const handlePrev = () => {
-    if (canPrev) setIdx((i) => i - 1);
-  };
+  }, [canNext]);
 
-  const handleSubmit = async () => {
+  const handlePrev = useCallback(() => {
+    if (canPrev) setIdx((i) => i - 1);
+  }, [canPrev]);
+
+  const handleSubmit = useCallback(async () => {
     if (!appraisal) return;
     if (!overall.rating || !overall.comment.trim()) {
       setIdx(goals.length);
@@ -166,17 +177,14 @@ const ReviewerEvaluation = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [appraisal, overall, goals.length, navigate]);
 
   if (!appraisal)
     return (
       <div className="min-h-screen bg-background p-6" aria-busy={loading}>
         <div className="max-w-4xl mx-auto">
-          <Card className="glass-effect shadow-soft hover-lift border-0 p-8 animate-fade-in">
-            <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          </Card>
+          <PageHeaderSkeleton />
+          <GoalsSkeleton count={5} />
         </div>
         {/* Mobile-only floating Home button for better discoverability */}
         <Button

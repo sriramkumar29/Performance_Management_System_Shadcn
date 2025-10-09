@@ -16,6 +16,13 @@ from pathlib import Path
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
 from starlette.exceptions import HTTPException
+from dotenv import load_dotenv
+
+# Load environment variables from .env file BEFORE anything else
+env_file = f".env.{os.getenv('APP_ENV', 'development')}"
+if not os.path.exists(env_file):
+    env_file = ".env.development"
+load_dotenv(env_file, override=True)
 
 from app.core.logging_config import setup_logging, get_logger
 from app.utils.logger import log_exception
@@ -32,7 +39,7 @@ from app.constants import (
     FRONTEND_NOT_FOUND, API_RUNNING_FRONTEND_NOT_FOUND
 )
 
-# Setup logging first
+# Setup logging after loading .env file
 setup_logging()
 logger = get_logger(__name__)
 

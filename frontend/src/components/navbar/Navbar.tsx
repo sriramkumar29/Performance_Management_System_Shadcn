@@ -13,6 +13,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { Button } from "../ui/button";
 import { cn } from "../../utils/cn";
+import { useMemo } from "react";
 // Theme toggle re-enabled with dark mode support
 
 interface NavbarProps {
@@ -24,6 +25,22 @@ const Navbar = ({ showTeamTab = false }: NavbarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isDarkMode, toggleTheme } = useTheme();
+
+  // Memoize avatar initials to avoid recalculating on every render
+  const avatarInitials = useMemo(() => {
+    return (
+      authUser?.emp_name
+        ?.split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2) || "U"
+    );
+  }, [authUser?.emp_name]);
+
+  // Memoize first name
+  const firstName = useMemo(() => {
+    return authUser?.emp_name?.split(" ")[0] || "User";
+  }, [authUser?.emp_name]);
 
   const handleSignOut = () => {
     logout();
@@ -111,16 +128,12 @@ const Navbar = ({ showTeamTab = false }: NavbarProps) => {
               <button className="flex items-center gap-2 rounded-xl ring-2 ring-border hover:ring-primary/50 hover:bg-primary/5 px-2 py-1.5 transition-all duration-300 hover:shadow-soft">
                 <Avatar className="h-9 w-9 ring-2 ring-primary/20">
                   <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-sm font-semibold">
-                    {authUser?.emp_name
-                      ?.split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .slice(0, 2) || "U"}
+                    {avatarInitials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden sm:block text-left">
                   <p className="text-sm font-semibold text-foreground leading-tight">
-                    {authUser?.emp_name?.split(" ")[0] || "User"}
+                    {firstName}
                   </p>
                   <p className="text-xs text-muted-foreground leading-tight">
                     {authUser?.emp_roles || "Employee"}
@@ -136,11 +149,7 @@ const Navbar = ({ showTeamTab = false }: NavbarProps) => {
                 <div className="flex items-center gap-3">
                   <Avatar className="h-12 w-12 ring-2 ring-primary/30">
                     <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground font-semibold text-base">
-                      {authUser?.emp_name
-                        ?.split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .slice(0, 2) || "U"}
+                      {avatarInitials}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col space-y-1">

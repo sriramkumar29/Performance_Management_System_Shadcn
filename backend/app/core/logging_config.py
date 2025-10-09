@@ -14,7 +14,22 @@ import sys
 
 
 def setup_logging() -> None:
-    """Setup logging configuration for the application."""
+    """
+    Setup logging configuration for the application.
+    Reads LOGGING_ENABLED, LOG_LEVEL, LOG_TO_CONSOLE, and LOG_TO_FILE from environment variables.
+    """
+    
+    # Check if logging is enabled via environment variable
+    logging_enabled = os.getenv("LOGGING_ENABLED", "true").lower() in ("true", "1", "yes")
+    
+    if not logging_enabled:
+        # Disable all logging
+        logging.disable(logging.CRITICAL)
+        print("⚠️  Logging is DISABLED via environment variable")
+        return
+    
+    # Enable logging (in case it was previously disabled)
+    logging.disable(logging.NOTSET)
     
     # Create logs directory if it doesn't exist
     logs_dir = Path("logs")
@@ -22,6 +37,63 @@ def setup_logging() -> None:
     
     # Get log level from environment or default to INFO
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    
+    # Get console and file logging preferences
+    log_to_console = os.getenv("LOG_TO_CONSOLE", "true").lower() in ("true", "1", "yes")
+    log_to_file = os.getenv("LOG_TO_FILE", "true").lower() in ("true", "1", "yes")
+    
+    # Build handlers list dynamically
+    app_handlers = []
+    if log_to_console:
+        app_handlers.append("console")
+    if log_to_file:
+        app_handlers.extend(["file", "error_file"])
+    
+    # If no handlers specified, default to console
+    if not app_handlers:
+        app_handlers = ["console"]
+        print("⚠️  No logging handlers specified, defaulting to console only")
+    
+    # Build handlers for different loggers
+    request_handlers = []
+    if log_to_file:
+        request_handlers.append("request_file")
+    if log_to_console:
+        request_handlers.append("console")
+    if not request_handlers:
+        request_handlers = ["console"]
+    
+    database_handlers = []
+    if log_to_file:
+        database_handlers.extend(["database_file", "file"])
+    if log_to_console:
+        database_handlers.append("console")
+    if not database_handlers:
+        database_handlers = ["console"]
+    
+    uvicorn_handlers = []
+    if log_to_console:
+        uvicorn_handlers.append("console")
+    if log_to_file:
+        uvicorn_handlers.append("file")
+    if not uvicorn_handlers:
+        uvicorn_handlers = ["console"]
+    
+    uvicorn_access_handlers = []
+    if log_to_file:
+        uvicorn_access_handlers.append("request_file")
+    elif log_to_console:
+        uvicorn_access_handlers.append("console")
+    else:
+        uvicorn_access_handlers = ["console"]
+    
+    sqlalchemy_handlers = []
+    if log_to_file:
+        sqlalchemy_handlers.append("database_file")
+    elif log_to_console:
+        sqlalchemy_handlers.append("console")
+    else:
+        sqlalchemy_handlers = ["console"]
     
     # Logging configuration
     LOGGING_CONFIG: Dict[str, Any] = {
@@ -52,89 +124,95 @@ def setup_logging() -> None:
                 "stream": "ext://sys.stdout"
             },
             "file": {
-                "class": "logging.handlers.RotatingFileHandler",
+                "class": "logging.FileHandler",
                 "level": "DEBUG",
                 "formatter": "detailed",
                 "filename": "logs/app.log",
-                "maxBytes": 10485760,  # 10MB
-                "backupCount": 5,
+                "mode": "w",  # Overwrite on each restart
                 "encoding": "utf-8"
             },
             "error_file": {
-                "class": "logging.handlers.RotatingFileHandler",
+                "class": "logging.FileHandler",
                 "level": "ERROR",
                 "formatter": "json",
                 "filename": "logs/errors.log",
-                "maxBytes": 10485760,  # 10MB
-                "backupCount": 5,
+                "mode": "w",  # Overwrite on each restart
                 "encoding": "utf-8"
             },
             "request_file": {
-                "class": "logging.handlers.RotatingFileHandler",
+                "class": "logging.FileHandler",
                 "level": "INFO",
                 "formatter": "request",
                 "filename": "logs/requests.log",
-                "maxBytes": 10485760,  # 10MB
-                "backupCount": 5,
+                "mode": "w",  # Overwrite on each restart
                 "encoding": "utf-8"
             },
             "database_file": {
-                "class": "logging.handlers.RotatingFileHandler",
+                "class": "logging.FileHandler",
                 "level": "DEBUG",
                 "formatter": "detailed",
                 "filename": "logs/database.log",
-                "maxBytes": 10485760,  # 10MB
-                "backupCount": 3,
+                "mode": "w",  # Overwrite on each restart
                 "encoding": "utf-8"
             }
         },
         "loggers": {
             "app": {
                 "level": log_level,
-                "handlers": ["console", "file", "error_file"],
+                "handlers": app_handlers,
                 "propagate": False
             },
             "app.requests": {
                 "level": "INFO",
-                "handlers": ["request_file", "console"],
+                "handlers": request_handlers,
                 "propagate": False
             },
             "app.database": {
                 "level": "DEBUG",
-                "handlers": ["database_file", "file"],
+                "handlers": database_handlers,
                 "propagate": False
             },
             "uvicorn": {
                 "level": "INFO",
-                "handlers": ["console", "file"],
+                "handlers": uvicorn_handlers,
                 "propagate": False
             },
             "uvicorn.access": {
                 "level": "INFO",
-                "handlers": ["request_file"],
+                "handlers": uvicorn_access_handlers,
                 "propagate": False
             },
             "sqlalchemy.engine": {
                 "level": "WARNING",
-                "handlers": ["database_file"],
+                "handlers": sqlalchemy_handlers,
                 "propagate": False
             },
             "sqlalchemy.pool": {
                 "level": "WARNING",
-                "handlers": ["database_file"],
+                "handlers": sqlalchemy_handlers,
                 "propagate": False
             }
         },
         "root": {
             "level": "INFO",
-            "handlers": ["console", "file"]
+            "handlers": app_handlers
         }
     }
     
     # Configure logging
     try:
         logging.config.dictConfig(LOGGING_CONFIG)
-        print(f"Logging configured successfully. Log level: {log_level}")
+        
+        # Print status message
+        output_modes = []
+        if log_to_console:
+            output_modes.append("CONSOLE")
+        if log_to_file:
+            output_modes.append("FILES")
+        
+        print(f"✅ Logging ENABLED successfully.")
+        print(f"   📊 Log level: {log_level}")
+        print(f"   📍 Output: {' + '.join(output_modes)}")
     except Exception as e:
         print(f"Failed to configure logging: {e}")
         # Fallback to basic configuration

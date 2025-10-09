@@ -4,6 +4,7 @@ import React, {
   useState,
   useEffect,
   useMemo,
+  useCallback,
 } from "react";
 
 interface ThemeContextType {
@@ -35,7 +36,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
 
     if (stored === "light" || stored === "dark") return stored;
-    
+
     const prefersDark =
       typeof globalThis !== "undefined" &&
       "matchMedia" in globalThis &&
@@ -45,9 +46,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
   const [theme, setTheme] = useState<"light" | "dark">(getInitialTheme);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
-  };
+  }, []);
 
   // Apply theme class to <html> and persist
   useEffect(() => {

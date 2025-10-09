@@ -212,7 +212,7 @@ const ImportFromTemplateModal = ({
         if (!o) onClose();
       }}
     >
-      <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto nice-scrollbar p-4 sm:p-6">
+      <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[85vh] sm:max-h-[90vh] overflow-auto nice-scrollbar p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>Import Goals from Templates</DialogTitle>
         </DialogHeader>

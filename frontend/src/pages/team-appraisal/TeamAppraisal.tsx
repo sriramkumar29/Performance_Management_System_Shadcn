@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import CreateAppraisalButton from "../../features/appraisal/CreateAppraisalButton";
-import { Card, CardContent } from "../../components/ui/card";
+import EditAppraisalButton from "../../features/appraisal/EditAppraisalButton";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
-import { Avatar, AvatarFallback } from "../../components/ui/avatar";
+import { AppraisalCard } from "../../components/AppraisalCard";
+import { AppraisalCardSkeletonList } from "../../components/AppraisalCardSkeleton";
+import {
+  FiltersSkeleton,
+  PaginationSkeleton,
+} from "../../components/FiltersSkeleton";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import {
@@ -16,19 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
-import {
-  Activity,
-  Calendar,
-  UserRound,
-  ArrowRight,
-  ArrowLeft,
-  Edit,
-  Users,
-  User,
-  UserCheck,
-  CheckCircle,
-  Clock,
-} from "lucide-react";
+import { Activity, ArrowRight, ArrowLeft, Users } from "lucide-react";
 import PeriodFilter, { type Period } from "../../components/PeriodFilter";
 
 type Appraisal = {
@@ -59,6 +52,7 @@ type AppraisalTypeRange = {
 const TeamAppraisal = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [appraisals, setAppraisals] = useState<Appraisal[]>([]);
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -76,49 +70,51 @@ const TeamAppraisal = () => {
     };
   });
 
-  useEffect(() => {
-    const load = async () => {
-      if (!user?.emp_id) return;
-      setLoading(true);
-      const [aAppraiser, aReviewerActive, aReviewerCompleted, e, t, r] =
-        await Promise.all([
-          apiFetch<Appraisal[]>(
-            `/api/appraisals/?appraiser_id=${encodeURIComponent(user.emp_id)}`
-          ),
-          apiFetch<Appraisal[]>(
-            `/api/appraisals/?reviewer_id=${encodeURIComponent(
-              user.emp_id
-            )}&status=${encodeURIComponent("Reviewer Evaluation")}`
-          ),
-          apiFetch<Appraisal[]>(
-            `/api/appraisals/?reviewer_id=${encodeURIComponent(
-              user.emp_id
-            )}&status=${encodeURIComponent("Complete")}`
-          ),
-          apiFetch<Employee[]>(`/api/employees/`),
-          apiFetch<AppraisalType[]>(`/api/appraisal-types/`),
-          apiFetch<AppraisalTypeRange[]>(`/api/appraisal-types/ranges`),
-        ]);
-      if (
-        (aAppraiser.ok && aAppraiser.data) ||
-        (aReviewerActive.ok && aReviewerActive.data) ||
-        (aReviewerCompleted.ok && aReviewerCompleted.data)
-      ) {
-        const listA = aAppraiser.data || [];
-        const listRActive = aReviewerActive.data || [];
-        const listRCompleted = aReviewerCompleted.data || [];
-        const map = new Map<number, Appraisal>();
-        for (const item of [...listA, ...listRActive, ...listRCompleted]) {
-          map.set(item.appraisal_id, item);
-        }
-        setAppraisals(Array.from(map.values()));
+  const loadAppraisals = async () => {
+    if (!user?.emp_id) return;
+    setLoading(true);
+    const [aAppraiser, aReviewerActive, aReviewerCompleted, e, t, r] =
+      await Promise.all([
+        apiFetch<Appraisal[]>(
+          `/api/appraisals/?appraiser_id=${encodeURIComponent(user.emp_id)}`
+        ),
+        apiFetch<Appraisal[]>(
+          `/api/appraisals/?reviewer_id=${encodeURIComponent(
+            user.emp_id
+          )}&status=${encodeURIComponent("Reviewer Evaluation")}`
+        ),
+        apiFetch<Appraisal[]>(
+          `/api/appraisals/?reviewer_id=${encodeURIComponent(
+            user.emp_id
+          )}&status=${encodeURIComponent("Complete")}`
+        ),
+        apiFetch<Employee[]>(`/api/employees/`),
+        apiFetch<AppraisalType[]>(`/api/appraisal-types/`),
+        apiFetch<AppraisalTypeRange[]>(`/api/appraisal-types/ranges`),
+      ]);
+    if (
+      (aAppraiser.ok && aAppraiser.data) ||
+      (aReviewerActive.ok && aReviewerActive.data) ||
+      (aReviewerCompleted.ok && aReviewerCompleted.data)
+    ) {
+      const listA = aAppraiser.data || [];
+      const listRActive = aReviewerActive.data || [];
+      const listRCompleted = aReviewerCompleted.data || [];
+      const map = new Map<number, Appraisal>();
+      for (const item of [...listA, ...listRActive, ...listRCompleted]) {
+        map.set(item.appraisal_id, item);
       }
-      if (e.ok && e.data) setEmployees(e.data);
-      if (t.ok && t.data) setTypes(t.data);
-      if (r.ok && r.data) setRanges(r.data);
-      setLoading(false);
-    };
-    load();
+      setAppraisals(Array.from(map.values()));
+    }
+    if (e.ok && e.data) setEmployees(e.data);
+    if (t.ok && t.data) setTypes(t.data);
+    if (r.ok && r.data) setRanges(r.data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadAppraisals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.emp_id]);
 
   const empNameById = useMemo(() => {
@@ -212,26 +208,28 @@ const TeamAppraisal = () => {
     }
   };
 
-  const handleEditDraft = (appraisalId: number) => {
-    navigate(`/appraisal/edit/${appraisalId}`);
-  };
-
-  const getAvatarClassName = (status: string) => {
-    if (status === "Draft") return "bg-orange-50 text-orange-600";
-    if (status === "Complete") return "bg-muted text-foreground";
-    return "bg-primary/10 text-primary";
-  };
-
   // After navigation, list will refresh on mount/useEffect; modal close handler removed
 
   // Pagination (5 per page) for each section
   const ITEMS_PER_PAGE = 5;
   const [teamPage, setTeamPage] = useState(1);
 
-  // Combined appraisals including drafts
+  // Combined appraisals including drafts - persist tab state in URL
+  const getInitialTab = (): "Active" | "Completed" | "Draft" => {
+    const tab = searchParams.get("tab");
+    if (tab === "Completed" || tab === "Draft") return tab;
+    return "Active";
+  };
+
   const [teamFilterWithDraft, setTeamFilterWithDraft] = useState<
     "Active" | "Completed" | "Draft"
-  >("Active");
+  >(getInitialTab);
+
+  // Update URL when tab changes
+  const handleTabChange = (newTab: "Active" | "Completed" | "Draft") => {
+    setTeamFilterWithDraft(newTab);
+    setSearchParams({ tab: newTab });
+  };
 
   const filteredTeamWithDraft = useMemo(() => {
     switch (teamFilterWithDraft) {
@@ -283,6 +281,11 @@ const TeamAppraisal = () => {
     searchName,
     searchTypeId,
   ]);
+
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
     <div className="space-y-6 text-foreground">
@@ -336,7 +339,7 @@ const TeamAppraisal = () => {
         <div className="flex items-center gap-2">
           <Button
             variant={teamFilterWithDraft === "Active" ? "default" : "outline"}
-            onClick={() => setTeamFilterWithDraft("Active")}
+            onClick={() => handleTabChange("Active")}
             className={
               teamFilterWithDraft === "Active"
                 ? "bg-primary text-primary-foreground"
@@ -355,7 +358,7 @@ const TeamAppraisal = () => {
             variant={
               teamFilterWithDraft === "Completed" ? "default" : "outline"
             }
-            onClick={() => setTeamFilterWithDraft("Completed")}
+            onClick={() => handleTabChange("Completed")}
             className={
               teamFilterWithDraft === "Completed"
                 ? "bg-primary text-primary-foreground"
@@ -372,7 +375,7 @@ const TeamAppraisal = () => {
           </Button>
           <Button
             variant={teamFilterWithDraft === "Draft" ? "default" : "outline"}
-            onClick={() => setTeamFilterWithDraft("Draft")}
+            onClick={() => handleTabChange("Draft")}
             className={
               teamFilterWithDraft === "Draft"
                 ? "bg-primary text-primary-foreground"
@@ -439,13 +442,11 @@ const TeamAppraisal = () => {
 
       {/* Appraisal Cards */}
       {loading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse">
-              <div className="h-40 bg-muted rounded-lg"></div>
-            </div>
-          ))}
-        </div>
+        <>
+          <FiltersSkeleton />
+          <AppraisalCardSkeletonList count={5} />
+          <PaginationSkeleton />
+        </>
       ) : (
         <div className="space-y-4">
           {filteredTeamSearchWithDraft.length === 0 ? (
@@ -454,242 +455,86 @@ const TeamAppraisal = () => {
               <p>No items</p>
             </div>
           ) : (
-            teamPaged.map((a) => (
-              <Card
-                key={a.appraisal_id}
-                className="shadow-soft hover:shadow-md transition-all border-l-4"
-                style={{
-                  borderLeftColor:
-                    a.status === "Complete"
-                      ? "#10b981"
-                      : a.status === "Draft"
-                      ? "#f97316"
-                      : "#3b82f6",
-                }}
-              >
-                <CardContent className="p-5 sm:p-6">
-                  {/* Header Section */}
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Avatar className="h-10 w-10">
-                          <AvatarFallback
-                            className={getAvatarClassName(a.status)}
-                          >
-                            <UserRound className="h-5 w-5" />
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-foreground">
-                            {empNameById(a.appraisee_id)}
-                          </h3>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm text-muted-foreground">
-                              {typeNameById(a.appraisal_type_id)}
-                            </span>
-                            {rangeNameById(a.appraisal_type_range_id) && (
-                              <Badge
-                                variant="outline"
-                                className="bg-blue-50 text-blue-700 border-blue-200"
-                              >
-                                {rangeNameById(a.appraisal_type_range_id)}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground ml-13">
-                        <Calendar className="h-4 w-4" />
-                        <span>Due: {formatDate(a.end_date)}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {a.status === "Draft" && (
-                        <Button
-                          variant="outline"
-                          onClick={() => handleEditDraft(a.appraisal_id)}
-                          className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
-                          aria-label="Edit draft appraisal"
-                          title="Edit draft appraisal"
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          <span className="hidden sm:inline">Edit</span>
-                        </Button>
-                      )}
-                      {a.status === "Appraiser Evaluation" &&
-                        a.appraiser_id === (user?.emp_id || -1) && (
-                          <Button
-                            onClick={() =>
-                              navigate(
-                                `/appraiser-evaluation/${a.appraisal_id}`
-                              )
-                            }
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                            aria-label="Evaluate appraisal"
-                            title="Evaluate appraisal"
-                          >
-                            <span className="hidden sm:inline">Evaluate</span>
-                            <ArrowRight className="h-4 w-4 sm:ml-2" />
-                          </Button>
-                        )}
-                      {a.status === "Reviewer Evaluation" &&
-                        a.reviewer_id === (user?.emp_id || -1) && (
-                          <Button
-                            onClick={() =>
-                              navigate(`/reviewer-evaluation/${a.appraisal_id}`)
-                            }
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                            aria-label="Review appraisal"
-                            title="Review appraisal"
-                          >
-                            <span className="hidden sm:inline">Review</span>
-                            <ArrowRight className="h-4 w-4 sm:ml-2" />
-                          </Button>
-                        )}
-                      {/* Only show View button for Complete status */}
-                      {a.status === "Complete" && (
-                        <Button
-                          variant="outline"
-                          onClick={() =>
-                            navigate(`/appraisal/${a.appraisal_id}`)
-                          }
-                          className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
-                          aria-label="View appraisal"
-                          title="View appraisal"
-                        >
-                          <span className="hidden sm:inline">View</span>
-                          <ArrowRight className="h-4 w-4 sm:ml-2" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+            teamPaged.map((a) => {
+              const borderLeftColor =
+                a.status === "Complete"
+                  ? "#10b981"
+                  : a.status === "Draft"
+                  ? "#f97316"
+                  : "#3b82f6";
 
-                  {/* People Section */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 p-3 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8 bg-primary/10">
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                          <User className="h-4 w-4" />
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs text-muted-foreground">
-                          Appraiser
-                        </p>
-                        <p className="text-sm font-medium truncate">
-                          {empNameById(a.appraiser_id)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8 bg-purple-100">
-                        <AvatarFallback className="bg-purple-100 text-purple-700">
-                          <UserCheck className="h-4 w-4" />
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs text-muted-foreground">
-                          Reviewer
-                        </p>
-                        <p className="text-sm font-medium truncate">
-                          {empNameById(a.reviewer_id)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+              const actionButtons = (
+                <>
+                  {a.status === "Draft" && (
+                    <EditAppraisalButton
+                      appraisalId={a.appraisal_id}
+                      onSuccess={loadAppraisals}
+                      variant="outline"
+                      className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
+                    />
+                  )}
+                  {a.status === "Appraiser Evaluation" &&
+                    a.appraiser_id === (user?.emp_id || -1) && (
+                      <Button
+                        onClick={() =>
+                          navigate(`/appraiser-evaluation/${a.appraisal_id}`)
+                        }
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                        aria-label="Evaluate appraisal"
+                        title="Evaluate appraisal"
+                      >
+                        <span className="hidden sm:inline">Evaluate</span>
+                        <ArrowRight className="h-4 w-4 sm:ml-2" />
+                      </Button>
+                    )}
+                  {a.status === "Reviewer Evaluation" &&
+                    a.reviewer_id === (user?.emp_id || -1) && (
+                      <Button
+                        onClick={() =>
+                          navigate(`/reviewer-evaluation/${a.appraisal_id}`)
+                        }
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                        aria-label="Review appraisal"
+                        title="Review appraisal"
+                      >
+                        <span className="hidden sm:inline">Review</span>
+                        <ArrowRight className="h-4 w-4 sm:ml-2" />
+                      </Button>
+                    )}
+                  {a.status === "Complete" && (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        navigate(
+                          `/appraisal/${a.appraisal_id}?from=team-appraisal&tab=${teamFilterWithDraft}`
+                        )
+                      }
+                      className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
+                      aria-label="View appraisal"
+                      title="View appraisal"
+                    >
+                      <span className="hidden sm:inline">View</span>
+                      <ArrowRight className="h-4 w-4 sm:ml-2" />
+                    </Button>
+                  )}
+                </>
+              );
 
-                  {/* Status Progress Section - Step Indicator */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">
-                        {displayStatus(a.status)}
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <div className="flex items-center justify-between">
-                        {[
-                          {
-                            label: "Submitted",
-                            status: "Submitted",
-                            progress: 20,
-                          },
-                          {
-                            label: "Self Assessment",
-                            status: "Appraisee Self Assessment",
-                            progress: 40,
-                          },
-                          {
-                            label: "Appraiser Evaluation",
-                            status: "Appraiser Evaluation",
-                            progress: 60,
-                          },
-                          {
-                            label: "Reviewer Evaluation",
-                            status: "Reviewer Evaluation",
-                            progress: 80,
-                          },
-                          {
-                            label: "Complete",
-                            status: "Complete",
-                            progress: 100,
-                          },
-                        ].map((step, idx) => {
-                          const currentProgress = getStatusProgress(a.status);
-                          const isCompleted = currentProgress > step.progress;
-                          const isCurrent = a.status === step.status;
-
-                          return (
-                            <div
-                              key={idx}
-                              className="flex flex-col items-center relative z-10 flex-1"
-                            >
-                              <div
-                                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
-                                  isCompleted
-                                    ? "bg-primary text-primary-foreground"
-                                    : isCurrent
-                                    ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2"
-                                    : "bg-muted text-muted-foreground border-2 border-muted-foreground/20"
-                                }`}
-                              >
-                                {isCompleted ? (
-                                  <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-                                ) : (
-                                  <span className="text-[10px] sm:text-xs">
-                                    {idx + 1}
-                                  </span>
-                                )}
-                              </div>
-                              <span
-                                className={`text-[9px] sm:text-[11px] mt-1.5 text-center leading-tight max-w-[70px] sm:max-w-none ${
-                                  isCompleted || isCurrent
-                                    ? "text-foreground font-medium"
-                                    : "text-muted-foreground"
-                                }`}
-                              >
-                                {step.label}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {/* Connecting Lines */}
-                      <div className="absolute top-4 sm:top-5 left-0 right-0 h-[2px] bg-muted -z-0 mx-4 sm:mx-5">
-                        <div
-                          className="h-full bg-primary transition-all duration-500"
-                          style={{
-                            width: `${
-                              (getStatusProgress(a.status) / 100) * 100
-                            }%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+              return (
+                <AppraisalCard
+                  key={a.appraisal_id}
+                  appraisal={a}
+                  empNameById={empNameById}
+                  typeNameById={typeNameById}
+                  rangeNameById={rangeNameById}
+                  formatDate={formatDate}
+                  displayStatus={displayStatus}
+                  getStatusProgress={getStatusProgress}
+                  borderLeftColor={borderLeftColor}
+                  actionButtons={actionButtons}
+                />
+              );
+            })
           )}
         </div>
       )}

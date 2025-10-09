@@ -1,22 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
-import { apiFetch, api } from "../../utils/api";
+import { apiFetch } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
+import { useData } from "../../contexts/DataContext";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
-import { Avatar, AvatarFallback } from "../../components/ui/avatar";
 import PeriodFilter, { type Period } from "../../components/PeriodFilter";
+import AcknowledgeAppraisalModal from "../../features/appraisal/AcknowledgeAppraisalModal";
+import { AppraisalCard } from "../../components/AppraisalCard";
+import { AppraisalCardSkeletonList } from "../../components/AppraisalCardSkeleton";
 import {
-  Calendar,
-  CheckCircle2,
-  ArrowRight,
-  ArrowLeft,
-  User,
-  UserCheck,
-  CheckCircle,
-  Clock,
-} from "lucide-react";
+  FiltersSkeleton,
+  PaginationSkeleton,
+} from "../../components/FiltersSkeleton";
+import { CheckCircle2, ArrowRight, ArrowLeft, CheckCircle } from "lucide-react";
 import { Label } from "../../components/ui/label";
 import {
   Select,
@@ -26,23 +23,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { Input } from "../../components/ui/input";
-
-type AppraisalType = { id: number; name: string; has_range?: boolean };
-
-type AppraisalTypeRange = {
-  id: number;
-  appraisal_type_id: number;
-  range_name: string;
-  min_score: number;
-  max_score: number;
-};
-
-type Employee = {
-  emp_id: number;
-  emp_name: string;
-  emp_email?: string;
-  emp_roles?: string;
-};
+import type { AppraisalType } from "../../contexts/DataContext";
 
 type Appraisal = {
   appraisal_id: number;
@@ -76,40 +57,6 @@ type AppraisalWithGoals = Appraisal & {
 };
 
 type FilterType = "Active" | "Completed" | "All";
-
-// Helper function to load appraisal types
-const useAppraisalTypes = () => {
-  const [types, setTypes] = useState<AppraisalType[]>([]);
-  const [typesStatus, setTypesStatus] = useState<
-    "idle" | "loading" | "succeeded" | "failed"
-  >("idle");
-
-  useEffect(() => {
-    let cancelled = false;
-    const loadTypes = async () => {
-      setTypesStatus("loading");
-      const result = await api.get<AppraisalType[]>("/appraisal-types/");
-      if (cancelled) return;
-
-      if (result.ok) {
-        setTypes(result.data || []);
-        setTypesStatus("succeeded");
-      } else {
-        setTypesStatus("failed");
-      }
-    };
-
-    if (typesStatus === "idle") {
-      loadTypes();
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [typesStatus]);
-
-  return { types, typesStatus };
-};
 
 // Helper function for appraisal filtering by period and type
 const useAppraisalFiltering = (
@@ -265,21 +212,19 @@ const PaginationControls = ({
 // Helper function for self assessment navigation
 const useSelfAssessmentHandler = (
   setActionError: (error: string | null) => void,
-  navigate: (path: string) => void
+  navigate: (path: string) => void,
+  setAcknowledgeModalOpen: (open: boolean) => void,
+  setAcknowledgeAppraisalId: (id: number) => void
 ) => {
   return async (a: Appraisal) => {
     try {
-      // If status is Submitted, move to Appraisee Self Assessment first
+      // If status is Submitted, show acknowledgement modal first
       if (a.status === "Submitted") {
-        const res = await apiFetch(`/api/appraisals/${a.appraisal_id}/status`, {
-          method: "PUT",
-          body: JSON.stringify({ status: "Appraisee Self Assessment" }),
-        });
-        if (!res.ok) {
-          setActionError(res.error || "Failed to start self assessment");
-          return;
-        }
+        setAcknowledgeAppraisalId(a.appraisal_id);
+        setAcknowledgeModalOpen(true);
+        return;
       }
+      // If already in Appraisee Self Assessment, navigate directly
       setActionError(null);
       navigate(`/self-assessment/${a.appraisal_id}`);
     } catch (e: any) {
@@ -313,7 +258,7 @@ const AppraisalActionButtons = ({
   ) {
     const buttonText =
       appraisal.status === "Submitted"
-        ? "Take Self Assessment"
+        ? "Acknowledge & Start"
         : "Continue Self Assessment";
 
     return (
@@ -408,15 +353,17 @@ const AppraisalActionButtons = ({
 const MyAppraisal = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { types } = useAppraisalTypes();
+  const {
+    employees,
+    appraisalTypes: types,
+    appraisalRanges: ranges,
+  } = useData();
   const [appraisals, setAppraisals] = useState<Appraisal[]>([]);
   const [appraisalsLoading, setAppraisalsLoading] = useState(false);
   const [appraisalsError, setAppraisalsError] = useState<string | null>(null);
   const [detailsById, setDetailsById] = useState<
     Record<number, AppraisalWithGoals | undefined>
   >({});
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [ranges, setRanges] = useState<AppraisalTypeRange[]>([]);
   const [period, setPeriod] = useState<Period>(() => {
     const y = new Date().getFullYear();
     const start = new Date(y, 0, 1).toISOString().slice(0, 10);
@@ -424,6 +371,10 @@ const MyAppraisal = () => {
     return { label: "This Year", startDate: start, endDate: end };
   });
   const [actionError, setActionError] = useState<string | null>(null);
+  // Acknowledgement modal state
+  const [acknowledgeModalOpen, setAcknowledgeModalOpen] = useState(false);
+  const [acknowledgeAppraisalId, setAcknowledgeAppraisalId] =
+    useState<number>(0);
   // Pagination (5 per page)
   const ITEMS_PER_PAGE = 5;
   const [myPage, setMyPage] = useState(1);
@@ -432,19 +383,6 @@ const MyAppraisal = () => {
   // Type filter and search
   const [searchTypeId, setSearchTypeId] = useState<string>("all");
   const [searchName, setSearchName] = useState("");
-
-  // Load employees and ranges
-  useEffect(() => {
-    const loadData = async () => {
-      const [empRes, rangeRes] = await Promise.all([
-        apiFetch<Employee[]>("/api/employees/"),
-        apiFetch<AppraisalTypeRange[]>("/api/appraisal-types/ranges"),
-      ]);
-      if (empRes.ok && empRes.data) setEmployees(empRes.data);
-      if (rangeRes.ok && rangeRes.data) setRanges(rangeRes.data);
-    };
-    loadData();
-  }, []);
 
   useEffect(() => {
     if (!user?.emp_id) return;
@@ -608,6 +546,11 @@ const MyAppraisal = () => {
     setMyPage(1);
   }, [filteredMineSearch.length, myFilter, searchTypeId, searchName]);
 
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   useEffect(() => {
     if (!selectedAppraisal || detailsById[selectedAppraisal.appraisal_id])
       return;
@@ -628,309 +571,198 @@ const MyAppraisal = () => {
 
   const startOrContinueSelfAssessment = useSelfAssessmentHandler(
     setActionError,
-    navigate
+    navigate,
+    setAcknowledgeModalOpen,
+    setAcknowledgeAppraisalId
   );
 
+  const handleAcknowledgeSuccess = () => {
+    // Reload appraisals after acknowledgement
+    if (!user?.emp_id) return;
+    const loadAppraisals = async () => {
+      const res = await apiFetch<Appraisal[]>(
+        `/api/appraisals/?appraisee_id=${encodeURIComponent(user.emp_id)}`
+      );
+      if (res.ok && res.data) {
+        setAppraisals(res.data);
+      }
+    };
+    loadAppraisals();
+    // Navigate to self-assessment page
+    navigate(`/self-assessment/${acknowledgeAppraisalId}`);
+  };
+
   return (
-    <div className="space-y-6 text-foreground">
-      {/* Filter Components - Always visible at the top */}
-      <div className="w-full">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="w-full md:flex-1 min-w-0">
-            <Label className="mb-1 block">Search</Label>
-            <Input
-              placeholder="Search appraisal type"
-              value={searchName}
-              onChange={(e) => setSearchName(e.target.value)}
-            />
-          </div>
-          <div className="w-full md:w-40 flex-none">
-            <Label className="mb-1 block">Type</Label>
-            <Select value={searchTypeId} onValueChange={setSearchTypeId}>
-              <SelectTrigger>
-                <SelectValue placeholder="All types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                {types.map((t) => (
-                  <SelectItem key={t.id} value={String(t.id)}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="w-full md:basis-full xl:flex-1 min-w-0">
-            <PeriodFilter
-              defaultPreset="This Year"
-              value={period}
-              onChange={setPeriod}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Active/Completed buttons with Pagination */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
-          <Button
-            variant={myFilter === "Active" ? "default" : "outline"}
-            onClick={() => setMyFilter("Active")}
-            className={
-              myFilter === "Active" ? "bg-primary text-primary-foreground" : ""
-            }
-          >
-            Active
-            <Badge
-              variant="secondary"
-              className="ml-2 bg-background/20 text-current border-0"
-            >
-              {myActives.length}
-            </Badge>
-          </Button>
-          <Button
-            variant={myFilter === "Completed" ? "default" : "outline"}
-            onClick={() => setMyFilter("Completed")}
-            className={
-              myFilter === "Completed"
-                ? "bg-primary text-primary-foreground"
-                : ""
-            }
-          >
-            Completed
-            <Badge
-              variant="secondary"
-              className="ml-2 bg-background/20 text-current border-0"
-            >
-              {myCompleted.length}
-            </Badge>
-          </Button>
-        </div>
-        {filteredMineSearch.length > 0 && (
-          <PaginationControls
-            currentPage={myPage}
-            totalPages={listTotalPages}
-            onPageChange={setMyPage}
-          />
-        )}
-      </div>
-
-      {/* Error Messages */}
-      {actionError && (
-        <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md border border-destructive/20">
-          {actionError}
-        </div>
-      )}
-      {appraisalsError && (
-        <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md border border-destructive/20">
-          {appraisalsError}
-        </div>
-      )}
-
-      {/* Appraisal Cards */}
-      {appraisalsLoading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse">
-              <div className="h-40 bg-muted rounded-lg"></div>
+    <>
+      <AcknowledgeAppraisalModal
+        open={acknowledgeModalOpen}
+        onClose={() => setAcknowledgeModalOpen(false)}
+        appraisalId={acknowledgeAppraisalId}
+        onAcknowledge={handleAcknowledgeSuccess}
+      />
+      <div className="space-y-6 text-foreground">
+        {/* Filter Components - Always visible at the top */}
+        <div className="w-full">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="w-full md:flex-1 min-w-0">
+              <Label className="mb-1 block">Search</Label>
+              <Input
+                placeholder="Search appraisal type"
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+              />
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredMineSearch.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <CheckCircle2 className="h-12 w-12 mx-auto mb-4 icon-my-appraisals" />
-              <p>No items</p>
+            <div className="w-full md:w-40 flex-none">
+              <Label className="mb-1 block">Type</Label>
+              <Select value={searchTypeId} onValueChange={setSearchTypeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All types</SelectItem>
+                  {types.map((t) => (
+                    <SelectItem key={t.id} value={String(t.id)}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          ) : (
-            listPaged.map((a: any) => (
-              <Card
-                key={a.appraisal_id}
-                className="shadow-soft hover:shadow-md transition-all border-l-4"
-                style={{
-                  borderLeftColor:
-                    a.status === "Complete"
-                      ? "#10b981"
-                      : a.status === "Submitted"
-                      ? "#f59e0b"
-                      : "#3b82f6",
-                }}
+            <div className="w-full md:basis-full xl:flex-1 min-w-0">
+              <PeriodFilter
+                defaultPreset="This Year"
+                value={period}
+                onChange={setPeriod}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Active/Completed buttons with Pagination */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Button
+              variant={myFilter === "Active" ? "default" : "outline"}
+              onClick={() => setMyFilter("Active")}
+              className={
+                myFilter === "Active"
+                  ? "bg-primary text-primary-foreground"
+                  : ""
+              }
+            >
+              Active
+              <Badge
+                variant="secondary"
+                className="ml-2 bg-background/20 text-current border-0"
               >
-                <CardContent className="p-5 sm:p-6">
-                  {/* Header Section */}
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-lg font-semibold text-foreground">
-                          {typeNameById(a.appraisal_type_id, a)}
-                        </h3>
-                        {rangeNameById(a.appraisal_type_range_id) && (
-                          <Badge
-                            variant="outline"
-                            className="bg-blue-50 text-blue-700 border-blue-200"
-                          >
-                            {rangeNameById(a.appraisal_type_range_id)}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
-                        <span>Due: {formatDate(a.end_date)}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {a.status === "Submitted" &&
-                        a.appraisee_id === (user?.emp_id || 0) && (
-                          <Button
-                            onClick={() => handleAcknowledge(a.appraisal_id)}
-                            variant="outline"
-                            size="sm"
-                            className="border-green-300 text-green-700 hover:bg-green-50"
-                          >
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Acknowledge
-                          </Button>
-                        )}
-                      <AppraisalActionButtons
-                        appraisal={a}
-                        onSelfAssessment={startOrContinueSelfAssessment}
-                        navigate={navigate}
-                        currentUserId={user?.emp_id || 0}
-                      />
-                    </div>
-                  </div>
-
-                  {/* People Section */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 p-3 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8 bg-primary/10">
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                          <User className="h-4 w-4" />
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs text-muted-foreground">
-                          Appraiser
-                        </p>
-                        <p className="text-sm font-medium truncate">
-                          {empNameById(a.appraiser_id)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8 bg-purple-100">
-                        <AvatarFallback className="bg-purple-100 text-purple-700">
-                          <UserCheck className="h-4 w-4" />
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs text-muted-foreground">
-                          Reviewer
-                        </p>
-                        <p className="text-sm font-medium truncate">
-                          {empNameById(a.reviewer_id)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Status Progress Section - Step Indicator */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">
-                        {displayStatus(a.status)}
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <div className="flex items-center justify-between">
-                        {[
-                          {
-                            label: "Submitted",
-                            status: "Submitted",
-                            progress: 20,
-                          },
-                          {
-                            label: "Self Assessment",
-                            status: "Appraisee Self Assessment",
-                            progress: 40,
-                          },
-                          {
-                            label: "Appraiser Evaluation",
-                            status: "Appraiser Evaluation",
-                            progress: 60,
-                          },
-                          {
-                            label: "Reviewer Evaluation",
-                            status: "Reviewer Evaluation",
-                            progress: 80,
-                          },
-                          {
-                            label: "Complete",
-                            status: "Complete",
-                            progress: 100,
-                          },
-                        ].map((step, idx) => {
-                          const currentProgress = getStatusProgress(a.status);
-                          const isCompleted = currentProgress > step.progress;
-                          const isCurrent = a.status === step.status;
-
-                          return (
-                            <div
-                              key={idx}
-                              className="flex flex-col items-center relative z-10 flex-1"
-                            >
-                              <div
-                                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
-                                  isCompleted
-                                    ? "bg-primary text-primary-foreground"
-                                    : isCurrent
-                                    ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2"
-                                    : "bg-muted text-muted-foreground border-2 border-muted-foreground/20"
-                                }`}
-                              >
-                                {isCompleted ? (
-                                  <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-                                ) : (
-                                  <span className="text-[10px] sm:text-xs">
-                                    {idx + 1}
-                                  </span>
-                                )}
-                              </div>
-                              <span
-                                className={`text-[9px] sm:text-[11px] mt-1.5 text-center leading-tight max-w-[70px] sm:max-w-none ${
-                                  isCompleted || isCurrent
-                                    ? "text-foreground font-medium"
-                                    : "text-muted-foreground"
-                                }`}
-                              >
-                                {step.label}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {/* Connecting Lines */}
-                      <div className="absolute top-4 sm:top-5 left-0 right-0 h-[2px] bg-muted -z-0 mx-4 sm:mx-5">
-                        <div
-                          className="h-full bg-primary transition-all duration-500"
-                          style={{
-                            width: `${
-                              (getStatusProgress(a.status) / 100) * 100
-                            }%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                {myActives.length}
+              </Badge>
+            </Button>
+            <Button
+              variant={myFilter === "Completed" ? "default" : "outline"}
+              onClick={() => setMyFilter("Completed")}
+              className={
+                myFilter === "Completed"
+                  ? "bg-primary text-primary-foreground"
+                  : ""
+              }
+            >
+              Completed
+              <Badge
+                variant="secondary"
+                className="ml-2 bg-background/20 text-current border-0"
+              >
+                {myCompleted.length}
+              </Badge>
+            </Button>
+          </div>
+          {filteredMineSearch.length > 0 && (
+            <PaginationControls
+              currentPage={myPage}
+              totalPages={listTotalPages}
+              onPageChange={setMyPage}
+            />
           )}
         </div>
-      )}
-    </div>
+
+        {/* Error Messages */}
+        {actionError && (
+          <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md border border-destructive/20">
+            {actionError}
+          </div>
+        )}
+        {appraisalsError && (
+          <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-md border border-destructive/20">
+            {appraisalsError}
+          </div>
+        )}
+
+        {/* Appraisal Cards */}
+        {appraisalsLoading ? (
+          <>
+            <FiltersSkeleton />
+            <AppraisalCardSkeletonList count={5} />
+            <PaginationSkeleton />
+          </>
+        ) : (
+          <div className="space-y-4">
+            {filteredMineSearch.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle2 className="h-12 w-12 mx-auto mb-4 icon-my-appraisals" />
+                <p>No items</p>
+              </div>
+            ) : (
+              listPaged.map((a: any) => {
+                const borderLeftColor =
+                  a.status === "Complete"
+                    ? "#10b981"
+                    : a.status === "Submitted"
+                    ? "#f59e0b"
+                    : "#3b82f6";
+
+                const actionButtons = (
+                  <>
+                    {a.status === "Submitted" &&
+                      a.appraisee_id === (user?.emp_id || 0) && (
+                        <Button
+                          onClick={() => handleAcknowledge(a.appraisal_id)}
+                          variant="outline"
+                          size="sm"
+                          className="border-green-300 text-green-700 hover:bg-green-50"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Acknowledge
+                        </Button>
+                      )}
+                    <AppraisalActionButtons
+                      appraisal={a}
+                      onSelfAssessment={startOrContinueSelfAssessment}
+                      navigate={navigate}
+                      currentUserId={user?.emp_id || 0}
+                    />
+                  </>
+                );
+
+                return (
+                  <AppraisalCard
+                    key={a.appraisal_id}
+                    appraisal={a}
+                    empNameById={empNameById}
+                    typeNameById={typeNameById}
+                    rangeNameById={rangeNameById}
+                    formatDate={formatDate}
+                    displayStatus={displayStatus}
+                    getStatusProgress={getStatusProgress}
+                    borderLeftColor={borderLeftColor}
+                    actionButtons={actionButtons}
+                  />
+                );
+              })
+            )}
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 

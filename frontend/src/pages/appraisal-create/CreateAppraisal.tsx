@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Save, Send, X } from "lucide-react";
+import { ArrowLeft, Save, Send } from "lucide-react";
 import AddGoalModal from "../../features/goals/AddGoalModal";
 import EditGoalModal from "../../features/goals/EditGoalModal";
 import ImportFromTemplateModal from "../../features/goals/ImportFromTemplateModal";
@@ -26,6 +26,14 @@ import {
 } from "./helpers/goalHelpers";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
 import { toast } from "sonner";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -125,6 +133,7 @@ const CreateAppraisal = () => {
   const [editGoalModalOpen, setEditGoalModalOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<AppraisalGoal | null>(null);
   const [importFromTemplateOpen, setImportFromTemplateOpen] = useState(false);
+  const [showExitDialog, setShowExitDialog] = useState(false);
   // Track goal changes for Draft editing
   const [originalGoals, setOriginalGoals] = useState<AppraisalGoal[]>([]);
   const [goalChanges, setGoalChanges] = useState<{
@@ -167,9 +176,6 @@ const CreateAppraisal = () => {
 
   // Role-based filtering
   const appraiserLevel = user?.emp_roles_level ?? 0;
-  const statusLabel = createdAppraisalId
-    ? createdAppraisalStatus || "Draft"
-    : "New Draft";
   const addGoalDisabledReason = getAddGoalDisabledReason({
     canAddGoals,
     isLocked,
@@ -367,6 +373,11 @@ const CreateAppraisal = () => {
     })();
   }, [selectedTypeId, appraisalTypes]);
 
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const syncGoalChanges = async (appraisalId: number) => {
     await syncGoalChangesHelper(appraisalId, goalChanges, originalGoals);
   };
@@ -479,175 +490,204 @@ const CreateAppraisal = () => {
     }
   };
 
-  const handleCancel = () => {
+  const handleBackClick = () => {
+    // Check if there are unsaved changes (draft not yet created or has changes)
+    const hasUnsavedChanges =
+      !createdAppraisalId ||
+      goalChanges.added.length > 0 ||
+      goalChanges.removed.length > 0 ||
+      goalChanges.updated.length > 0;
+
+    if (hasUnsavedChanges && !isLocked) {
+      setShowExitDialog(true);
+    } else {
+      navigate(-1);
+    }
+  };
+
+  const handleSaveAndClose = async () => {
+    setShowExitDialog(false);
+    await handleSubmit();
+    navigate(-1);
+  };
+
+  const handleCloseWithoutSaving = () => {
+    setShowExitDialog(false);
     navigate(-1);
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-6 sm:py-8 animate-fade-in-up">
-      <div className="mb-6 flex items-center justify-start">
-        <div className="flex items-center gap-4">
+    <div className="min-h-screen w-full bg-background">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 animate-fade-in-up">
+        <div className="mb-6 flex items-center gap-3">
           <Button
+            onClick={handleBackClick}
             variant="outline"
-            onClick={() => navigate(-1)}
-            aria-label="Go back"
+            size="icon"
+            className="rounded-full"
             title="Go back"
-            className="hover-lift"
+            aria-label="Go back"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline sm:ml-2">Back</span>
           </Button>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-              {createdAppraisalId ? "Edit Appraisal" : "Create New Appraisal"}
-            </h1>
-            <Badge
-              variant="outline"
-              className="px-3 py-1 text-sm font-semibold shadow-soft"
-              data-testid="appraisal-status-badge"
-            >
-              {statusLabel}
-            </Badge>
+          <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            {createdAppraisalId ? "Edit Appraisal" : "Create New Appraisal"}
+          </h1>
+        </div>
+
+        {/* Appraisal Details */}
+        <div className="animate-slide-up">
+          <AppraisalDetailsForm
+            formValues={formValues}
+            setFormValues={setFormValues}
+            employees={eligibleAppraisees}
+            eligibleReviewers={eligibleReviewers}
+            appraisalTypes={appraisalTypes}
+            ranges={ranges}
+            setRanges={setRanges}
+            selectedTypeId={selectedTypeId}
+            setSelectedTypeId={setSelectedTypeId}
+            isCollapsed={isAppraisalDetailsCollapsed}
+            onToggleCollapse={() =>
+              setIsAppraisalDetailsCollapsed(!isAppraisalDetailsCollapsed)
+            }
+            isLocked={isLocked}
+            onFetchRanges={fetchRanges}
+          />
+        </div>
+
+        {/* Goals Section */}
+        <div
+          className="mt-6 animate-slide-up"
+          style={{ animationDelay: "100ms" }}
+        >
+          <GoalsSection
+            goals={goals}
+            canAddGoals={canAddGoals}
+            isLocked={isLocked}
+            addGoalDisabledReason={addGoalDisabledReason}
+            appraiseeSelected={appraiseeSelected}
+            reviewerSelected={reviewerSelected}
+            typeSelected={typeSelected}
+            periodSelected={periodSelected}
+            onAddGoal={() => setAddGoalModalOpen(true)}
+            onImportFromTemplate={() => setImportFromTemplateOpen(true)}
+            onEditGoal={handleEditGoalLocal}
+            onRemoveGoal={handleRemoveGoal}
+          />
+        </div>
+
+        {/* Fixed Action Buttons at Bottom */}
+        <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm z-50">
+          <div className="mx-auto max-w-full px-4 py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                {!createdAppraisalId && (
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={!canSaveDraft || loading}
+                    variant="outline"
+                    className="shadow-sm"
+                    data-testid="save-draft"
+                    aria-label={getSaveButtonLabel(loading, true)}
+                    title={getSaveButtonLabel(loading, true)}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    {getSaveButtonLabel(loading, true)}
+                  </Button>
+                )}
+                {createdAppraisalId && createdAppraisalStatus === "Draft" && (
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={!canSaveDraft || loading}
+                    variant="outline"
+                    className="shadow-sm"
+                    aria-label={getSaveButtonLabel(loading, false)}
+                    title={getSaveButtonLabel(loading, false)}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    {getSaveButtonLabel(loading, false)}
+                  </Button>
+                )}
+              </div>
+              <Button
+                data-testid="submit-for-acknowledgement-button"
+                onClick={handleFinish}
+                disabled={!canSubmitForAck || loading}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
+                aria-label="Submit for acknowledgement"
+                title="Submit for acknowledgement"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Submit for Acknowledgement
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Appraisal Details */}
-      <div className="animate-slide-up">
-        <AppraisalDetailsForm
-          formValues={formValues}
-          setFormValues={setFormValues}
-          employees={eligibleAppraisees}
-          eligibleReviewers={eligibleReviewers}
-          appraisalTypes={appraisalTypes}
-          ranges={ranges}
-          setRanges={setRanges}
-          selectedTypeId={selectedTypeId}
-          setSelectedTypeId={setSelectedTypeId}
-          isCollapsed={isAppraisalDetailsCollapsed}
-          onToggleCollapse={() =>
-            setIsAppraisalDetailsCollapsed(!isAppraisalDetailsCollapsed)
+        {/* Child Modals */}
+        <AddGoalModal
+          open={addGoalModalOpen}
+          onClose={() => setAddGoalModalOpen(false)}
+          onGoalAdded={handleGoalAdded}
+          appraisalId={createdAppraisalId ?? undefined}
+          remainingWeightage={Math.max(0, 100 - totalWeightageUi)}
+        />
+        <ImportFromTemplateModal
+          open={importFromTemplateOpen}
+          onClose={() => setImportFromTemplateOpen(false)}
+          onGoalAdded={handleGoalAdded}
+          appraisalId={createdAppraisalId ?? undefined}
+          remainingWeightage={Math.max(0, 100 - totalWeightageUi)}
+        />
+        <EditGoalModal
+          open={editGoalModalOpen}
+          onClose={() => {
+            setEditGoalModalOpen(false);
+            setEditingGoal(null);
+          }}
+          onGoalUpdated={handleGoalUpdated}
+          goalData={editingGoal}
+          remainingWeightage={
+            editingGoal
+              ? Math.max(
+                  0,
+                  100 - (totalWeightageUi - editingGoal.goal.goal_weightage)
+                )
+              : Math.max(0, 100 - totalWeightageUi)
           }
-          isLocked={isLocked}
-          onFetchRanges={fetchRanges}
         />
-      </div>
 
-      {/* Goals Section */}
-      <div
-        className="mt-6 animate-slide-up"
-        style={{ animationDelay: "100ms" }}
-      >
-        <GoalsSection
-          goals={goals}
-          canAddGoals={canAddGoals}
-          isLocked={isLocked}
-          addGoalDisabledReason={addGoalDisabledReason}
-          appraiseeSelected={appraiseeSelected}
-          reviewerSelected={reviewerSelected}
-          typeSelected={typeSelected}
-          periodSelected={periodSelected}
-          onAddGoal={() => setAddGoalModalOpen(true)}
-          onImportFromTemplate={() => setImportFromTemplateOpen(true)}
-          onEditGoal={handleEditGoalLocal}
-          onRemoveGoal={handleRemoveGoal}
-        />
+        {/* Unsaved Changes Dialog */}
+        <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Unsaved Changes</DialogTitle>
+              <DialogDescription>
+                You have unsaved changes. Would you like to save your progress
+                before leaving?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button
+                variant="outline"
+                onClick={handleCloseWithoutSaving}
+                className="w-full sm:w-auto"
+              >
+                Close Without Saving
+              </Button>
+              <Button
+                onClick={handleSaveAndClose}
+                disabled={loading}
+                className="w-full sm:w-auto"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {loading ? "Saving..." : "Save & Close"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
-
-      {/* Footer Actions */}
-      <div className="mt-8 grid grid-cols-2 gap-4 items-center sm:flex sm:flex-row sm:items-center sm:justify-between bg-card/50 backdrop-blur-sm rounded-xl p-4 border border-border/50 shadow-soft">
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={handleCancel}
-            disabled={loading}
-            aria-label="Cancel"
-            title="Cancel"
-            className="hover-scale"
-          >
-            <X className="h-4 w-4" />
-            <span className="hidden sm:inline sm:ml-2">Cancel</span>
-          </Button>
-          {!createdAppraisalId && (
-            <Button
-              variant="elevated"
-              onClick={handleSubmit}
-              disabled={!canSaveDraft || loading}
-              data-testid="save-draft"
-              aria-label={getSaveButtonLabel(loading, true)}
-              title={getSaveButtonLabel(loading, true)}
-            >
-              <Save className="h-4 w-4" />
-              <span className="hidden sm:inline sm:ml-2">
-                {getSaveButtonLabel(loading, true)}
-              </span>
-            </Button>
-          )}
-          {createdAppraisalId && createdAppraisalStatus === "Draft" && (
-            <Button
-              variant="elevated"
-              onClick={handleSubmit}
-              disabled={!canSaveDraft || loading}
-              aria-label={getSaveButtonLabel(loading, false)}
-              title={getSaveButtonLabel(loading, false)}
-            >
-              <Save className="h-4 w-4" />
-              <span className="hidden sm:inline sm:ml-2">
-                {getSaveButtonLabel(loading, false)}
-              </span>
-            </Button>
-          )}
-        </div>
-        <div className="justify-self-end sm:self-auto">
-          <Button
-            data-testid="submit-for-acknowledgement-button"
-            variant="elevated"
-            onClick={handleFinish}
-            disabled={!canSubmitForAck || loading}
-            aria-label="Submit for acknowledgement"
-            title="Submit for acknowledgement"
-            className="shadow-glow"
-          >
-            <Send className="h-4 w-4" />
-            <span className="hidden sm:inline sm:ml-2">
-              Submit for Acknowledgement
-            </span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Child Modals */}
-      <AddGoalModal
-        open={addGoalModalOpen}
-        onClose={() => setAddGoalModalOpen(false)}
-        onGoalAdded={handleGoalAdded}
-        appraisalId={createdAppraisalId ?? undefined}
-        remainingWeightage={Math.max(0, 100 - totalWeightageUi)}
-      />
-      <ImportFromTemplateModal
-        open={importFromTemplateOpen}
-        onClose={() => setImportFromTemplateOpen(false)}
-        onGoalAdded={handleGoalAdded}
-        appraisalId={createdAppraisalId ?? undefined}
-        remainingWeightage={Math.max(0, 100 - totalWeightageUi)}
-      />
-      <EditGoalModal
-        open={editGoalModalOpen}
-        onClose={() => {
-          setEditGoalModalOpen(false);
-          setEditingGoal(null);
-        }}
-        onGoalUpdated={handleGoalUpdated}
-        goalData={editingGoal}
-        remainingWeightage={
-          editingGoal
-            ? Math.max(
-                0,
-                100 - (totalWeightageUi - editingGoal.goal.goal_weightage)
-              )
-            : Math.max(0, 100 - totalWeightageUi)
-        }
-      />
     </div>
   );
 };

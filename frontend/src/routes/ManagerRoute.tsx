@@ -1,10 +1,11 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 const ManagerRoute = () => {
   const { user } = useAuth();
+  const hasShownToast = useRef(false);
 
   const isManagerOrAbove = (roles?: string, level?: number | null) => {
     // Prefer explicit role names, fallback to hierarchy level if provided
@@ -23,8 +24,9 @@ const ManagerRoute = () => {
   );
 
   useEffect(() => {
-    if (!hasManagerAccess) {
+    if (!hasManagerAccess && !hasShownToast.current) {
       toast.error("You need manager permissions to access this page");
+      hasShownToast.current = true;
     }
   }, [hasManagerAccess]);
 

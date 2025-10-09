@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   // For test mode, use test backend on port 7001
   // For development mode, use dev backend on port 7000
   const apiTarget = mode === 'test' ? 'http://localhost:7001' : 'http://localhost:7000';
-  
+
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
@@ -23,6 +23,10 @@ export default defineConfig(({ mode }) => {
       ...(mode === 'test' && {
         'import.meta.env.VITE_API_BASE_URL': '""'
       })
+    },
+    esbuild: {
+      // Remove console.log in production
+      drop: mode === 'production' ? ['console', 'debugger'] : [],
     },
     server: {
       port: 5173,

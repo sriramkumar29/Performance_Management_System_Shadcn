@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { apiFetch } from "../../utils/api";
 import { Card, CardContent, CardHeader } from "../../components/ui/card";
 import { Slider } from "../../components/ui/slider";
@@ -21,7 +21,10 @@ import {
   UserCheck,
   Eye,
   Home,
+  X,
 } from "lucide-react";
+import { PageHeaderSkeleton } from "../../components/PageHeaderSkeleton";
+import { GoalsSkeleton } from "../../components/GoalsSkeleton";
 
 interface GoalCategory {
   id: number;
@@ -71,10 +74,15 @@ const statusClass = (_s: string) => "bg-muted text-foreground border-border";
 const AppraisalView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [appraisal, setAppraisal] = useState<AppraisalWithGoals | null>(null);
   const [idx, setIdx] = useState(0); // 0..goals.length, where last index is overall page
+
+  // Get navigation source from URL params
+  const fromPage = searchParams.get("from");
+  const fromTab = searchParams.get("tab");
 
   useEffect(() => {
     const load = async () => {
@@ -90,6 +98,11 @@ const AppraisalView = () => {
     };
     load();
   }, [id]);
+
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   // Role/Status-based access guard
   useEffect(() => {
@@ -141,11 +154,8 @@ const AppraisalView = () => {
         aria-busy={loading}
       >
         <div className="mx-auto max-w-5xl">
-          <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-muted rounded-lg w-1/3"></div>
-            <div className="h-32 bg-muted rounded-xl"></div>
-            <div className="h-96 bg-muted rounded-xl"></div>
-          </div>
+          <PageHeaderSkeleton />
+          <GoalsSkeleton count={5} />
         </div>
       </div>
     );
@@ -526,13 +536,26 @@ const AppraisalView = () => {
                   Previous Goal
                 </Button>
                 <Button
-                  onClick={() => navigate("/")}
+                  onClick={() => {
+                    // Navigate back to source page if coming from team-appraisal
+                    if (fromPage === "team-appraisal" && fromTab) {
+                      navigate(`/team-appraisal?tab=${fromTab}`);
+                    } else {
+                      navigate("/");
+                    }
+                  }}
                   className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2"
-                  aria-label="Home"
-                  title="Home"
+                  aria-label={fromPage === "team-appraisal" ? "Close" : "Home"}
+                  title={fromPage === "team-appraisal" ? "Close" : "Home"}
                 >
-                  <Home className="h-4 w-4" />
-                  <span className="hidden sm:inline">Go Home</span>
+                  {fromPage === "team-appraisal" ? (
+                    <X className="h-4 w-4" />
+                  ) : (
+                    <Home className="h-4 w-4" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {fromPage === "team-appraisal" ? "Close" : "Go Home"}
+                  </span>
                 </Button>
               </div>
             </CardContent>

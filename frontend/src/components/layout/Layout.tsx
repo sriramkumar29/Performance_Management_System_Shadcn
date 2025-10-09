@@ -65,7 +65,7 @@ const Layout = ({ children }: LayoutProps) => {
   return (
     <>
       <Navbar showTeamTab={showTeamTab} />
-      <main className="px-3 sm:px-6 py-4 sm:py-6 min-h-screen">
+      <main className="px-3 sm:px-6 py-4 sm:py-6 flex-1 transition-opacity duration-150">
         <div className="container w-full">
           {showMainHeader && (
             <div className="flex justify-between items-center mb-6 animate-fade-in-up">
