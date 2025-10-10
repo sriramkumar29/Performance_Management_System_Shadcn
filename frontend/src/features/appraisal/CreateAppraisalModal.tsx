@@ -28,6 +28,7 @@ import { Badge } from "../../components/ui/badge";
 import { toast } from "sonner";
 
 import { GoalsSection } from "../../pages/appraisal-create/components/GoalsSection";
+import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import { AppraisalDetailsForm } from "../../pages/appraisal-create/components/AppraisalDetailsForm";
 import {
   Dialog,
@@ -484,26 +485,27 @@ const CreateAppraisalModal = ({
             <div className="flex flex-wrap gap-4 items-center justify-between">
               <div className="flex gap-3">
                 <Button
-                  variant="outline"
+                  variant={BUTTON_STYLES.CANCEL.variant}
                   onClick={handleCancel}
                   disabled={loading}
                   aria-label="Cancel"
                   title="Cancel"
                   className="hover-scale"
                 >
-                  <X className="h-4 w-4" />
+                  <X className={ICON_SIZES.DEFAULT} />
                   <span className="hidden sm:inline sm:ml-2">Cancel</span>
                 </Button>
                 {!createdAppraisalId && (
                   <Button
-                    variant="elevated"
+                    variant={BUTTON_STYLES.SUBMIT.variant}
                     onClick={handleSubmit}
                     disabled={!canSaveDraft || loading}
+                    className={BUTTON_STYLES.SUBMIT.className}
                     data-testid="save-draft"
                     aria-label={getSaveButtonLabel(loading, true)}
                     title={getSaveButtonLabel(loading, true)}
                   >
-                    <Save className="h-4 w-4" />
+                    <Save className={ICON_SIZES.DEFAULT} />
                     <span className="hidden sm:inline sm:ml-2">
                       {getSaveButtonLabel(loading, true)}
                     </span>
@@ -511,13 +513,14 @@ const CreateAppraisalModal = ({
                 )}
                 {createdAppraisalId && createdAppraisalStatus === "Draft" && (
                   <Button
-                    variant="elevated"
+                    variant={BUTTON_STYLES.SUBMIT.variant}
                     onClick={handleSubmit}
                     disabled={!canSaveDraft || loading}
+                    className={BUTTON_STYLES.SUBMIT.className}
                     aria-label={getSaveButtonLabel(loading, false)}
                     title={getSaveButtonLabel(loading, false)}
                   >
-                    <Save className="h-4 w-4" />
+                    <Save className={ICON_SIZES.DEFAULT} />
                     <span className="hidden sm:inline sm:ml-2">
                       {getSaveButtonLabel(loading, false)}
                     </span>
@@ -527,14 +530,14 @@ const CreateAppraisalModal = ({
               <div className="flex gap-3">
                 <Button
                   data-testid="submit-for-acknowledgement-button"
-                  variant="elevated"
+                  variant={BUTTON_STYLES.SUBMIT.variant}
                   onClick={handleFinish}
                   disabled={!canSubmitForAck || loading}
+                  className={BUTTON_STYLES.SUBMIT.className}
                   aria-label="Submit for acknowledgement"
                   title="Submit for acknowledgement"
-                  className="shadow-glow"
                 >
-                  <Send className="h-4 w-4" />
+                  <Send className={ICON_SIZES.DEFAULT} />
                   <span className="hidden sm:inline sm:ml-2">
                     Submit for Acknowledgement
                   </span>

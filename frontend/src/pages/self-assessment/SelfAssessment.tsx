@@ -6,6 +6,7 @@ import { Slider } from "../../components/ui/slider";
 import { Button } from "../../components/ui/button";
 import { Textarea } from "../../components/ui/textarea";
 import { Badge } from "../../components/ui/badge";
+import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +17,6 @@ import {
 } from "../../components/ui/dialog";
 import {
   Flag,
-  Calendar,
   MessageSquare,
   Star,
   ChevronDown,
@@ -28,6 +28,7 @@ import {
   Clock,
   TrendingUp,
   X,
+  Send,
 } from "lucide-react";
 import {
   Collapsible,
@@ -81,6 +82,7 @@ const SelfAssessment = () => {
   const [saving, setSaving] = useState(false);
   const [appraisal, setAppraisal] = useState<AppraisalWithGoals | null>(null);
   const [form, setForm] = useState<FormState>({});
+  const [initialForm, setInitialForm] = useState<FormState>({});
   const [openGoals, setOpenGoals] = useState<Record<number, boolean>>({});
   const [showExitDialog, setShowExitDialog] = useState(false);
 
@@ -119,6 +121,7 @@ const SelfAssessment = () => {
         openState[res.data.appraisal_goals[0].goal.goal_id] = true;
       }
       setForm(initial);
+      setInitialForm(initial); // Save initial state for comparison
       setOpenGoals(openState);
     } else {
       toast.error(res.error || "Failed to load appraisal");
@@ -269,7 +272,27 @@ const SelfAssessment = () => {
 
   const handleBackClick = () => {
     if (!isReadOnly) {
-      setShowExitDialog(true);
+      // Check if there are actual changes in the form
+      const hasChanges = Object.keys(form).some((goalIdStr) => {
+        const goalId = Number(goalIdStr);
+        const current = form[goalId];
+        const initial = initialForm[goalId];
+
+        // If initial doesn't exist, there are changes
+        if (!initial) return true;
+
+        // Compare rating and comment
+        return (
+          current.rating !== initial.rating ||
+          current.comment !== initial.comment
+        );
+      });
+
+      if (hasChanges) {
+        setShowExitDialog(true);
+      } else {
+        navigate(-1);
+      }
     } else {
       navigate(-1);
     }
@@ -306,29 +329,30 @@ const SelfAssessment = () => {
       aria-busy={loading}
     >
       {/* Fixed Header Section */}
-      <div className="flex-none bg-background sticky top-0 z-40">
-        <div className="mx-auto max-w-full px-4 md:px-6 lg:px-8 py-2">
-          <div className="space-y-2">
-            {/* Title Row with Goal Squares */}
-            <div className="relative flex items-center">
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={handleBackClick}
-                  variant="outline"
-                  size="icon"
-                  className="rounded-full"
-                  title="Go back"
-                  aria-label="Go back"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Self Assessment
-                </h1>
-              </div>
+      <div className="flex-none bg-background sticky top-0 z-40 border-b border-border/50">
+        <div className="px-1 pt-0.5 pb-2">
+          <div className="flex items-center justify-between gap-4">
+            {/* Left: Back Button + Title */}
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleBackClick}
+                variant={BUTTON_STYLES.BACK.variant}
+                size={BUTTON_STYLES.BACK.size}
+                className={BUTTON_STYLES.BACK.className}
+                title="Go back"
+                aria-label="Go back"
+              >
+                <ArrowLeft className={ICON_SIZES.DEFAULT} />
+              </Button>
+              <h1 className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Self Assessment
+              </h1>
+            </div>
 
-              {/* Goal Selection Squares - Centered */}
-              <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-4">
+            {/* Center: Goal Selection Squares + Goal Count */}
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3">
+              {/* Goal Selection Squares */}
+              <div className="flex items-center gap-2">
                 {goals.map((ag, index) => {
                   const goalId = ag.goal.goal_id;
                   const isComplete = isGoalComplete(goalId);
@@ -389,18 +413,9 @@ const SelfAssessment = () => {
                   );
                 })}
               </div>
-            </div>
 
-            {/* Date Row with Goal Statistics */}
-            <div className="relative flex items-center ml-12">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                {new Date(appraisal.start_date).toLocaleDateString()} –{" "}
-                {new Date(appraisal.end_date).toLocaleDateString()}
-              </div>
-
-              {/* Goal Statistics - Centered */}
-              <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 text-sm">
+              {/* Goal Statistics */}
+              <div className="flex items-center gap-2 text-sm">
                 <span className="font-medium text-foreground">
                   {completedCount} of {total} Goals
                 </span>
@@ -410,14 +425,38 @@ const SelfAssessment = () => {
                 </span>
               </div>
             </div>
+
+            {/* Right: Action Buttons */}
+            {!isReadOnly && (
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleSave}
+                  disabled={saving || loading}
+                  variant={BUTTON_STYLES.SAVE.variant}
+                  className={BUTTON_STYLES.SAVE.className}
+                >
+                  <Save className={`${ICON_SIZES.DEFAULT} mr-2`} />
+                  Save & Close
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={saving || loading || completedCount < total}
+                  variant={BUTTON_STYLES.SUBMIT.variant}
+                  className={BUTTON_STYLES.SUBMIT.className}
+                >
+                  <Send className={`${ICON_SIZES.DEFAULT} mr-2`} />
+                  Submit Assessment
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Scrollable Goal Cards Container */}
       <div className="flex-1 overflow-y-auto scrollbar-hide">
-        <div className="mx-auto max-w-full px-4 md:px-6 lg:px-8 py-6">
-          <div className="space-y-4 pb-24">
+        <div className="px-1 py-2">
+          <div className="space-y-2">
             {goals.map((ag, index) => {
               const goalId = ag.goal.goal_id;
               const isComplete = isGoalComplete(goalId);
@@ -599,35 +638,6 @@ const SelfAssessment = () => {
         </div>
       </div>
 
-      {/* Fixed Action Buttons at Bottom */}
-      {!isReadOnly && (
-        <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm z-50">
-          <div className="mx-auto max-w-full px-4 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={handleSave}
-                  disabled={saving || loading}
-                  variant="outline"
-                  className="shadow-sm"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Save & Close
-                </Button>
-              </div>
-              <Button
-                onClick={handleSubmit}
-                disabled={saving || loading || completedCount < total}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Submit Assessment
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Unsaved Changes Dialog */}
       <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
         <DialogContent className="sm:max-w-md">
@@ -640,7 +650,7 @@ const SelfAssessment = () => {
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button
-              variant="outline"
+              variant={BUTTON_STYLES.CANCEL.variant}
               onClick={handleCloseWithoutSaving}
               className="w-full sm:w-auto"
             >
@@ -649,9 +659,10 @@ const SelfAssessment = () => {
             <Button
               onClick={handleSaveAndClose}
               disabled={saving}
-              className="w-full sm:w-auto"
+              variant={BUTTON_STYLES.SAVE.variant}
+              className={`w-full sm:w-auto ${BUTTON_STYLES.SAVE.className}`}
             >
-              <Save className="h-4 w-4 mr-2" />
+              <Save className={`${ICON_SIZES.DEFAULT} mr-2`} />
               {saving ? "Saving..." : "Save & Close"}
             </Button>
           </DialogFooter>

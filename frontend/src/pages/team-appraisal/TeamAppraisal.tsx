@@ -4,7 +4,9 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import CreateAppraisalButton from "../../features/appraisal/CreateAppraisalButton";
 import EditAppraisalButton from "../../features/appraisal/EditAppraisalButton";
+import DeleteAppraisalButton from "../../features/appraisal/DeleteAppraisalButton";
 import { Button } from "../../components/ui/button";
+import { BUTTON_STYLES, BUTTON_MIN_WIDTHS, BUTTON_SPACING } from "../../constants/buttonStyles";
 import { Badge } from "../../components/ui/badge";
 import { AppraisalCard } from "../../components/AppraisalCard";
 import { AppraisalCardSkeletonList } from "../../components/AppraisalCardSkeleton";
@@ -466,12 +468,21 @@ const TeamAppraisal = () => {
               const actionButtons = (
                 <>
                   {a.status === "Draft" && (
-                    <EditAppraisalButton
-                      appraisalId={a.appraisal_id}
-                      onSuccess={loadAppraisals}
-                      variant="outline"
-                      className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
-                    />
+                    <div className="flex items-center gap-3">
+                      <EditAppraisalButton
+                        appraisalId={a.appraisal_id}
+                        onSuccess={loadAppraisals}
+                        className="min-w-[80px]"
+                      />
+                      <DeleteAppraisalButton
+                        appraisalId={a.appraisal_id}
+                        appraisalTitle={`for ${empNameById(
+                          a.appraisee_id
+                        )} - ${typeNameById(a.appraisal_type_id)}`}
+                        onSuccess={loadAppraisals}
+                        className="min-w-[80px]"
+                      />
+                    </div>
                   )}
                   {a.status === "Appraiser Evaluation" &&
                     a.appraiser_id === (user?.emp_id || -1) && (

@@ -7,6 +7,7 @@ import { Slider } from "../../components/ui/slider";
 import { Textarea } from "../../components/ui/textarea";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
+import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import {
   Eye,
   MessageSquare,
@@ -387,12 +388,12 @@ const ReviewerEvaluation = () => {
               {/* Navigation */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-border/50">
                 <Button
-                  variant="outline"
+                  variant={BUTTON_STYLES.BACK.variant}
                   onClick={handlePrev}
                   disabled={!canPrev}
                   className="w-full sm:w-auto flex items-center gap-2"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className={ICON_SIZES.DEFAULT} />
                   Previous
                 </Button>
 
@@ -412,10 +413,11 @@ const ReviewerEvaluation = () => {
 
                 <Button
                   onClick={handleNext}
-                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2"
+                  variant={BUTTON_STYLES.CONTINUE.variant}
+                  className={`w-full sm:w-auto ${BUTTON_STYLES.CONTINUE.className} flex items-center gap-2`}
                 >
                   {idx === total - 1 ? "Overall Review" : "Next Goal"}
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className={ICON_SIZES.DEFAULT} />
                 </Button>
               </div>
             </div>
@@ -543,12 +545,12 @@ const ReviewerEvaluation = () => {
               {/* Navigation */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-border/50">
                 <Button
-                  variant="outline"
+                  variant={BUTTON_STYLES.BACK.variant}
                   onClick={handlePrev}
                   disabled={!canPrev}
                   className="w-full sm:w-auto flex items-center gap-2"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className={ICON_SIZES.DEFAULT} />
                   Previous
                 </Button>
 
@@ -569,9 +571,10 @@ const ReviewerEvaluation = () => {
                 <Button
                   onClick={handleSubmit}
                   disabled={loading || !validateOverall()}
-                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2 px-6 py-2 shadow-lg"
+                  variant={BUTTON_STYLES.SUBMIT.variant}
+                  className={`w-full sm:w-auto ${BUTTON_STYLES.SUBMIT.className} flex items-center gap-2 px-6 py-2`}
                 >
-                  <CheckCircle2 className="h-4 w-4" />
+                  <CheckCircle2 className={ICON_SIZES.DEFAULT} />
                   {loading ? "Submitting..." : "Submit & Complete"}
                 </Button>
               </div>

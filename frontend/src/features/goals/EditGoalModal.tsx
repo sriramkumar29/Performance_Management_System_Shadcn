@@ -19,6 +19,7 @@ import {
 } from "../../components/ui/select";
 import { Edit3, Target, Weight, Save, X } from "lucide-react";
 import { toast } from "sonner";
+import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 
 interface EditGoalModalProps {
   open: boolean;
@@ -391,24 +392,25 @@ const EditGoalModal = ({
           <div className="flex flex-col sm:flex-row justify-end gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant={BUTTON_STYLES.CANCEL.variant}
               onClick={handleCancel}
               disabled={loading}
               className="w-full sm:w-auto"
               title="Cancel"
               aria-label="Cancel"
             >
-              <X className="hidden sm:inline h-4 w-4 sm:mr-2" />
+              <X className={`hidden sm:inline ${ICON_SIZES.DEFAULT} sm:mr-2`} />
               <span className="sm:ml-2">Cancel</span>
             </Button>
             <Button
               type="submit"
+              variant={BUTTON_STYLES.SUBMIT.variant}
               disabled={loading}
-              className="w-full sm:w-auto"
+              className={`w-full sm:w-auto ${BUTTON_STYLES.SUBMIT.className}`}
               title="Update goal"
               aria-label="Update goal"
             >
-              <Save className="hidden sm:inline h-4 w-4 sm:mr-2" />
+              <Save className={`hidden sm:inline ${ICON_SIZES.DEFAULT} sm:mr-2`} />
               <span className="sm:ml-2">Update Goal</span>
             </Button>
           </div>

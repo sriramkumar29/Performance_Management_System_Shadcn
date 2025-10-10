@@ -19,6 +19,7 @@ import {
 import { Progress } from "../../../components/ui/progress";
 import { getBadgeVariant } from "../helpers/uiHelpers";
 import { calculateTotalWeightage } from "../helpers/goalHelpers";
+import { BUTTON_STYLES, ICON_SIZES } from "../../../constants/buttonStyles";
 
 interface AppraisalGoal {
   id: number;
@@ -83,25 +84,26 @@ export const GoalsSection = ({
           </div>
           <div className="hidden sm:flex gap-2">
             <Button
-              size="sm"
+              variant={BUTTON_STYLES.CREATE.variant}
+              size={BUTTON_STYLES.CREATE.size}
               onClick={onAddGoal}
               disabled={!canAddGoals}
               data-testid="add-goal-toolbar"
               aria-label="Add goal"
               title={addGoalDisabledReason}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className={ICON_SIZES.DEFAULT} />
               <span className="ml-2">Add Goal</span>
             </Button>
             <Button
-              size="sm"
-              variant="outline"
+              variant={BUTTON_STYLES.VIEW.variant}
+              size={BUTTON_STYLES.VIEW.size}
               onClick={onImportFromTemplate}
               disabled={!canAddGoals}
               aria-label="Import from templates"
               title={addGoalDisabledReason}
             >
-              <FolderOpen className="h-4 w-4 text-icon" />
+              <FolderOpen className={`${ICON_SIZES.DEFAULT} text-icon`} />
               <span className="ml-2">Import from Templates</span>
             </Button>
           </div>
@@ -173,24 +175,24 @@ export const GoalsSection = ({
                     {/* Action buttons bottom-right (show on hover on larger screens) */}
                     <div className="absolute bottom-2 right-2 flex items-center gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <Button
-                        size="icon"
-                        variant="outline"
+                        variant={BUTTON_STYLES.EDIT.variant}
+                        size={BUTTON_STYLES.EDIT.size}
                         disabled={isLocked}
                         onClick={() => onEditGoal(record)}
                         aria-label="Edit goal"
                         title="Edit goal"
                       >
-                        <Pencil className="h-4 w-4 text-icon" />
+                        <Pencil className={`${ICON_SIZES.DEFAULT} text-icon`} />
                       </Button>
                       <Button
-                        size="icon"
-                        variant="destructive"
+                        variant={BUTTON_STYLES.DELETE.variant}
+                        size={BUTTON_STYLES.DELETE.size}
                         disabled={isLocked}
                         onClick={() => onRemoveGoal(record.goal.goal_id)}
                         aria-label="Remove goal"
                         title="Remove goal"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className={ICON_SIZES.DEFAULT} />
                       </Button>
                     </div>
                   </CardHeader>
@@ -231,7 +233,8 @@ export const GoalsSection = ({
             </div>
             <div className="mt-4 flex items-center gap-2 flex-wrap justify-center">
               <Button
-                size="sm"
+                variant={BUTTON_STYLES.CREATE.variant}
+                size={BUTTON_STYLES.CREATE.size}
                 onClick={onAddGoal}
                 disabled={!canAddGoals}
                 className="gap-2"
@@ -239,18 +242,18 @@ export const GoalsSection = ({
                 aria-label="Add goal"
                 title={addGoalDisabledReason}
               >
-                <Plus className="h-4 w-4" />
+                <Plus className={ICON_SIZES.DEFAULT} />
                 <span className="hidden sm:inline sm:ml-2">Add Goal</span>
               </Button>
               <Button
-                size="sm"
-                variant="outline"
+                variant={BUTTON_STYLES.VIEW.variant}
+                size={BUTTON_STYLES.VIEW.size}
                 onClick={onImportFromTemplate}
                 disabled={!canAddGoals}
                 aria-label="Import from templates"
                 title={addGoalDisabledReason}
               >
-                <FolderOpen className="h-4 w-4 text-icon" />
+                <FolderOpen className={`${ICON_SIZES.DEFAULT} text-icon`} />
                 <span className="ml-2">Import from Templates</span>
               </Button>
             </div>

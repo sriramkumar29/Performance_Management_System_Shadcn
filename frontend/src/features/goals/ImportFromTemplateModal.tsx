@@ -20,6 +20,7 @@ import {
 } from "../../components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 
 interface ImportFromTemplateModalProps {
   open: boolean;
@@ -307,23 +308,25 @@ const ImportFromTemplateModal = ({
 
           <div className="flex flex-col sm:flex-row justify-end gap-2">
             <Button
-              variant="outline"
+              variant={BUTTON_STYLES.CANCEL.variant}
               onClick={onClose}
               disabled={loading}
               title="Cancel"
               aria-label="Cancel"
             >
               <span className="hidden sm:inline">Cancel</span>
-              <X className="h-4 w-4 sm:ml-2" />
+              <X className={`${ICON_SIZES.DEFAULT} sm:ml-2`} />
             </Button>
             <Button
+              variant={BUTTON_STYLES.SUBMIT.variant}
               onClick={handleImport}
               disabled={loading}
+              className={BUTTON_STYLES.SUBMIT.className}
               title="Import selected templates"
               aria-label="Import selected templates"
             >
               <span className="hidden sm:inline">Import Selected</span>
-              <Download className="h-4 w-4 sm:ml-2" />
+              <Download className={`${ICON_SIZES.DEFAULT} sm:ml-2`} />
             </Button>
           </div>
         </div>

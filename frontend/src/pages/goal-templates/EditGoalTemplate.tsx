@@ -22,6 +22,7 @@ import { apiFetch } from "../../utils/api";
 import { toast } from "sonner";
 import { useAuth } from "../../contexts/AuthContext";
 import { ArrowLeft, Home } from "lucide-react";
+import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 
 interface CategoryDto {
   id: number;
@@ -188,14 +189,14 @@ const EditGoalTemplate = () => {
       <div className="flex items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3 sm:gap-4">
           <Button
-            variant="outline"
-            size="sm"
+            variant={BUTTON_STYLES.BACK.variant}
+            size={BUTTON_STYLES.BACK.size}
             onClick={() => navigate("/goal-templates")}
             className="flex items-center gap-2"
             aria-label="Back"
             title="Back"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className={ICON_SIZES.DEFAULT} />
             <span className="hidden sm:inline sm:ml-2">Back</span>
           </Button>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -204,13 +205,14 @@ const EditGoalTemplate = () => {
         </div>
         <div className="flex items-center">
           <Button
-            size="sm"
+            size={BUTTON_STYLES.SUBMIT.size}
             onClick={() => navigate("/")}
-            className="hidden sm:inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+            variant={BUTTON_STYLES.SUBMIT.variant}
+            className={`hidden sm:inline-flex items-center gap-2 ${BUTTON_STYLES.SUBMIT.className}`}
             aria-label="Home"
             title="Home"
           >
-            <Home className="h-4 w-4" />
+            <Home className={ICON_SIZES.DEFAULT} />
             <span className="hidden sm:inline sm:ml-2">Home</span>
           </Button>
         </div>
@@ -394,7 +396,7 @@ const EditGoalTemplate = () => {
 
           <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 pt-4 border-t">
             <Button
-              variant="outline"
+              variant={BUTTON_STYLES.CANCEL.variant}
               type="button"
               onClick={() => navigate("/goal-templates")}
               disabled={saving}
@@ -406,7 +408,8 @@ const EditGoalTemplate = () => {
               type="button"
               onClick={save}
               disabled={saving || loading}
-              className="w-full sm:w-auto px-6 shadow-soft hover:shadow-glow transition-all"
+              variant={BUTTON_STYLES.SUBMIT.variant}
+              className={`w-full sm:w-auto px-6 ${BUTTON_STYLES.SUBMIT.className}`}
               data-testid="save-template"
             >
               {getButtonText(saving, isEdit)}
@@ -420,7 +423,8 @@ const EditGoalTemplate = () => {
         onClick={() => navigate("/")}
         title="Home"
         aria-label="Home"
-        className="sm:hidden fixed bottom-20 right-4 z-50 rounded-full h-12 w-12 p-0 bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30"
+        variant={BUTTON_STYLES.SUBMIT.variant}
+        className={`sm:hidden fixed bottom-20 right-4 z-50 rounded-full h-12 w-12 p-0 ${BUTTON_STYLES.SUBMIT.className}`}
       >
         <Home className="h-5 w-5" />
       </Button>

@@ -15,6 +15,7 @@ import {
 } from "../../components/FiltersSkeleton";
 import { CheckCircle2, ArrowRight, ArrowLeft, CheckCircle } from "lucide-react";
 import { Label } from "../../components/ui/label";
+import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import {
   Select,
   SelectContent,
@@ -179,15 +180,15 @@ const PaginationControls = ({
     aria-live="polite"
   >
     <Button
-      variant="ghost"
-      size="icon"
+      variant={BUTTON_STYLES.PAGINATION.variant}
+      size={BUTTON_STYLES.PAGINATION.size}
       onClick={() => onPageChange(Math.max(1, currentPage - 1))}
       disabled={currentPage <= 1}
       title="Previous page"
       aria-label="Previous page"
-      className="rounded-full hover:bg-primary/10"
+      className={BUTTON_STYLES.PAGINATION.className}
     >
-      <ArrowLeft className="h-4 w-4" />
+      <ArrowLeft className={ICON_SIZES.DEFAULT} />
     </Button>
     <span className="hidden sm:inline px-2 text-xs font-medium text-muted-foreground">
       Page {currentPage} <span className="mx-1">/</span> {totalPages}
@@ -196,15 +197,15 @@ const PaginationControls = ({
       Page {currentPage} of {totalPages}
     </span>
     <Button
-      variant="ghost"
-      size="icon"
+      variant={BUTTON_STYLES.PAGINATION.variant}
+      size={BUTTON_STYLES.PAGINATION.size}
       onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
       disabled={currentPage >= totalPages}
       title="Next page"
       aria-label="Next page"
-      className="rounded-full hover:bg-primary/10"
+      className={BUTTON_STYLES.PAGINATION.className}
     >
-      <ArrowRight className="h-4 w-4" />
+      <ArrowRight className={ICON_SIZES.DEFAULT} />
     </Button>
   </div>
 );
@@ -316,16 +317,16 @@ const AppraisalActionButtons = ({
   ) {
     return (
       <Button
-        variant="outline"
+        variant={BUTTON_STYLES.VIEW.variant}
         onClick={() =>
           navigate(`/self-assessment/${appraisal.appraisal_id}?readonly=true`)
         }
-        className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
+        className={BUTTON_STYLES.VIEW.className}
         aria-label="View self assessment"
         title="View self assessment"
       >
         <span className="hidden sm:inline">View</span>
-        <ArrowRight className="h-4 w-4 sm:ml-2" />
+        <ArrowRight className={`${ICON_SIZES.DEFAULT} sm:ml-2`} />
       </Button>
     );
   }
@@ -334,14 +335,14 @@ const AppraisalActionButtons = ({
   if (appraisal.status === "Complete") {
     return (
       <Button
-        variant="outline"
+        variant={BUTTON_STYLES.VIEW.variant}
         onClick={() => navigate(`/appraisal/${appraisal.appraisal_id}`)}
-        className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40"
+        className={BUTTON_STYLES.VIEW.className}
         aria-label="View appraisal"
         title="View appraisal"
       >
         <span className="hidden sm:inline">View</span>
-        <ArrowRight className="h-4 w-4 sm:ml-2" />
+        <ArrowRight className={`${ICON_SIZES.DEFAULT} sm:ml-2`} />
       </Button>
     );
   }
@@ -642,12 +643,16 @@ const MyAppraisal = () => {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <Button
-              variant={myFilter === "Active" ? "default" : "outline"}
+              variant={
+                myFilter === "Active"
+                  ? BUTTON_STYLES.TAB_ACTIVE.variant
+                  : BUTTON_STYLES.TAB_INACTIVE.variant
+              }
               onClick={() => setMyFilter("Active")}
               className={
                 myFilter === "Active"
-                  ? "bg-primary text-primary-foreground"
-                  : ""
+                  ? BUTTON_STYLES.TAB_ACTIVE.className
+                  : BUTTON_STYLES.TAB_INACTIVE.className
               }
             >
               Active
@@ -659,12 +664,16 @@ const MyAppraisal = () => {
               </Badge>
             </Button>
             <Button
-              variant={myFilter === "Completed" ? "default" : "outline"}
+              variant={
+                myFilter === "Completed"
+                  ? BUTTON_STYLES.TAB_ACTIVE.variant
+                  : BUTTON_STYLES.TAB_INACTIVE.variant
+              }
               onClick={() => setMyFilter("Completed")}
               className={
                 myFilter === "Completed"
-                  ? "bg-primary text-primary-foreground"
-                  : ""
+                  ? BUTTON_STYLES.TAB_ACTIVE.className
+                  : BUTTON_STYLES.TAB_INACTIVE.className
               }
             >
               Completed

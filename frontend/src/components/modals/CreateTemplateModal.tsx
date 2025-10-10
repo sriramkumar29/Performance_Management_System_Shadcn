@@ -21,6 +21,7 @@ import { apiFetch } from "../../utils/api";
 import { toast } from "sonner";
 import { useAuth } from "../../contexts/AuthContext";
 import { X } from "lucide-react";
+import { BUTTON_STYLES } from "../../constants/buttonStyles";
 
 interface CategoryDto {
   id: number;
@@ -329,13 +330,18 @@ const CreateTemplateModal = ({
           <div className="flex justify-end gap-3 pt-4">
             <Button
               type="button"
-              variant="outline"
+              variant={BUTTON_STYLES.CANCEL.variant}
               onClick={() => onOpenChange(false)}
               disabled={saving}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={saving}>
+            <Button 
+              type="submit" 
+              variant={BUTTON_STYLES.SUBMIT.variant}
+              className={BUTTON_STYLES.SUBMIT.className}
+              disabled={saving}
+            >
               {saving ? "Creating..." : "Create Template"}
             </Button>
           </div>

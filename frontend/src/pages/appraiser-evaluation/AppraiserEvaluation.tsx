@@ -8,6 +8,7 @@ import { Textarea } from "../../components/ui/textarea";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Progress } from "../../components/ui/progress";
+import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import {
   Target,
   Calendar,
@@ -496,12 +497,12 @@ const AppraiserEvaluation = () => {
               {/* Navigation */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-border/50">
                 <Button
-                  variant="outline"
+                  variant={BUTTON_STYLES.BACK.variant}
                   onClick={handlePrev}
                   disabled={!canPrev}
                   className="w-full sm:w-auto"
                 >
-                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  <ChevronLeft className={`${ICON_SIZES.DEFAULT} mr-2`} />
                   Previous Goal
                 </Button>
 
@@ -526,10 +527,11 @@ const AppraiserEvaluation = () => {
                 <Button
                   onClick={handleNext}
                   disabled={loading || !validateCurrent()}
-                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground"
+                  variant={BUTTON_STYLES.CONTINUE.variant}
+                  className={BUTTON_STYLES.CONTINUE.className}
                 >
                   {idx === total - 1 ? "Overall Evaluation" : "Next Goal"}
-                  <ChevronRight className="h-4 w-4 ml-2" />
+                  <ChevronRight className={`${ICON_SIZES.DEFAULT} ml-2`} />
                 </Button>
               </div>
             </CardContent>
@@ -626,12 +628,12 @@ const AppraiserEvaluation = () => {
               {/* Navigation */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-border/50">
                 <Button
-                  variant="outline"
+                  variant={BUTTON_STYLES.BACK.variant}
                   onClick={handlePrev}
                   disabled={!canPrev}
                   className="w-full sm:w-auto"
                 >
-                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  <ChevronLeft className={`${ICON_SIZES.DEFAULT} mr-2`} />
                   Previous Goal
                 </Button>
 
@@ -652,9 +654,10 @@ const AppraiserEvaluation = () => {
                 <Button
                   onClick={handleSubmit}
                   disabled={loading || !validateCurrent()}
-                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
+                  variant={BUTTON_STYLES.SUBMIT.variant}
+                  className={`w-full sm:w-auto ${BUTTON_STYLES.SUBMIT.className}`}
                 >
-                  <Send className="h-4 w-4 mr-2" />
+                  <Send className={`${ICON_SIZES.DEFAULT} mr-2`} />
                   Submit to Reviewer
                 </Button>
               </div>

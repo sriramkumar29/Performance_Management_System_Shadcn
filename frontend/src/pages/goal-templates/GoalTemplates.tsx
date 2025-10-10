@@ -10,6 +10,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { useAuth } from "../../contexts/AuthContext";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Search, Trash2, Edit } from "lucide-react";
+import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -114,14 +115,14 @@ const GoalTemplates = () => {
       <div className="flex items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3 sm:gap-4">
           <Button
-            variant="outline"
-            size="sm"
+            variant={BUTTON_STYLES.BACK.variant}
+            size={BUTTON_STYLES.BACK.size}
             onClick={() => navigate("/")}
-            className="flex items-center gap-2 hover:shadow-soft transition-all"
+            className={`flex items-center gap-2 ${BUTTON_STYLES.BACK.className}`}
             aria-label="Back"
             title="Back"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className={ICON_SIZES.DEFAULT} />
             <span className="hidden sm:inline sm:ml-2">Back</span>
           </Button>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -132,12 +133,13 @@ const GoalTemplates = () => {
           {isManagerOrAbove(user?.emp_roles, user?.emp_roles_level) && (
             <Button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 shadow-soft hover:shadow-glow transition-all"
+              variant={BUTTON_STYLES.CREATE.variant}
+              className={`flex items-center gap-2 ${BUTTON_STYLES.CREATE.className}`}
               aria-label="Create Template"
               title="Create Template"
               data-testid="create-template"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className={ICON_SIZES.DEFAULT} />
               <span className="hidden sm:inline sm:ml-2">Create Template</span>
             </Button>
           )}
@@ -260,23 +262,23 @@ const GoalTemplates = () => {
                     ) && (
                       <div className="flex gap-2 mt-3 sm:mt-0 self-start sm:self-auto">
                         <Button
-                          size="sm"
-                          variant="outline"
+                          size={BUTTON_STYLES.EDIT.size}
+                          variant={BUTTON_STYLES.EDIT.variant}
                           onClick={() => handleEditClick(t.temp_id)}
-                          className="flex items-center gap-2 hover:shadow-soft transition-all"
+                          className={`flex items-center gap-2 ${BUTTON_STYLES.EDIT.className}`}
                           aria-label="Edit template"
                           title="Edit template"
                         >
-                          <Edit className="h-4 w-4" aria-hidden="true" />
+                          <Edit className={ICON_SIZES.DEFAULT} aria-hidden="true" />
                           <span className="hidden sm:inline sm:ml-2">Edit</span>
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button
-                              size="sm"
-                              variant="destructive"
+                              size={BUTTON_STYLES.DELETE.size}
+                              variant={BUTTON_STYLES.DELETE.variant}
                               disabled={deletingId === t.temp_id}
-                              className="flex items-center gap-2 hover:shadow-glow transition-all"
+                              className={`flex items-center gap-2 ${BUTTON_STYLES.DELETE.className}`}
                               aria-label={
                                 deletingId === t.temp_id
                                   ? "Deleting…"
@@ -288,7 +290,7 @@ const GoalTemplates = () => {
                                   : "Delete template"
                               }
                             >
-                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                              <Trash2 className={ICON_SIZES.DEFAULT} aria-hidden="true" />
                               <span className="hidden sm:inline sm:ml-2">
                                 {deletingId === t.temp_id
                                   ? "Deleting…"

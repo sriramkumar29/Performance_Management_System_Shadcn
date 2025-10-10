@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
+import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 
 interface AppraisalGoal {
   id: number;
@@ -357,20 +358,21 @@ const AcknowledgeAppraisalModal = ({
             <div className="border-t bg-background px-6 py-4 mt-auto">
               <div className="flex flex-wrap gap-4 items-center justify-between">
                 <Button
-                  variant="outline"
+                  variant={BUTTON_STYLES.CANCEL.variant}
                   onClick={onClose}
                   disabled={loading}
                   className="gap-2"
                 >
-                  <X className="h-4 w-4" />
+                  <X className={ICON_SIZES.DEFAULT} />
                   Cancel
                 </Button>
                 <Button
+                  variant={BUTTON_STYLES.SUBMIT.variant}
                   onClick={handleAcknowledge}
                   disabled={loading || appraisalData.goals.length === 0}
-                  className="gap-2 shadow-glow"
+                  className={`gap-2 ${BUTTON_STYLES.SUBMIT.className}`}
                 >
-                  <CheckCircle2 className="h-4 w-4" />
+                  <CheckCircle2 className={ICON_SIZES.DEFAULT} />
                   {loading
                     ? "Acknowledging..."
                     : "Acknowledge & Proceed to Self-Assessment"}

@@ -8,6 +8,7 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Progress } from "../../components/ui/progress";
 import { useAuth } from "../../contexts/AuthContext";
+import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import {
   Calendar,
   Target,
@@ -348,12 +349,12 @@ const AppraisalView = () => {
               {/* Navigation */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-border/50">
                 <Button
-                  variant="outline"
+                  variant={BUTTON_STYLES.BACK.variant}
                   onClick={() => setIdx((i) => Math.max(0, i - 1))}
                   disabled={loading || idx === 0}
                   className="w-full sm:w-auto"
                 >
-                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  <ChevronLeft className={`${ICON_SIZES.DEFAULT} mr-2`} />
                   Previous Goal
                 </Button>
 
@@ -389,12 +390,13 @@ const AppraisalView = () => {
                 <Button
                   onClick={() => setIdx((i) => Math.min(maxIndex, i + 1))}
                   disabled={loading || idx === maxIndex}
-                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground"
+                  variant={BUTTON_STYLES.CONTINUE.variant}
+                  className={`w-full sm:w-auto ${BUTTON_STYLES.CONTINUE.className}`}
                 >
                   {showOverall && idx === totalGoals - 1
                     ? "Overall Summary"
                     : "Next Goal"}
-                  <ChevronRight className="h-4 w-4 ml-2" />
+                  <ChevronRight className={`${ICON_SIZES.DEFAULT} ml-2`} />
                 </Button>
               </div>
             </CardContent>
@@ -527,12 +529,12 @@ const AppraisalView = () => {
               {/* Navigation */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-border/50">
                 <Button
-                  variant="outline"
+                  variant={BUTTON_STYLES.BACK.variant}
                   onClick={() => setIdx((i) => Math.max(0, i - 1))}
                   disabled={loading}
                   className="w-full sm:w-auto"
                 >
-                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  <ChevronLeft className={`${ICON_SIZES.DEFAULT} mr-2`} />
                   Previous Goal
                 </Button>
                 <Button
@@ -544,7 +546,8 @@ const AppraisalView = () => {
                       navigate("/");
                     }
                   }}
-                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2"
+                  variant={BUTTON_STYLES.SUBMIT.variant}
+                  className={`w-full sm:w-auto ${BUTTON_STYLES.SUBMIT.className} flex items-center gap-2`}
                   aria-label={fromPage === "team-appraisal" ? "Close" : "Home"}
                   title={fromPage === "team-appraisal" ? "Close" : "Home"}
                 >

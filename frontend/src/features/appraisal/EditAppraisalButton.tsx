@@ -1,17 +1,16 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Edit } from "lucide-react";
+import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 
 interface EditAppraisalButtonProps {
   appraisalId: number;
   onSuccess?: () => void; // Kept for backward compatibility but not used
-  variant?: "default" | "outline" | "ghost" | "elevated";
   className?: string;
 }
 
 const EditAppraisalButton = ({
   appraisalId,
-  variant = "outline",
   className = "",
 }: EditAppraisalButtonProps) => {
   const navigate = useNavigate();
@@ -22,14 +21,15 @@ const EditAppraisalButton = ({
 
   return (
     <Button
-      variant={variant}
+      variant={BUTTON_STYLES.EDIT.variant}
+      size={BUTTON_STYLES.EDIT.size}
       onClick={handleClick}
-      className={className}
+      className={`${BUTTON_STYLES.EDIT.className} ${className}`}
       aria-label="Edit draft appraisal"
       title="Edit draft appraisal"
     >
-      <Edit className="h-4 w-4 mr-1" />
-      <span className="hidden sm:inline">Edit</span>
+      <Edit className={ICON_SIZES.DEFAULT} />
+      <span className="hidden sm:inline sm:ml-2">Edit</span>
     </Button>
   );
 };

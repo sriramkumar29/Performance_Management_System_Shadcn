@@ -4,6 +4,7 @@ import AddGoalModal from "../../features/goals/AddGoalModal";
 import EditGoalModal from "../../features/goals/EditGoalModal";
 import ImportFromTemplateModal from "../../features/goals/ImportFromTemplateModal";
 import { useAuth } from "../../contexts/AuthContext";
+import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 
 import type { Dayjs } from "dayjs";
 
@@ -25,7 +26,6 @@ import {
   calculateTotalWeightage,
 } from "./helpers/goalHelpers";
 import { Button } from "../../components/ui/button";
-import { Badge } from "../../components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -134,6 +134,14 @@ const CreateAppraisal = () => {
   const [editingGoal, setEditingGoal] = useState<AppraisalGoal | null>(null);
   const [importFromTemplateOpen, setImportFromTemplateOpen] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
+  const [initialFormValues, setInitialFormValues] =
+    useState<AppraisalFormValues>({
+      appraisee_id: 0,
+      reviewer_id: 0,
+      appraisal_type_id: 0,
+      appraisal_type_range_id: undefined,
+      period: undefined,
+    });
   // Track goal changes for Draft editing
   const [originalGoals, setOriginalGoals] = useState<AppraisalGoal[]>([]);
   const [goalChanges, setGoalChanges] = useState<{
@@ -326,6 +334,7 @@ const CreateAppraisal = () => {
       setOriginalGoals([...loadedGoals]);
       setSelectedTypeId(typeId);
       setFormValues(formValues);
+      setInitialFormValues(formValues); // Save initial form state
     } catch (error: any) {
       toast.error("Failed to load appraisal", {
         description: error.message || "Please try again.",
@@ -491,12 +500,27 @@ const CreateAppraisal = () => {
   };
 
   const handleBackClick = () => {
-    // Check if there are unsaved changes (draft not yet created or has changes)
-    const hasUnsavedChanges =
-      !createdAppraisalId ||
+    // Check if form values have changed
+    const formValuesChanged =
+      formValues.appraisee_id !== initialFormValues.appraisee_id ||
+      formValues.reviewer_id !== initialFormValues.reviewer_id ||
+      formValues.appraisal_type_id !== initialFormValues.appraisal_type_id ||
+      formValues.appraisal_type_range_id !==
+        initialFormValues.appraisal_type_range_id ||
+      JSON.stringify(formValues.period) !==
+        JSON.stringify(initialFormValues.period);
+
+    // Check if there are goal changes
+    const hasGoalChanges =
       goalChanges.added.length > 0 ||
       goalChanges.removed.length > 0 ||
       goalChanges.updated.length > 0;
+
+    // Check if there are unsaved changes
+    const hasUnsavedChanges =
+      (!createdAppraisalId && (formValuesChanged || goals.length > 0)) ||
+      hasGoalChanges ||
+      formValuesChanged;
 
     if (hasUnsavedChanges && !isLocked) {
       setShowExitDialog(true);
@@ -517,177 +541,186 @@ const CreateAppraisal = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-background">
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 animate-fade-in-up">
-        <div className="mb-6 flex items-center gap-3">
-          <Button
-            onClick={handleBackClick}
-            variant="outline"
-            size="icon"
-            className="rounded-full"
-            title="Go back"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            {createdAppraisalId ? "Edit Appraisal" : "Create New Appraisal"}
-          </h1>
-        </div>
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
+      {/* Fixed Header Section */}
+      <div className="flex-none bg-background sticky top-0 z-40 border-b border-border/50">
+        <div className="px-1 pt-0.5 pb-2">
+          <div className="flex items-center justify-between gap-4">
+            {/* Left: Back Button + Title */}
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleBackClick}
+                variant={BUTTON_STYLES.BACK.variant}
+                size={BUTTON_STYLES.BACK.size}
+                className={BUTTON_STYLES.BACK.className}
+                title="Go back"
+                aria-label="Go back"
+              >
+                <ArrowLeft className={ICON_SIZES.DEFAULT} />
+              </Button>
+              <h1 className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                {createdAppraisalId ? "Edit Appraisal" : "Create New Appraisal"}
+              </h1>
+            </div>
 
-        {/* Appraisal Details */}
-        <div className="animate-slide-up">
-          <AppraisalDetailsForm
-            formValues={formValues}
-            setFormValues={setFormValues}
-            employees={eligibleAppraisees}
-            eligibleReviewers={eligibleReviewers}
-            appraisalTypes={appraisalTypes}
-            ranges={ranges}
-            setRanges={setRanges}
-            selectedTypeId={selectedTypeId}
-            setSelectedTypeId={setSelectedTypeId}
-            isCollapsed={isAppraisalDetailsCollapsed}
-            onToggleCollapse={() =>
-              setIsAppraisalDetailsCollapsed(!isAppraisalDetailsCollapsed)
-            }
-            isLocked={isLocked}
-            onFetchRanges={fetchRanges}
-          />
-        </div>
-
-        {/* Goals Section */}
-        <div
-          className="mt-6 animate-slide-up"
-          style={{ animationDelay: "100ms" }}
-        >
-          <GoalsSection
-            goals={goals}
-            canAddGoals={canAddGoals}
-            isLocked={isLocked}
-            addGoalDisabledReason={addGoalDisabledReason}
-            appraiseeSelected={appraiseeSelected}
-            reviewerSelected={reviewerSelected}
-            typeSelected={typeSelected}
-            periodSelected={periodSelected}
-            onAddGoal={() => setAddGoalModalOpen(true)}
-            onImportFromTemplate={() => setImportFromTemplateOpen(true)}
-            onEditGoal={handleEditGoalLocal}
-            onRemoveGoal={handleRemoveGoal}
-          />
-        </div>
-
-        {/* Fixed Action Buttons at Bottom */}
-        <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm z-50">
-          <div className="mx-auto max-w-full px-4 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                {!createdAppraisalId && (
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={!canSaveDraft || loading}
-                    variant="outline"
-                    className="shadow-sm"
-                    data-testid="save-draft"
-                    aria-label={getSaveButtonLabel(loading, true)}
-                    title={getSaveButtonLabel(loading, true)}
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    {getSaveButtonLabel(loading, true)}
-                  </Button>
-                )}
-                {createdAppraisalId && createdAppraisalStatus === "Draft" && (
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={!canSaveDraft || loading}
-                    variant="outline"
-                    className="shadow-sm"
-                    aria-label={getSaveButtonLabel(loading, false)}
-                    title={getSaveButtonLabel(loading, false)}
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    {getSaveButtonLabel(loading, false)}
-                  </Button>
-                )}
-              </div>
+            {/* Right: Action Buttons */}
+            <div className="flex items-center gap-2">
+              {!createdAppraisalId && (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!canSaveDraft || loading}
+                  variant={BUTTON_STYLES.SAVE_DRAFT.variant}
+                  className={BUTTON_STYLES.SAVE_DRAFT.className}
+                  data-testid="save-draft"
+                  aria-label={getSaveButtonLabel(loading, true)}
+                  title={getSaveButtonLabel(loading, true)}
+                >
+                  <Save className={`${ICON_SIZES.DEFAULT} mr-2`} />
+                  {getSaveButtonLabel(loading, true)}
+                </Button>
+              )}
+              {createdAppraisalId && createdAppraisalStatus === "Draft" && (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!canSaveDraft || loading}
+                  variant={BUTTON_STYLES.SAVE_DRAFT.variant}
+                  className={BUTTON_STYLES.SAVE_DRAFT.className}
+                  aria-label={getSaveButtonLabel(loading, false)}
+                  title={getSaveButtonLabel(loading, false)}
+                >
+                  <Save className={`${ICON_SIZES.DEFAULT} mr-2`} />
+                  {getSaveButtonLabel(loading, false)}
+                </Button>
+              )}
               <Button
                 data-testid="submit-for-acknowledgement-button"
                 onClick={handleFinish}
                 disabled={!canSubmitForAck || loading}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
+                variant={BUTTON_STYLES.SUBMIT.variant}
+                className={BUTTON_STYLES.SUBMIT.className}
                 aria-label="Submit for acknowledgement"
                 title="Submit for acknowledgement"
               >
-                <Send className="h-4 w-4 mr-2" />
-                Submit for Acknowledgement
+                <Send className={`${ICON_SIZES.DEFAULT} mr-2`} />
+                Submit
               </Button>
             </div>
           </div>
         </div>
-
-        {/* Child Modals */}
-        <AddGoalModal
-          open={addGoalModalOpen}
-          onClose={() => setAddGoalModalOpen(false)}
-          onGoalAdded={handleGoalAdded}
-          appraisalId={createdAppraisalId ?? undefined}
-          remainingWeightage={Math.max(0, 100 - totalWeightageUi)}
-        />
-        <ImportFromTemplateModal
-          open={importFromTemplateOpen}
-          onClose={() => setImportFromTemplateOpen(false)}
-          onGoalAdded={handleGoalAdded}
-          appraisalId={createdAppraisalId ?? undefined}
-          remainingWeightage={Math.max(0, 100 - totalWeightageUi)}
-        />
-        <EditGoalModal
-          open={editGoalModalOpen}
-          onClose={() => {
-            setEditGoalModalOpen(false);
-            setEditingGoal(null);
-          }}
-          onGoalUpdated={handleGoalUpdated}
-          goalData={editingGoal}
-          remainingWeightage={
-            editingGoal
-              ? Math.max(
-                  0,
-                  100 - (totalWeightageUi - editingGoal.goal.goal_weightage)
-                )
-              : Math.max(0, 100 - totalWeightageUi)
-          }
-        />
-
-        {/* Unsaved Changes Dialog */}
-        <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Unsaved Changes</DialogTitle>
-              <DialogDescription>
-                You have unsaved changes. Would you like to save your progress
-                before leaving?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="flex-col sm:flex-row gap-2">
-              <Button
-                variant="outline"
-                onClick={handleCloseWithoutSaving}
-                className="w-full sm:w-auto"
-              >
-                Close Without Saving
-              </Button>
-              <Button
-                onClick={handleSaveAndClose}
-                disabled={loading}
-                className="w-full sm:w-auto"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {loading ? "Saving..." : "Save & Close"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
+
+      {/* Scrollable Content Container */}
+      <div className="flex-1 overflow-y-auto scrollbar-hide">
+        <div className="px-1 py-2">
+          <div className="space-y-2">
+            {/* Appraisal Details */}
+            <div className="animate-slide-up">
+              <AppraisalDetailsForm
+                formValues={formValues}
+                setFormValues={setFormValues}
+                employees={eligibleAppraisees}
+                eligibleReviewers={eligibleReviewers}
+                appraisalTypes={appraisalTypes}
+                ranges={ranges}
+                setRanges={setRanges}
+                selectedTypeId={selectedTypeId}
+                setSelectedTypeId={setSelectedTypeId}
+                isCollapsed={isAppraisalDetailsCollapsed}
+                onToggleCollapse={() =>
+                  setIsAppraisalDetailsCollapsed(!isAppraisalDetailsCollapsed)
+                }
+                isLocked={isLocked}
+                onFetchRanges={fetchRanges}
+              />
+            </div>
+
+            {/* Goals Section */}
+            <div
+              className="animate-slide-up"
+              style={{ animationDelay: "100ms" }}
+            >
+              <GoalsSection
+                goals={goals}
+                canAddGoals={canAddGoals}
+                isLocked={isLocked}
+                addGoalDisabledReason={addGoalDisabledReason}
+                appraiseeSelected={appraiseeSelected}
+                reviewerSelected={reviewerSelected}
+                typeSelected={typeSelected}
+                periodSelected={periodSelected}
+                onAddGoal={() => setAddGoalModalOpen(true)}
+                onImportFromTemplate={() => setImportFromTemplateOpen(true)}
+                onEditGoal={handleEditGoalLocal}
+                onRemoveGoal={handleRemoveGoal}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Child Modals */}
+      <AddGoalModal
+        open={addGoalModalOpen}
+        onClose={() => setAddGoalModalOpen(false)}
+        onGoalAdded={handleGoalAdded}
+        appraisalId={createdAppraisalId ?? undefined}
+        remainingWeightage={Math.max(0, 100 - totalWeightageUi)}
+      />
+      <ImportFromTemplateModal
+        open={importFromTemplateOpen}
+        onClose={() => setImportFromTemplateOpen(false)}
+        onGoalAdded={handleGoalAdded}
+        appraisalId={createdAppraisalId ?? undefined}
+        remainingWeightage={Math.max(0, 100 - totalWeightageUi)}
+      />
+      <EditGoalModal
+        open={editGoalModalOpen}
+        onClose={() => {
+          setEditGoalModalOpen(false);
+          setEditingGoal(null);
+        }}
+        onGoalUpdated={handleGoalUpdated}
+        goalData={editingGoal}
+        remainingWeightage={
+          editingGoal
+            ? Math.max(
+                0,
+                100 - (totalWeightageUi - editingGoal.goal.goal_weightage)
+              )
+            : Math.max(0, 100 - totalWeightageUi)
+        }
+      />
+
+      {/* Unsaved Changes Dialog */}
+      <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Unsaved Changes</DialogTitle>
+            <DialogDescription>
+              You have unsaved changes. Would you like to save your progress
+              before leaving?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant={BUTTON_STYLES.CANCEL.variant}
+              onClick={handleCloseWithoutSaving}
+              className="w-full sm:w-auto"
+            >
+              Close Without Saving
+            </Button>
+            <Button
+              onClick={handleSaveAndClose}
+              disabled={loading}
+              variant={BUTTON_STYLES.SAVE.variant}
+              className={`w-full sm:w-auto ${BUTTON_STYLES.SAVE.className}`}
+            >
+              <Save className={`${ICON_SIZES.DEFAULT} mr-2`} />
+              {loading ? "Saving..." : "Save & Close"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
