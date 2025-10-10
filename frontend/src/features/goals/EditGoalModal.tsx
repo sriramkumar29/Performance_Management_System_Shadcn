@@ -410,7 +410,9 @@ const EditGoalModal = ({
               title="Update goal"
               aria-label="Update goal"
             >
-              <Save className={`hidden sm:inline ${ICON_SIZES.DEFAULT} sm:mr-2`} />
+              <Save
+                className={`hidden sm:inline ${ICON_SIZES.DEFAULT} sm:mr-2`}
+              />
               <span className="sm:ml-2">Update Goal</span>
             </Button>
           </div>

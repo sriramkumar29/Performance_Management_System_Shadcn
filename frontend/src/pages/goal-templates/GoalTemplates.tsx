@@ -269,7 +269,10 @@ const GoalTemplates = () => {
                           aria-label="Edit template"
                           title="Edit template"
                         >
-                          <Edit className={ICON_SIZES.DEFAULT} aria-hidden="true" />
+                          <Edit
+                            className={ICON_SIZES.DEFAULT}
+                            aria-hidden="true"
+                          />
                           <span className="hidden sm:inline sm:ml-2">Edit</span>
                         </Button>
                         <AlertDialog>
@@ -290,7 +293,10 @@ const GoalTemplates = () => {
                                   : "Delete template"
                               }
                             >
-                              <Trash2 className={ICON_SIZES.DEFAULT} aria-hidden="true" />
+                              <Trash2
+                                className={ICON_SIZES.DEFAULT}
+                                aria-hidden="true"
+                              />
                               <span className="hidden sm:inline sm:ml-2">
                                 {deletingId === t.temp_id
                                   ? "Deleting…"

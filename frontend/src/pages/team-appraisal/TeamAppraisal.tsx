@@ -6,7 +6,11 @@ import CreateAppraisalButton from "../../features/appraisal/CreateAppraisalButto
 import EditAppraisalButton from "../../features/appraisal/EditAppraisalButton";
 import DeleteAppraisalButton from "../../features/appraisal/DeleteAppraisalButton";
 import { Button } from "../../components/ui/button";
-import { BUTTON_STYLES, BUTTON_MIN_WIDTHS, BUTTON_SPACING } from "../../constants/buttonStyles";
+import {
+  BUTTON_STYLES,
+  BUTTON_MIN_WIDTHS,
+  BUTTON_SPACING,
+} from "../../constants/buttonStyles";
 import { Badge } from "../../components/ui/badge";
 import { AppraisalCard } from "../../components/AppraisalCard";
 import { AppraisalCardSkeletonList } from "../../components/AppraisalCardSkeleton";

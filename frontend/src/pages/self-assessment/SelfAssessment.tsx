@@ -26,9 +26,8 @@ import {
   Eye,
   CheckCircle2,
   Clock,
-  TrendingUp,
-  X,
   Send,
+  Weight,
 } from "lucide-react";
 import {
   Collapsible,
@@ -475,15 +474,23 @@ const SelfAssessment = () => {
                     <CollapsibleTrigger asChild>
                       <CardHeader className="pb-4 cursor-pointer hover:bg-accent/50 transition-colors">
                         <div className="space-y-3">
-                          {/* Line 1: Goal Number and Status */}
+                          {/* Line 1: Goal Number, Category, and Status */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="p-1.5 rounded-lg bg-primary/10 flex-shrink-0">
                                 <Flag className="h-4 w-4 text-primary" />
                               </div>
-                              <span className="text-sm font-semibold text-foreground">
+                              <span className="text-base font-bold text-foreground">
                                 Goal {index + 1}
                               </span>
+                              {ag.goal.category && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-xs bg-indigo-100 text-indigo-700 border-indigo-200 flex-shrink-0"
+                                >
+                                  {ag.goal.category.name}
+                                </Badge>
+                              )}
                             </div>
                             <div className="flex items-center gap-2">
                               {isComplete ? (
@@ -511,26 +518,19 @@ const SelfAssessment = () => {
                             </div>
                           </div>
 
-                          {/* Line 2: Title, Category, and Weightage */}
+                          {/* Line 2: Title and Weightage Badge */}
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2 flex-1 min-w-0">
                               <h2 className="text-base font-semibold text-foreground leading-tight truncate">
                                 {ag.goal.goal_title}
                               </h2>
-                              {ag.goal.category && (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-xs bg-indigo-100 text-indigo-700 border-indigo-200 flex-shrink-0"
-                                >
-                                  {ag.goal.category.name}
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <span className="text-sm text-muted-foreground flex items-center gap-1">
-                                <TrendingUp className="h-4 w-4" />
+                              <Badge
+                                variant="outline"
+                                className="text-xs bg-purple-50 text-purple-700 border-purple-200 flex-shrink-0 flex items-center gap-1"
+                              >
+                                <Weight className="h-3 w-3" />
                                 Weightage: {ag.goal.goal_weightage}%
-                              </span>
+                              </Badge>
                             </div>
                           </div>
                         </div>
@@ -556,12 +556,12 @@ const SelfAssessment = () => {
                               htmlFor={`rating-${goalId}`}
                               className="text-sm font-medium text-foreground"
                             >
-                              Your Rating (1-5)
+                              Your Rating
                             </label>
                             {form[goalId]?.rating && (
                               <Badge
                                 variant="outline"
-                                className="ml-auto bg-emerald-50 text-emerald-700 border-emerald-200"
+                                className="bg-emerald-50 text-emerald-700 border-emerald-200"
                               >
                                 {form[goalId]?.rating}/5
                               </Badge>

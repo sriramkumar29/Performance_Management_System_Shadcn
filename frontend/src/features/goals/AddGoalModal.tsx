@@ -393,7 +393,9 @@ const AddGoalModal = ({
               title="Add goal"
               aria-label="Add goal"
             >
-              <Plus className={`hidden sm:inline ${ICON_SIZES.DEFAULT} sm:mr-2`} />
+              <Plus
+                className={`hidden sm:inline ${ICON_SIZES.DEFAULT} sm:mr-2`}
+              />
               <span className="sm:ml-2">Add Goal</span>
             </Button>
           </div>

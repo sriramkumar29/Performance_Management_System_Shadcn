@@ -1,6 +1,7 @@
 # Button Styling Standards
 
 ## Overview
+
 This document defines the standardized button colors, variants, sizes, and usage patterns to ensure consistency across the entire Performance Management System application.
 
 ---
@@ -9,13 +10,13 @@ This document defines the standardized button colors, variants, sizes, and usage
 
 ### Button Color Guide
 
-| Action Type | Variant | Color | Use Case |
-|------------|---------|-------|----------|
-| **Destructive** | `destructive` | 🔴 Red | Delete, Cancel, Remove, Close |
-| **Primary** | `default` | 🔵 Blue (Primary color) | Submit, Save, Create, Confirm |
-| **Secondary** | `outline` | 🔵 Blue border + transparent | Edit, View, Back, Save Draft |
-| **Ghost** | `ghost` | Transparent | Toggle, Expand/Collapse |
-| **Link** | `link` | Underlined text | Text links |
+| Action Type     | Variant       | Color                        | Use Case                      |
+| --------------- | ------------- | ---------------------------- | ----------------------------- |
+| **Destructive** | `destructive` | 🔴 Red                       | Delete, Cancel, Remove, Close |
+| **Primary**     | `default`     | 🔵 Blue (Primary color)      | Submit, Save, Create, Confirm |
+| **Secondary**   | `outline`     | 🔵 Blue border + transparent | Edit, View, Back, Save Draft  |
+| **Ghost**       | `ghost`       | Transparent                  | Toggle, Expand/Collapse       |
+| **Link**        | `link`        | Underlined text              | Text links                    |
 
 ---
 
@@ -23,12 +24,12 @@ This document defines the standardized button colors, variants, sizes, and usage
 
 ### Button Sizes
 
-| Size | Usage | Example |
-|------|-------|---------|
-| **`sm`** | Small actions, secondary buttons | Edit, Delete, Add buttons in cards |
-| **`default`** | Standard actions | Submit, Save, Cancel |
-| **`lg`** | Prominent actions | Hero/Landing page CTAs |
-| **`icon`** | Icon-only buttons | Back arrow, Close X, Pagination |
+| Size          | Usage                            | Example                            |
+| ------------- | -------------------------------- | ---------------------------------- |
+| **`sm`**      | Small actions, secondary buttons | Edit, Delete, Add buttons in cards |
+| **`default`** | Standard actions                 | Submit, Save, Cancel               |
+| **`lg`**      | Prominent actions                | Hero/Landing page CTAs             |
+| **`icon`**    | Icon-only buttons                | Back arrow, Close X, Pagination    |
 
 ### Minimum Widths (for consistency)
 
@@ -50,8 +51,9 @@ min-w-[100px]
 ### 1. Destructive Actions (Red Buttons)
 
 #### Delete Button
+
 ```tsx
-<Button 
+<Button
   variant="destructive"
   size="sm"
   className="hover:shadow-glow transition-all min-w-[80px]"
@@ -62,18 +64,17 @@ min-w-[100px]
 ```
 
 #### Cancel Button
+
 ```tsx
-<Button 
-  variant="destructive"
-  className="hover:shadow-soft transition-all"
->
+<Button variant="destructive" className="hover:shadow-soft transition-all">
   Cancel
 </Button>
 ```
 
 #### Close X Button (Icon only)
+
 ```tsx
-<Button 
+<Button
   variant="destructive"
   size="icon"
   className="rounded-full hover:shadow-glow"
@@ -83,12 +84,9 @@ min-w-[100px]
 ```
 
 #### Remove Button
+
 ```tsx
-<Button 
-  variant="destructive"
-  size="sm"
-  className="hover:shadow-glow"
->
+<Button variant="destructive" size="sm" className="hover:shadow-glow">
   <Trash2 className="h-4 w-4 mr-2" />
   Remove
 </Button>
@@ -99,8 +97,9 @@ min-w-[100px]
 ### 2. Primary Actions (Filled Blue Buttons)
 
 #### Submit Button
+
 ```tsx
-<Button 
+<Button
   variant="default"
   className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
 >
@@ -110,8 +109,9 @@ min-w-[100px]
 ```
 
 #### Save Button
+
 ```tsx
-<Button 
+<Button
   variant="default"
   className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
 >
@@ -121,8 +121,9 @@ min-w-[100px]
 ```
 
 #### Create Button
+
 ```tsx
-<Button 
+<Button
   variant="default"
   className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-glow"
 >
@@ -132,8 +133,9 @@ min-w-[100px]
 ```
 
 #### Confirm Button (in dialogs)
+
 ```tsx
-<Button 
+<Button
   variant="default"
   className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
 >
@@ -146,8 +148,9 @@ min-w-[100px]
 ### 3. Secondary Actions (Blue Outline Buttons)
 
 #### View Button
+
 ```tsx
-<Button 
+<Button
   variant="outline"
   size="sm"
   className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40 min-w-[80px]"
@@ -158,8 +161,9 @@ min-w-[100px]
 ```
 
 #### Edit Button
+
 ```tsx
-<Button 
+<Button
   variant="outline"
   size="sm"
   className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40 min-w-[80px]"
@@ -170,33 +174,26 @@ min-w-[100px]
 ```
 
 #### Save Draft Button
+
 ```tsx
-<Button 
-  variant="outline"
-  className="shadow-sm"
->
+<Button variant="outline" className="shadow-sm">
   <Save className="h-4 w-4 mr-2" />
   Save Draft
 </Button>
 ```
 
 #### Back Button (Circular Icon)
+
 ```tsx
-<Button 
-  variant="outline"
-  size="icon"
-  className="rounded-full"
->
+<Button variant="outline" size="icon" className="rounded-full">
   <ArrowLeft className="h-4 w-4" />
 </Button>
 ```
 
 #### Cancel Button (Secondary Style, Non-Destructive)
+
 ```tsx
-<Button 
-  variant="outline"
-  className="hover:shadow-soft transition-shadow"
->
+<Button variant="outline" className="hover:shadow-soft transition-shadow">
   Cancel
 </Button>
 ```
@@ -206,18 +203,17 @@ min-w-[100px]
 ### 4. Ghost Buttons (Minimal Style)
 
 #### Toggle Button
+
 ```tsx
-<Button 
-  variant="ghost"
-  size="sm"
->
+<Button variant="ghost" size="sm">
   <ChevronDown className="h-4 w-4" />
 </Button>
 ```
 
 #### Pagination Button
+
 ```tsx
-<Button 
+<Button
   variant="ghost"
   size="icon"
   className="rounded-full hover:bg-primary/10"
@@ -236,7 +232,7 @@ When placing Edit and Delete buttons together:
 
 ```tsx
 <div className="flex items-center gap-3">
-  <Button 
+  <Button
     variant="outline"
     size="sm"
     className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40 min-w-[80px]"
@@ -244,7 +240,7 @@ When placing Edit and Delete buttons together:
     <Edit className="h-4 w-4 mr-2" />
     Edit
   </Button>
-  <Button 
+  <Button
     variant="destructive"
     size="sm"
     className="hover:shadow-glow min-w-[80px]"
@@ -259,7 +255,7 @@ When placing Edit and Delete buttons together:
 
 ```tsx
 // Active tab
-<Button 
+<Button
   variant="default"
   className="bg-primary text-primary-foreground"
 >
@@ -267,7 +263,7 @@ When placing Edit and Delete buttons together:
 </Button>
 
 // Inactive tab
-<Button 
+<Button
   variant="outline"
 >
   Inactive Tab
@@ -278,13 +274,10 @@ When placing Edit and Delete buttons together:
 
 ```tsx
 <DialogFooter className="gap-2">
-  <Button 
-    variant="outline"
-    className="hover:shadow-soft transition-shadow"
-  >
+  <Button variant="outline" className="hover:shadow-soft transition-shadow">
     Cancel
   </Button>
-  <Button 
+  <Button
     variant="default"
     className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
   >
@@ -299,12 +292,12 @@ When placing Edit and Delete buttons together:
 
 ### Icon Sizes
 
-| Context | Size Class | Use Case |
-|---------|-----------|----------|
-| Small buttons | `h-3 w-3` | Compact UI |
-| Default buttons | `h-4 w-4` | Standard size |
-| Large buttons | `h-5 w-5` | Prominent actions |
-| Extra large | `h-6 w-6` | Hero sections |
+| Context         | Size Class | Use Case          |
+| --------------- | ---------- | ----------------- |
+| Small buttons   | `h-3 w-3`  | Compact UI        |
+| Default buttons | `h-4 w-4`  | Standard size     |
+| Large buttons   | `h-5 w-5`  | Prominent actions |
+| Extra large     | `h-6 w-6`  | Hero sections     |
 
 ### Icon Spacing
 
@@ -323,19 +316,19 @@ When placing Edit and Delete buttons together:
 
 ## 🎯 Quick Reference Table
 
-| Action | Variant | Size | Color | Min Width | Icon Size |
-|--------|---------|------|-------|-----------|-----------|
-| Delete | `destructive` | `sm` | 🔴 Red | 80px | `h-4 w-4` |
-| Cancel | `destructive` | `default` | 🔴 Red | - | `h-4 w-4` |
-| Close X | `destructive` | `icon` | 🔴 Red | - | `h-4 w-4` |
-| Submit | `default` | `default` | 🔵 Blue | - | `h-4 w-4` |
-| Save | `default` | `default` | 🔵 Blue | - | `h-4 w-4` |
-| Create | `default` | `default` | 🔵 Blue | - | `h-4 w-4` |
-| View | `outline` | `sm` | 🔵 Border | 80px | `h-4 w-4` |
-| Edit | `outline` | `sm` | 🔵 Border | 80px | `h-4 w-4` |
-| Save Draft | `outline` | `default` | 🔵 Border | - | `h-4 w-4` |
-| Back | `outline` | `icon` | 🔵 Border | - | `h-4 w-4` |
-| Toggle | `ghost` | `sm` | Transparent | - | `h-4 w-4` |
+| Action     | Variant       | Size      | Color       | Min Width | Icon Size |
+| ---------- | ------------- | --------- | ----------- | --------- | --------- |
+| Delete     | `destructive` | `sm`      | 🔴 Red      | 80px      | `h-4 w-4` |
+| Cancel     | `destructive` | `default` | 🔴 Red      | -         | `h-4 w-4` |
+| Close X    | `destructive` | `icon`    | 🔴 Red      | -         | `h-4 w-4` |
+| Submit     | `default`     | `default` | 🔵 Blue     | -         | `h-4 w-4` |
+| Save       | `default`     | `default` | 🔵 Blue     | -         | `h-4 w-4` |
+| Create     | `default`     | `default` | 🔵 Blue     | -         | `h-4 w-4` |
+| View       | `outline`     | `sm`      | 🔵 Border   | 80px      | `h-4 w-4` |
+| Edit       | `outline`     | `sm`      | 🔵 Border   | 80px      | `h-4 w-4` |
+| Save Draft | `outline`     | `default` | 🔵 Border   | -         | `h-4 w-4` |
+| Back       | `outline`     | `icon`    | 🔵 Border   | -         | `h-4 w-4` |
+| Toggle     | `ghost`       | `sm`      | Transparent | -         | `h-4 w-4` |
 
 ---
 
@@ -344,12 +337,12 @@ When placing Edit and Delete buttons together:
 ### Import
 
 ```tsx
-import { 
-  BUTTON_STYLES, 
-  ICON_SIZES, 
+import {
+  BUTTON_STYLES,
+  ICON_SIZES,
   BUTTON_SPACING,
-  getButtonProps 
-} from '@/constants/buttonStyles';
+  getButtonProps,
+} from "@/constants/buttonStyles";
 ```
 
 ### Usage Examples
@@ -357,7 +350,7 @@ import {
 #### Example 1: Using pre-defined styles
 
 ```tsx
-<Button {...getButtonProps('DELETE')}>
+<Button {...getButtonProps("DELETE")}>
   <Trash2 className={ICON_SIZES.DEFAULT} />
   Delete
 </Button>
@@ -366,7 +359,7 @@ import {
 #### Example 2: Manual approach
 
 ```tsx
-<Button 
+<Button
   variant={BUTTON_STYLES.VIEW.variant}
   size={BUTTON_STYLES.VIEW.size}
   className={BUTTON_STYLES.VIEW.className}
@@ -380,12 +373,8 @@ import {
 
 ```tsx
 <div className={`flex items-center ${BUTTON_SPACING.DEFAULT}`}>
-  <Button {...getButtonProps('EDIT', 'min-w-[80px]')}>
-    Edit
-  </Button>
-  <Button {...getButtonProps('DELETE', 'min-w-[80px]')}>
-    Delete
-  </Button>
+  <Button {...getButtonProps("EDIT", "min-w-[80px]")}>Edit</Button>
+  <Button {...getButtonProps("DELETE", "min-w-[80px]")}>Delete</Button>
 </div>
 ```
 
@@ -410,18 +399,21 @@ When adding a new button, ensure:
 ## 🎨 Color Reference
 
 ### Destructive (Red)
+
 - **Variant:** `destructive`
 - **Background:** Red/Error color from theme
 - **Text:** White
 - **Use:** Delete, Cancel, Remove, Close
 
 ### Primary (Blue)
+
 - **Variant:** `default`
 - **Background:** Primary color from theme
 - **Text:** Primary foreground color
 - **Use:** Submit, Save, Create, Confirm
 
 ### Secondary (Blue Outline)
+
 - **Variant:** `outline`
 - **Border:** Primary color with opacity
 - **Text:** Primary color
@@ -429,6 +421,7 @@ When adding a new button, ensure:
 - **Use:** Edit, View, Back, Save Draft
 
 ### Ghost (Transparent)
+
 - **Variant:** `ghost`
 - **Background:** Transparent (hover: slight opacity)
 - **Text:** Foreground color
@@ -474,26 +467,28 @@ To standardize existing buttons:
 
 ```tsx
 // Draft appraisal action buttons
-{a.status === "Draft" && (
-  <div className="flex items-center gap-3">
-    <Button 
-      variant="outline"
-      size="sm"
-      className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40 min-w-[80px]"
-    >
-      <Edit className="h-4 w-4 mr-2" />
-      Edit
-    </Button>
-    <Button 
-      variant="destructive"
-      size="sm"
-      className="hover:shadow-glow min-w-[80px]"
-    >
-      <Trash2 className="h-4 w-4 mr-2" />
-      Delete
-    </Button>
-  </div>
-)}
+{
+  a.status === "Draft" && (
+    <div className="flex items-center gap-3">
+      <Button
+        variant="outline"
+        size="sm"
+        className="border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40 min-w-[80px]"
+      >
+        <Edit className="h-4 w-4 mr-2" />
+        Edit
+      </Button>
+      <Button
+        variant="destructive"
+        size="sm"
+        className="hover:shadow-glow min-w-[80px]"
+      >
+        <Trash2 className="h-4 w-4 mr-2" />
+        Delete
+      </Button>
+    </div>
+  );
+}
 ```
 
 ### Create Appraisal Page
@@ -503,16 +498,11 @@ To standardize existing buttons:
 <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm z-50">
   <div className="mx-auto max-w-full px-4 py-4">
     <div className="flex items-center justify-between gap-4">
-      <Button 
-        variant="outline"
-        className="shadow-sm"
-      >
+      <Button variant="outline" className="shadow-sm">
         <Save className="h-4 w-4 mr-2" />
         Save Draft
       </Button>
-      <Button 
-        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
-      >
+      <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg">
         <Send className="h-4 w-4 mr-2" />
         Submit for Acknowledgement
       </Button>
@@ -526,19 +516,11 @@ To standardize existing buttons:
 ```tsx
 // Template card actions
 <div className="flex items-center gap-2">
-  <Button 
-    variant="outline"
-    size="sm"
-    className="hover:shadow-soft"
-  >
+  <Button variant="outline" size="sm" className="hover:shadow-soft">
     <Edit className="h-4 w-4" />
     <span className="hidden sm:inline sm:ml-2">Edit</span>
   </Button>
-  <Button 
-    variant="destructive"
-    size="sm"
-    className="hover:shadow-glow"
-  >
+  <Button variant="destructive" size="sm" className="hover:shadow-glow">
     <Trash2 className="h-4 w-4" />
     <span className="hidden sm:inline sm:ml-2">Delete</span>
   </Button>

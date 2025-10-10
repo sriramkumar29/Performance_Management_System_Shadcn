@@ -336,8 +336,8 @@ const CreateTemplateModal = ({
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               variant={BUTTON_STYLES.SUBMIT.variant}
               className={BUTTON_STYLES.SUBMIT.className}
               disabled={saving}
