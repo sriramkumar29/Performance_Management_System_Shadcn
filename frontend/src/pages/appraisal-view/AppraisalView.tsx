@@ -11,7 +11,6 @@ import { useAuth } from "../../contexts/AuthContext";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import {
   Calendar,
-  Target,
   Weight,
   MessageSquare,
   Star,
@@ -23,6 +22,8 @@ import {
   Eye,
   Home,
   X,
+  Flag,
+  CheckCircle2,
 } from "lucide-react";
 import { PageHeaderSkeleton } from "../../components/PageHeaderSkeleton";
 import { GoalsSkeleton } from "../../components/GoalsSkeleton";
@@ -217,31 +218,58 @@ const AppraisalView = () => {
         {!isOverallPage && current && (
           <Card className="shadow-soft hover-lift border-0 glass-effect animate-slide-up">
             <CardHeader className="pb-4">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Target className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1 space-y-2">
-                  <h2 className="text-xl font-semibold text-foreground leading-tight">
-                    {current.goal.goal_title}
-                  </h2>
-                  {current.goal.goal_description && (
-                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                      {current.goal.goal_description}
-                    </p>
-                  )}
-                  <div className="flex flex-wrap items-center gap-3 text-xs">
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <Weight className="h-3 w-3" />
-                      <span>Weightage: {current.goal.goal_weightage}%</span>
+              <div className="space-y-3">
+                {/* Line 1: Goal Number, Category, and Status */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-primary/10 flex-shrink-0">
+                      <Flag className="h-4 w-4 text-primary" />
                     </div>
+                    <span className="text-base font-bold text-foreground">
+                      Goal {idx + 1}
+                    </span>
                     {current.goal.category && (
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge
+                        variant="secondary"
+                        className="text-xs bg-indigo-100 text-indigo-700 border-indigo-200 flex-shrink-0"
+                      >
                         {current.goal.category.name}
                       </Badge>
                     )}
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className="bg-emerald-50 text-emerald-700 border-emerald-200 flex items-center gap-1"
+                    >
+                      <CheckCircle2 className="h-3 w-3" />
+                      Complete
+                    </Badge>
+                  </div>
                 </div>
+
+                {/* Line 2: Title and Weightage Badge */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <h2 className="text-base font-semibold text-foreground leading-tight truncate">
+                      {current.goal.goal_title}
+                    </h2>
+                    <Badge
+                      variant="outline"
+                      className="text-xs bg-purple-50 text-purple-700 border-purple-200 flex-shrink-0 flex items-center gap-1"
+                    >
+                      <Weight className="h-3 w-3" />
+                      Weightage: {current.goal.goal_weightage}%
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Description Section */}
+                {current.goal.goal_description && (
+                  <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap pr-2 custom-scrollbar">
+                    {current.goal.goal_description}
+                  </div>
+                )}
               </div>
             </CardHeader>
 
@@ -261,7 +289,10 @@ const AppraisalView = () => {
                       Self Rating
                     </span>
                     {current.self_rating && (
-                      <Badge variant="outline" className="ml-auto">
+                      <Badge
+                        variant="outline"
+                        className="bg-emerald-50 text-emerald-700 border-emerald-200"
+                      >
                         {current.self_rating}/5
                       </Badge>
                     )}
@@ -310,7 +341,10 @@ const AppraisalView = () => {
                         Appraiser Rating
                       </span>
                       {current.appraiser_rating && (
-                        <Badge variant="outline" className="ml-auto">
+                        <Badge
+                          variant="outline"
+                          className="bg-emerald-50 text-emerald-700 border-emerald-200"
+                        >
                           {current.appraiser_rating}/5
                         </Badge>
                       )}

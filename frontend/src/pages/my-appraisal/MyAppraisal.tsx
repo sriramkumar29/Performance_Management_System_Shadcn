@@ -13,7 +13,7 @@ import {
   FiltersSkeleton,
   PaginationSkeleton,
 } from "../../components/FiltersSkeleton";
-import { CheckCircle2, ArrowRight, ArrowLeft, CheckCircle } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
 import { Label } from "../../components/ui/label";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import {
@@ -57,7 +57,7 @@ type AppraisalWithGoals = Appraisal & {
   appraisal_goals: AppraisalGoal[];
 };
 
-type FilterType = "Active" | "Completed" | "All";
+type FilterType = "All" | "Active" | "Completed" | "Overdue";
 
 // Helper function for appraisal filtering by period and type
 const useAppraisalFiltering = (
@@ -90,6 +90,19 @@ const useAppraisalFiltering = (
     [appraisalsInPeriod]
   );
 
+  // Overdue appraisals: end_date has passed and status is not Complete
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const myOverdue = useMemo(() => {
+    return appraisalsInPeriod.filter((a) => {
+      const endDate = new Date(a.end_date);
+      endDate.setHours(0, 0, 0, 0);
+      return endDate < today && a.status !== "Complete";
+    });
+  }, [appraisalsInPeriod]);
+
+  const myAll = useMemo(() => appraisalsInPeriod, [appraisalsInPeriod]);
+
   const combinedMine = useMemo(
     () =>
       [...myActives, ...myCompleted].sort(
@@ -117,6 +130,8 @@ const useAppraisalFiltering = (
     appraisalsInPeriod,
     myActives,
     myCompleted,
+    myOverdue,
+    myAll,
     combinedMine,
     filteredMineSearch,
   };
@@ -441,33 +456,7 @@ const MyAppraisal = () => {
     return statusMap[status] || 0;
   };
 
-  // Handle acknowledge action
-  const handleAcknowledge = async (appraisalId: number) => {
-    try {
-      const res = await apiFetch(`/api/appraisals/${appraisalId}/status`, {
-        method: "PUT",
-        body: JSON.stringify({ status: "Appraisee Self Assessment" }),
-      });
-      if (res.ok) {
-        // Refresh appraisals - fetch only where user is appraisee
-        const refreshRes = await apiFetch<Appraisal[]>(
-          `/api/appraisals/?appraisee_id=${encodeURIComponent(
-            user?.emp_id || ""
-          )}`
-        );
-
-        if (refreshRes.ok && refreshRes.data) {
-          setAppraisals(refreshRes.data);
-        }
-        setActionError(null);
-      } else {
-        setActionError(res.error || "Failed to acknowledge appraisal");
-      }
-    } catch (error) {
-      console.error("Error acknowledging appraisal:", error);
-      setActionError("Unable to acknowledge appraisal");
-    }
-  };
+  // ...existing code... (acknowledge modal logic remains)
 
   const typeNameById = useMemo(() => {
     const map = new Map(types.map((t) => [t.id, t.name]));
@@ -484,21 +473,26 @@ const MyAppraisal = () => {
     status === "Submitted" ? "Waiting Acknowledgement" : status;
   const selectedAppraisal = useSelectedAppraisal(appraisals || [], period);
 
-  const { myActives, myCompleted, combinedMine } = useAppraisalFiltering(
-    appraisals,
-    period,
-    searchTypeId,
-    searchName,
-    typeNameById
-  );
+  const { myActives, myCompleted, myOverdue, myAll, combinedMine } =
+    useAppraisalFiltering(
+      appraisals,
+      period,
+      searchTypeId,
+      searchName,
+      typeNameById
+    );
 
   const { filteredMineSearch } = useMemo(() => {
     const filteredByTab = (() => {
       switch (myFilter) {
+        case "All":
+          return myAll;
         case "Active":
           return myActives;
         case "Completed":
           return myCompleted;
+        case "Overdue":
+          return myOverdue;
         default:
           return combinedMine;
       }
@@ -521,8 +515,10 @@ const MyAppraisal = () => {
     };
   }, [
     myFilter,
+    myAll,
     myActives,
     myCompleted,
+    myOverdue,
     combinedMine,
     searchTypeId,
     searchName,
@@ -601,7 +597,7 @@ const MyAppraisal = () => {
         appraisalId={acknowledgeAppraisalId}
         onAcknowledge={handleAcknowledgeSuccess}
       />
-      <div className="space-y-6 text-foreground">
+      <div className="space-y-3 text-foreground">
         {/* Filter Components - Always visible at the top */}
         <div className="w-full">
           <div className="flex flex-wrap items-end gap-3">
@@ -639,9 +635,30 @@ const MyAppraisal = () => {
           </div>
         </div>
 
-        {/* Active/Completed buttons with Pagination */}
+        {/* All/Active/Completed/Overdue buttons with Pagination */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant={
+                myFilter === "All"
+                  ? BUTTON_STYLES.TAB_ACTIVE.variant
+                  : BUTTON_STYLES.TAB_INACTIVE.variant
+              }
+              onClick={() => setMyFilter("All")}
+              className={
+                myFilter === "All"
+                  ? BUTTON_STYLES.TAB_ACTIVE.className
+                  : BUTTON_STYLES.TAB_INACTIVE.className
+              }
+            >
+              All
+              <Badge
+                variant="secondary"
+                className="ml-2 bg-slate-100 text-slate-700 border-0 font-semibold"
+              >
+                {myAll.length}
+              </Badge>
+            </Button>
             <Button
               variant={
                 myFilter === "Active"
@@ -658,7 +675,7 @@ const MyAppraisal = () => {
               Active
               <Badge
                 variant="secondary"
-                className="ml-2 bg-background/20 text-current border-0"
+                className="ml-2 bg-blue-100 text-blue-700 border-0 font-semibold"
               >
                 {myActives.length}
               </Badge>
@@ -679,9 +696,30 @@ const MyAppraisal = () => {
               Completed
               <Badge
                 variant="secondary"
-                className="ml-2 bg-background/20 text-current border-0"
+                className="ml-2 bg-green-100 text-green-700 border-0 font-semibold"
               >
                 {myCompleted.length}
+              </Badge>
+            </Button>
+            <Button
+              variant={
+                myFilter === "Overdue"
+                  ? BUTTON_STYLES.TAB_ACTIVE.variant
+                  : BUTTON_STYLES.TAB_INACTIVE.variant
+              }
+              onClick={() => setMyFilter("Overdue")}
+              className={
+                myFilter === "Overdue"
+                  ? BUTTON_STYLES.TAB_ACTIVE.className
+                  : BUTTON_STYLES.TAB_INACTIVE.className
+              }
+            >
+              Overdue
+              <Badge
+                variant="secondary"
+                className="ml-2 bg-red-100 text-red-700 border-0 font-semibold"
+              >
+                {myOverdue.length}
               </Badge>
             </Button>
           </div>
@@ -722,34 +760,19 @@ const MyAppraisal = () => {
               </div>
             ) : (
               listPaged.map((a: any) => {
-                const borderLeftColor =
-                  a.status === "Complete"
-                    ? "#10b981"
-                    : a.status === "Submitted"
-                    ? "#f59e0b"
-                    : "#3b82f6";
+                // determine border color based on status
+                let borderLeftColor = "#3b82f6"; // default (info/active)
+                if (a.status === "Complete")
+                  borderLeftColor = "#10b981"; // green
+                else if (a.status === "Submitted") borderLeftColor = "#f59e0b"; // amber
 
                 const actionButtons = (
-                  <>
-                    {a.status === "Submitted" &&
-                      a.appraisee_id === (user?.emp_id || 0) && (
-                        <Button
-                          onClick={() => handleAcknowledge(a.appraisal_id)}
-                          variant="outline"
-                          size="sm"
-                          className="border-green-300 text-green-700 hover:bg-green-50"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Acknowledge
-                        </Button>
-                      )}
-                    <AppraisalActionButtons
-                      appraisal={a}
-                      onSelfAssessment={startOrContinueSelfAssessment}
-                      navigate={navigate}
-                      currentUserId={user?.emp_id || 0}
-                    />
-                  </>
+                  <AppraisalActionButtons
+                    appraisal={a}
+                    onSelfAssessment={startOrContinueSelfAssessment}
+                    navigate={navigate}
+                    currentUserId={user?.emp_id || 0}
+                  />
                 );
 
                 return (

@@ -6,11 +6,7 @@ import CreateAppraisalButton from "../../features/appraisal/CreateAppraisalButto
 import EditAppraisalButton from "../../features/appraisal/EditAppraisalButton";
 import DeleteAppraisalButton from "../../features/appraisal/DeleteAppraisalButton";
 import { Button } from "../../components/ui/button";
-import {
-  BUTTON_STYLES,
-  BUTTON_MIN_WIDTHS,
-  BUTTON_SPACING,
-} from "../../constants/buttonStyles";
+// button styles constants were previously imported but are not used in this file
 import { Badge } from "../../components/ui/badge";
 import { AppraisalCard } from "../../components/AppraisalCard";
 import { AppraisalCardSkeletonList } from "../../components/AppraisalCardSkeleton";
@@ -193,6 +189,27 @@ const TeamAppraisal = () => {
         a.reviewer_id === (user?.emp_id || -1))
   );
 
+  // Overdue appraisals: end_date has passed and status is not Complete
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time for accurate date comparison
+  const overdueTeam = appraisalsInPeriod.filter((a) => {
+    const endDate = new Date(a.end_date);
+    endDate.setHours(0, 0, 0, 0);
+    return (
+      endDate < today &&
+      a.status !== "Complete" &&
+      (a.appraiser_id === (user?.emp_id || -1) ||
+        a.reviewer_id === (user?.emp_id || -1))
+    );
+  });
+
+  // All appraisals for this user (appraiser or reviewer)
+  const allTeam = appraisalsInPeriod.filter(
+    (a) =>
+      a.appraiser_id === (user?.emp_id || -1) ||
+      a.reviewer_id === (user?.emp_id || -1)
+  );
+
   // Number of direct reports (team members)
   const directReportsCount = useMemo(
     () =>
@@ -221,34 +238,51 @@ const TeamAppraisal = () => {
   const [teamPage, setTeamPage] = useState(1);
 
   // Combined appraisals including drafts - persist tab state in URL
-  const getInitialTab = (): "Active" | "Completed" | "Draft" => {
+  type TeamTab = "All" | "Active" | "Completed" | "Draft" | "Overdue";
+  const getInitialTab = (): TeamTab => {
     const tab = searchParams.get("tab");
-    if (tab === "Completed" || tab === "Draft") return tab;
+    if (
+      tab === "Completed" ||
+      tab === "Draft" ||
+      tab === "Overdue" ||
+      tab === "All"
+    )
+      return tab as TeamTab;
     return "Active";
   };
 
-  const [teamFilterWithDraft, setTeamFilterWithDraft] = useState<
-    "Active" | "Completed" | "Draft"
-  >(getInitialTab);
+  const [teamFilterWithDraft, setTeamFilterWithDraft] =
+    useState<TeamTab>(getInitialTab);
 
   // Update URL when tab changes
-  const handleTabChange = (newTab: "Active" | "Completed" | "Draft") => {
+  const handleTabChange = (newTab: TeamTab) => {
     setTeamFilterWithDraft(newTab);
     setSearchParams({ tab: newTab });
   };
 
   const filteredTeamWithDraft = useMemo(() => {
     switch (teamFilterWithDraft) {
+      case "All":
+        return allTeam;
       case "Active":
         return active;
       case "Completed":
         return completedTeam;
       case "Draft":
         return drafts;
+      case "Overdue":
+        return overdueTeam;
       default:
         return active;
     }
-  }, [teamFilterWithDraft, active, completedTeam, drafts]);
+  }, [
+    teamFilterWithDraft,
+    allTeam,
+    active,
+    completedTeam,
+    drafts,
+    overdueTeam,
+  ]);
 
   const filteredTeamSearchWithDraft = useMemo(() => {
     const name = searchName.trim().toLowerCase();
@@ -294,55 +328,77 @@ const TeamAppraisal = () => {
   }, []);
 
   return (
-    <div className="space-y-6 text-foreground">
-      {/* Create Appraisal and Manage Templates buttons */}
-      <div className="flex justify-end">
-        <CreateAppraisalButton />
-      </div>
-
-      {/* Filter Components - Always visible at the top */}
+    <div className="space-y-3 text-foreground">
+      {/* Top bar: filters on the left, actions on the right (responsive) */}
       <div className="w-full">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="w-full md:flex-1 min-w-0">
-            <Label className="mb-1 block">Search</Label>
-            <Input
-              placeholder="Search employee name"
-              value={searchName}
-              onChange={(e) => setSearchName(e.target.value)}
-            />
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+          {/* Left: Search + Filters (will wrap on small screens) */}
+          <div className="flex-1">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="w-full md:w-1/2 lg:w-1/3 min-w-0">
+                <Label className="mb-1 block">Search</Label>
+                <Input
+                  placeholder="Search employee name"
+                  value={searchName}
+                  onChange={(e) => setSearchName(e.target.value)}
+                />
+              </div>
+              <div className="w-full md:w-40 flex-none">
+                <Label className="mb-1 block">Type</Label>
+                <Select
+                  value={searchTypeId}
+                  onValueChange={(v) => setSearchTypeId(v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All types</SelectItem>
+                    {types.map((t) => (
+                      <SelectItem key={t.id} value={String(t.id)}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-full md:basis-full xl:flex-1 min-w-0">
+                <PeriodFilter
+                  defaultPreset="This Year"
+                  value={period}
+                  onChange={setPeriod}
+                />
+              </div>
+            </div>
           </div>
-          <div className="w-full md:w-40 flex-none">
-            <Label className="mb-1 block">Type</Label>
-            <Select
-              value={searchTypeId}
-              onValueChange={(v) => setSearchTypeId(v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                {types.map((t) => (
-                  <SelectItem key={t.id} value={String(t.id)}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="w-full md:basis-full xl:flex-1 min-w-0">
-            <PeriodFilter
-              defaultPreset="This Year"
-              value={period}
-              onChange={setPeriod}
-            />
+
+          {/* Right: Action buttons */}
+          <div className="flex items-center gap-3 md:ml-4">
+            <CreateAppraisalButton />
           </div>
         </div>
       </div>
 
-      {/* Active/Completed/Draft buttons with Pagination */}
+      {/* All/Active/Completed/Draft/Overdue buttons with Pagination */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant={teamFilterWithDraft === "All" ? "default" : "outline"}
+            onClick={() => handleTabChange("All")}
+            className={
+              teamFilterWithDraft === "All"
+                ? "bg-primary text-primary-foreground"
+                : ""
+            }
+          >
+            All
+            <Badge
+              variant="secondary"
+              className="ml-2 bg-slate-100 text-slate-700 border-0 font-semibold"
+            >
+              {allTeam.length}
+            </Badge>
+          </Button>
           <Button
             variant={teamFilterWithDraft === "Active" ? "default" : "outline"}
             onClick={() => handleTabChange("Active")}
@@ -355,7 +411,7 @@ const TeamAppraisal = () => {
             Active
             <Badge
               variant="secondary"
-              className="ml-2 bg-background/20 text-current border-0"
+              className="ml-2 bg-blue-100 text-blue-700 border-0 font-semibold"
             >
               {active.length}
             </Badge>
@@ -374,7 +430,7 @@ const TeamAppraisal = () => {
             Completed
             <Badge
               variant="secondary"
-              className="ml-2 bg-background/20 text-current border-0"
+              className="ml-2 bg-green-100 text-green-700 border-0 font-semibold"
             >
               {completedTeam.length}
             </Badge>
@@ -391,9 +447,26 @@ const TeamAppraisal = () => {
             Draft
             <Badge
               variant="secondary"
-              className="ml-2 bg-background/20 text-current border-0"
+              className="ml-2 bg-amber-100 text-amber-700 border-0 font-semibold"
             >
               {drafts.length}
+            </Badge>
+          </Button>
+          <Button
+            variant={teamFilterWithDraft === "Overdue" ? "default" : "outline"}
+            onClick={() => handleTabChange("Overdue")}
+            className={
+              teamFilterWithDraft === "Overdue"
+                ? "bg-primary text-primary-foreground"
+                : ""
+            }
+          >
+            Overdue
+            <Badge
+              variant="secondary"
+              className="ml-2 bg-red-100 text-red-700 border-0 font-semibold"
+            >
+              {overdueTeam.length}
             </Badge>
           </Button>
         </div>
@@ -462,12 +535,10 @@ const TeamAppraisal = () => {
             </div>
           ) : (
             teamPaged.map((a) => {
-              const borderLeftColor =
-                a.status === "Complete"
-                  ? "#10b981"
-                  : a.status === "Draft"
-                  ? "#f97316"
-                  : "#3b82f6";
+              // determine border color based on status
+              let borderLeftColor = "#3b82f6"; // default (info)
+              if (a.status === "Complete") borderLeftColor = "#10b981"; // green
+              else if (a.status === "Draft") borderLeftColor = "#f97316"; // orange
 
               const actionButtons = (
                 <>

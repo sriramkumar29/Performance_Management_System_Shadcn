@@ -53,7 +53,7 @@ export const BUTTON_STYLES = {
     DELETE: {
         variant: BUTTON_VARIANTS.DESTRUCTIVE,
         className: 'hover:shadow-glow transition-all',
-        size: BUTTON_SIZES.SM,
+        size: BUTTON_SIZES.DEFAULT,
     },
 
     /** Cancel button */
@@ -131,14 +131,14 @@ export const BUTTON_STYLES = {
     VIEW: {
         variant: BUTTON_VARIANTS.SECONDARY,
         className: 'border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40',
-        size: BUTTON_SIZES.SM,
+        size: BUTTON_SIZES.DEFAULT,
     },
 
     /** Edit button (outline style) */
     EDIT: {
         variant: BUTTON_VARIANTS.SECONDARY,
         className: 'border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40',
-        size: BUTTON_SIZES.SM,
+        size: BUTTON_SIZES.DEFAULT,
     },
 
     /** Save draft button (secondary save action) */

@@ -4,13 +4,28 @@ import { apiFetch } from "../../utils/api";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
 import CreateTemplateModal from "../../components/modals/CreateTemplateModal";
 import EditTemplateModal from "../../components/modals/EditTemplateModal";
 import { Card, CardContent } from "../../components/ui/card";
 import { useAuth } from "../../contexts/AuthContext";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Search, Trash2, Edit } from "lucide-react";
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  Edit,
+  FileText,
+  TrendingUp,
+} from "lucide-react";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,6 +71,8 @@ const GoalTemplates = () => {
   const [templates, setTemplates] = useState<GoalTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
+  const [importanceFilter, setImportanceFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -101,19 +118,45 @@ const GoalTemplates = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  const visible = templates.filter(
-    (t) =>
+  // Get unique values for filters
+  const allCategories = Array.from(
+    new Set(templates.flatMap((t) => t.categories?.map((c) => c.name) || []))
+  ).sort((a, b) => a.localeCompare(b));
+
+  const allImportanceLevels = Array.from(
+    new Set(templates.map((t) => t.temp_importance))
+  )
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+
+  const visible = templates.filter((t) => {
+    // Text search filter
+    const matchesSearch =
       !filter.trim() ||
       t.temp_title.toLowerCase().includes(filter.toLowerCase()) ||
+      t.temp_description.toLowerCase().includes(filter.toLowerCase()) ||
+      t.temp_performance_factor.toLowerCase().includes(filter.toLowerCase()) ||
       t.categories?.some((c) =>
         c.name.toLowerCase().includes(filter.toLowerCase())
-      )
-  );
+      );
+
+    // Importance filter
+    const matchesImportance =
+      importanceFilter === "all" || t.temp_importance === importanceFilter;
+
+    // Category filter
+    const matchesCategory =
+      categoryFilter === "all" ||
+      t.categories?.some((c) => c.name === categoryFilter);
+
+    return matchesSearch && matchesImportance && matchesCategory;
+  });
 
   return (
-    <div className="mx-auto max-w-7xl p-4 sm:p-6 animate-fade-in-up">
-      <div className="flex items-center justify-between gap-3 mb-6">
-        <div className="flex items-center gap-3 sm:gap-4">
+    <div className="space-y-3 text-foreground">
+      {/* Header Section - Direct layout without card */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <div className="flex items-center gap-3">
           <Button
             variant={BUTTON_STYLES.BACK.variant}
             size={BUTTON_STYLES.BACK.size}
@@ -123,59 +166,91 @@ const GoalTemplates = () => {
             title="Back"
           >
             <ArrowLeft className={ICON_SIZES.DEFAULT} />
-            <span className="hidden sm:inline sm:ml-2">Back</span>
           </Button>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Manage Goal Templates
-          </h1>
+          <div>
+            <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Manage Goal Templates
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {loading ? "Loading…" : `${visible.length} template(s)`}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {isManagerOrAbove(user?.emp_roles, user?.emp_roles_level) && (
-            <Button
-              onClick={() => setShowCreateModal(true)}
-              variant={BUTTON_STYLES.CREATE.variant}
-              className={`flex items-center gap-2 ${BUTTON_STYLES.CREATE.className}`}
-              aria-label="Create Template"
-              title="Create Template"
-              data-testid="create-template"
+        {isManagerOrAbove(user?.emp_roles, user?.emp_roles_level) && (
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            variant={BUTTON_STYLES.CREATE.variant}
+            className={`flex items-center gap-2 ${BUTTON_STYLES.CREATE.className}`}
+            aria-label="Create Template"
+            title="Create Template"
+            data-testid="create-template"
+          >
+            <Plus className={ICON_SIZES.DEFAULT} />
+            <span className="hidden sm:inline sm:ml-2">Create Template</span>
+          </Button>
+        )}
+      </div>
+
+      {/* Search & Filter - Direct layout without card */}
+      <div className="w-full">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="w-full md:flex-1 min-w-0">
+            <Label className="mb-1 block text-sm font-medium">Search</Label>
+            <Input
+              id="filter"
+              placeholder="Search by title, description, or performance factor..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="w-full"
+            />
+          </div>
+
+          <div className="w-full sm:w-[200px]">
+            <Label className="mb-1 block text-sm font-medium">Importance</Label>
+            <Select
+              value={importanceFilter}
+              onValueChange={setImportanceFilter}
             >
-              <Plus className={ICON_SIZES.DEFAULT} />
-              <span className="hidden sm:inline sm:ml-2">Create Template</span>
-            </Button>
-          )}
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All Importance" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Importance</SelectItem>
+                {allImportanceLevels.map((level) => (
+                  <SelectItem key={level} value={level}>
+                    {level}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-full sm:w-[200px]">
+            <Label className="mb-1 block text-sm font-medium">Category</Label>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {allCategories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
-      <Card className="mb-6 glass-card shadow-soft">
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-4">
-            <span className="flex items-center gap-2 text-lg font-semibold">
-              <Search className="h-5 w-5" />
-              Search Templates
-            </span>
-            <span className="text-sm font-normal text-muted-foreground">
-              {loading ? "Loading…" : `${visible.length} template(s) found`}
-            </span>
-          </div>
-
-          <div>
-            <Input
-              id="filter"
-              placeholder="Search by title or category..."
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="w-full max-w-md transition-shadow focus:shadow-sm motion-reduce:transition-none"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
+      {/* Templates List */}
       <div className="space-y-4">
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="shadow-soft">
-                <CardContent className="p-6">
+              <Card key={i} className="shadow-soft border-0 glass-effect">
+                <CardContent className="p-5 sm:p-6">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="animate-shimmer bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 h-5 w-1/3 rounded" />
@@ -196,71 +271,62 @@ const GoalTemplates = () => {
         ) : (
           <div className="space-y-4" data-testid="template-list">
             {visible.length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-muted-foreground text-lg mb-2">
-                  No templates found
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {filter.trim()
-                    ? "Try adjusting your search criteria"
-                    : "Create your first goal template to get started"}
-                </div>
-              </div>
+              <Card className="shadow-soft border-0 glass-effect">
+                <CardContent className="p-12 text-center">
+                  <div className="text-muted-foreground text-lg mb-2">
+                    No templates found
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {filter.trim()
+                      ? "Try adjusting your search criteria"
+                      : "Create your first goal template to get started"}
+                  </div>
+                </CardContent>
+              </Card>
             )}
             {visible.map((t) => (
               <Card
                 key={t.temp_id}
-                className="hover-lift shadow-soft transition-all"
+                className="shadow-soft hover-lift border-0 glass-effect transition-all relative"
                 data-testid="template-item"
               >
                 <CardContent className="p-6">
-                  <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <h3 className="font-semibold text-lg truncate">
+                  {/* Title Section with Icon */}
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="p-2 bg-blue-50 rounded-lg shrink-0">
+                        <FileText className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-blue-600 font-semibold uppercase tracking-wide mb-1">
+                          Template Title
+                        </p>
+                        <h3 className="text-xl font-bold text-foreground mb-2">
                           {t.temp_title}
                         </h3>
-                        <Badge
-                          variant="secondary"
-                          className="text-xs font-semibold shadow-soft"
-                        >
-                          {t.temp_weightage}% Weight
-                        </Badge>
-                      </div>
-                      <p className="text-muted-foreground mb-3 line-clamp-2 leading-relaxed">
-                        {t.temp_description}
-                      </p>
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {t.categories?.map((c) => (
-                          <Badge
-                            key={c.id}
-                            variant="outline"
-                            className="text-xs bg-gradient-to-br from-slate-50 to-slate-100 text-slate-700 border-slate-200 hover:scale-105 transition-transform"
-                          >
-                            {c.name}
-                          </Badge>
-                        ))}
-                      </div>
-                      <div className="flex gap-4 text-xs text-muted-foreground">
-                        <span>
-                          Importance:{" "}
-                          <strong className="text-foreground">
-                            {t.temp_importance}
-                          </strong>
-                        </span>
-                        <span>
-                          Performance Factor:{" "}
-                          <strong className="text-foreground">
-                            {t.temp_performance_factor}
-                          </strong>
-                        </span>
+                        {/* Categories */}
+                        {t.categories && t.categories.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {t.categories.map((c) => (
+                              <Badge
+                                key={c.id}
+                                variant="outline"
+                                className="bg-amber-50 text-amber-700 border-amber-300 font-medium"
+                              >
+                                {c.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
+
+                    {/* Action buttons - positioned absolutely */}
                     {isManagerOrAbove(
                       user?.emp_roles,
                       user?.emp_roles_level
                     ) && (
-                      <div className="flex gap-2 mt-3 sm:mt-0 self-start sm:self-auto">
+                      <div className="flex gap-2 shrink-0">
                         <Button
                           size={BUTTON_STYLES.EDIT.size}
                           variant={BUTTON_STYLES.EDIT.variant}
@@ -273,7 +339,7 @@ const GoalTemplates = () => {
                             className={ICON_SIZES.DEFAULT}
                             aria-hidden="true"
                           />
-                          <span className="hidden sm:inline sm:ml-2">Edit</span>
+                          <span className="hidden sm:inline">Edit</span>
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
@@ -297,7 +363,7 @@ const GoalTemplates = () => {
                                 className={ICON_SIZES.DEFAULT}
                                 aria-hidden="true"
                               />
-                              <span className="hidden sm:inline sm:ml-2">
+                              <span className="hidden sm:inline">
                                 {deletingId === t.temp_id
                                   ? "Deleting…"
                                   : "Delete"}
@@ -348,6 +414,52 @@ const GoalTemplates = () => {
                         </AlertDialog>
                       </div>
                     )}
+                  </div>
+
+                  {/* Description Section with Icon */}
+                  <div className="flex items-start gap-3 mb-4 pl-0">
+                    <div className="p-2 bg-emerald-50 rounded-lg shrink-0">
+                      <FileText className="h-5 w-5 text-emerald-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-emerald-600 font-semibold uppercase tracking-wide mb-1">
+                        Description
+                      </p>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {t.temp_description}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Importance and Performance Factor - Side by Side */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 border-t pt-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-rose-50 rounded-lg shrink-0">
+                        <TrendingUp className="h-5 w-5 text-rose-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-rose-600 font-semibold uppercase tracking-wide mb-1">
+                          Importance
+                        </p>
+                        <Badge className="bg-rose-100 text-rose-700 border-rose-300 hover:bg-rose-100 font-semibold text-sm">
+                          {t.temp_importance}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-indigo-50 rounded-lg shrink-0">
+                        <TrendingUp className="h-5 w-5 text-indigo-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-indigo-600 font-semibold uppercase tracking-wide mb-1">
+                          Performance Factor
+                        </p>
+                        <p className="text-sm font-semibold text-foreground">
+                          {t.temp_performance_factor}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

@@ -31,34 +31,59 @@ interface AppraisalCardProps {
   typeNameById: (id: number, appraisal?: Appraisal) => string;
   rangeNameById: (id?: number | null) => string | undefined;
   formatDate: (iso: string) => string;
-  displayStatus: (status: string) => string;
+  /** Optional: legacy helper to format/display status text; kept for backward-compatibility */
+  displayStatus?: (status: string) => string;
   getStatusProgress: (status: string) => number;
   borderLeftColor: string;
   actionButtons?: React.ReactNode;
 }
-
-export function AppraisalCard({
-  appraisal: a,
-  empNameById,
-  typeNameById,
-  rangeNameById,
-  formatDate,
-  displayStatus,
-  getStatusProgress,
-  borderLeftColor,
-  actionButtons,
-}: AppraisalCardProps) {
-  // Calculate days remaining
+export function AppraisalCard(props: Readonly<AppraisalCardProps>) {
+  const {
+    appraisal: a,
+    empNameById,
+    typeNameById,
+    rangeNameById,
+    formatDate,
+    getStatusProgress,
+    borderLeftColor,
+    actionButtons,
+  } = props;
+  // Calculate days remaining or show completed status
+  const isCompleted = a.status === "Complete";
   const today = new Date();
   const endDate = new Date(a.end_date);
   const daysRemaining = Math.ceil(
     (endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
   );
-  const isOverdue = daysRemaining < 0;
+  const isOverdue = daysRemaining < 0 && !isCompleted;
   const plural = daysRemaining !== 1 ? "s" : "";
-  const badgeText = isOverdue
-    ? "Overdue"
-    : `${daysRemaining} day${plural} remaining`;
+
+  // Determine badge display based on status
+  let badgeContent: React.ReactNode;
+  let badgeVariant: "default" | "destructive" | "secondary" = "secondary";
+  let badgeClassName =
+    "px-3 py-1 rounded-full text-sm font-semibold text-foreground";
+
+  if (isCompleted) {
+    badgeVariant = "default";
+    badgeClassName =
+      "px-3 py-1 rounded-full text-sm font-semibold bg-green-600 text-white hover:bg-green-700";
+    badgeContent = "Completed";
+  } else if (isOverdue) {
+    badgeVariant = "destructive";
+    badgeClassName = "px-3 py-1 rounded-full text-sm font-semibold";
+    badgeContent = "Overdue";
+  } else {
+    // Highlight the number with a different color for active appraisals
+    badgeContent = (
+      <>
+        <span className="text-primary font-bold text-base">
+          {daysRemaining}
+        </span>{" "}
+        <span>day{plural} remaining</span>
+      </>
+    );
+  }
 
   return (
     <Card
@@ -69,7 +94,7 @@ export function AppraisalCard({
       <CardContent className="p-5 sm:p-6">
         {/* Header Section */}
         <div className="flex flex-col gap-1 mb-6">
-          <div className="flex-1 space-y-7">
+          <div className="flex-1 space-y-3">
             {/* Line 1: Names - Evenly Spaced Across Full Width */}
             <div className="flex items-center justify-between gap-4 flex-wrap">
               {/* Appraisee */}
@@ -80,8 +105,8 @@ export function AppraisalCard({
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-xs text-muted-foreground">Appraisee</p>
-                  <p className="text-sm font-medium">
+                  <p className="text-sm text-primary font-medium">Appraisee</p>
+                  <p className="text-base font-semibold text-foreground">
                     {empNameById(a.appraisee_id)}
                   </p>
                 </div>
@@ -95,8 +120,8 @@ export function AppraisalCard({
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-xs text-muted-foreground">Appraiser</p>
-                  <p className="text-sm font-medium">
+                  <p className="text-sm text-primary font-medium">Appraiser</p>
+                  <p className="text-base font-semibold text-foreground">
                     {empNameById(a.appraiser_id)}
                   </p>
                 </div>
@@ -110,8 +135,8 @@ export function AppraisalCard({
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-xs text-muted-foreground">Reviewer</p>
-                  <p className="text-sm font-medium">
+                  <p className="text-sm text-primary font-medium">Reviewer</p>
+                  <p className="text-base font-semibold text-foreground">
                     {empNameById(a.reviewer_id)}
                   </p>
                 </div>
@@ -128,10 +153,10 @@ export function AppraisalCard({
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm text-primary font-medium">
                     Appraisal Type
                   </p>
-                  <p className="text-sm font-medium text-foreground">
+                  <p className="text-base font-semibold text-foreground">
                     {typeNameById(a.appraisal_type_id, a)}
                   </p>
                 </div>
@@ -145,10 +170,10 @@ export function AppraisalCard({
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm text-primary font-medium">
                     Appraisal Period
                   </p>
-                  <p className="text-sm font-medium text-foreground">
+                  <p className="text-base font-semibold text-foreground">
                     {formatDate(a.start_date)} - {formatDate(a.end_date)}
                   </p>
                 </div>
@@ -158,19 +183,19 @@ export function AppraisalCard({
               <div className="flex items-center gap-2 flex-1 min-w-[180px]">
                 <Avatar className="h-8 w-8 bg-rose-50">
                   <AvatarFallback className="bg-rose-50 text-rose-600">
-                    <TrendingUp className="h-4 w-4" />
+                    <Clock className="h-4 w-4 text-muted-foreground" />
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-xs text-muted-foreground">Status</p>
+                  <p className="text-sm text-primary font-medium">Due</p>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant={isOverdue ? "destructive" : "secondary"}>
-                      {badgeText}
+                    <Badge variant={badgeVariant} className={badgeClassName}>
+                      {badgeContent}
                     </Badge>
                     {rangeNameById(a.appraisal_type_range_id) && (
                       <Badge
                         variant="outline"
-                        className="bg-blue-50 text-blue-700 border-blue-200"
+                        className="bg-blue-50 text-blue-700 border-blue-200 text-sm font-medium px-2 py-1"
                       >
                         {rangeNameById(a.appraisal_type_range_id)}
                       </Badge>
@@ -192,10 +217,8 @@ export function AppraisalCard({
         {/* Status Progress Section - Step Indicator */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 mb-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">
-              {displayStatus(a.status)}
-            </span>
+            <TrendingUp className="h-4 w-4" />
+            <span className="text-sm font-medium">Status</span>
           </div>
           <div className="relative">
             <div className="flex items-center justify-between">
@@ -230,19 +253,29 @@ export function AppraisalCard({
                 const isCompleted = currentProgress > step.progress;
                 const isCurrent = a.status === step.status;
 
+                let circleClass = "";
+                if (isCompleted) {
+                  circleClass = "bg-primary text-primary-foreground";
+                } else if (isCurrent) {
+                  circleClass =
+                    "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2";
+                } else {
+                  circleClass =
+                    "bg-muted text-muted-foreground border-2 border-muted-foreground/20";
+                }
+
+                const labelClass =
+                  isCompleted || isCurrent
+                    ? "text-foreground font-medium"
+                    : "text-muted-foreground";
+
                 return (
                   <div
                     key={`${a.appraisal_id}-step-${idx}`}
                     className="flex flex-col items-center relative z-10 flex-1"
                   >
                     <div
-                      className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
-                        isCompleted
-                          ? "bg-primary text-primary-foreground"
-                          : isCurrent
-                          ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2"
-                          : "bg-muted text-muted-foreground border-2 border-muted-foreground/20"
-                      }`}
+                      className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${circleClass}`}
                     >
                       {isCompleted ? (
                         <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -253,11 +286,7 @@ export function AppraisalCard({
                       )}
                     </div>
                     <span
-                      className={`text-[9px] sm:text-[11px] mt-1.5 text-center leading-tight max-w-[70px] sm:max-w-none ${
-                        isCompleted || isCurrent
-                          ? "text-foreground font-medium"
-                          : "text-muted-foreground"
-                      }`}
+                      className={`text-[9px] sm:text-[11px] mt-1.5 text-center leading-tight max-w-[70px] sm:max-w-none ${labelClass}`}
                     >
                       {step.label}
                     </span>

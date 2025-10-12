@@ -3,25 +3,28 @@ import type React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiFetch } from "../../utils/api";
 import { Card, CardContent, CardHeader } from "../../components/ui/card";
+import { Progress } from "../../components/ui/progress";
 import { Slider } from "../../components/ui/slider";
 import { Textarea } from "../../components/ui/textarea";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
-import { Progress } from "../../components/ui/progress";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
+// Dialog, Collapsible and toast were previously imported but are unused in
+// this file; removing to avoid lint errors. Add missing icons used in JSX.
 import {
-  Target,
-  Calendar,
   Weight,
   MessageSquare,
   Star,
-  ChevronLeft,
-  ChevronRight,
   Send,
   User,
   UserCheck,
-  BarChart3,
+  Flag,
+  Clock,
   Home,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  BarChart3,
 } from "lucide-react";
 import { PageHeaderSkeleton } from "../../components/PageHeaderSkeleton";
 import { GoalsSkeleton } from "../../components/GoalsSkeleton";
@@ -306,34 +309,58 @@ const AppraiserEvaluation = () => {
         {!isOverallPage && current && (
           <Card className="shadow-soft hover-lift border-0 glass-effect animate-slide-up">
             <CardHeader className="pb-4">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Target className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1 space-y-2">
-                  <h2 className="text-xl font-semibold text-foreground leading-tight">
-                    {current.goal.goal_title}
-                  </h2>
-                  {current.goal.goal_description && (
-                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                      {current.goal.goal_description}
-                    </p>
-                  )}
-                  <div className="flex flex-wrap items-center gap-3 text-xs">
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <Weight className="h-3 w-3" />
-                      <span>Weightage: {current.goal.goal_weightage}%</span>
+              <div className="space-y-3">
+                {/* Line 1: Goal Number, Category, and Status */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-primary/10 flex-shrink-0">
+                      <Flag className="h-4 w-4 text-primary" />
                     </div>
+                    <span className="text-base font-bold text-foreground">
+                      Goal {idx + 1}
+                    </span>
                     {current.goal.category && (
                       <Badge
                         variant="secondary"
-                        className="text-xs bg-pink-100 text-pink-700 border-pink-200"
+                        className="text-xs bg-indigo-100 text-indigo-700 border-indigo-200 flex-shrink-0"
                       >
                         {current.goal.category.name}
                       </Badge>
                     )}
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className="bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1"
+                    >
+                      <Clock className="h-3 w-3" />
+                      In Progress
+                    </Badge>
+                  </div>
                 </div>
+
+                {/* Line 2: Title and Weightage Badge */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <h2 className="text-base font-semibold text-foreground leading-tight truncate">
+                      {current.goal.goal_title}
+                    </h2>
+                    <Badge
+                      variant="outline"
+                      className="text-xs bg-purple-50 text-purple-700 border-purple-200 flex-shrink-0 flex items-center gap-1"
+                    >
+                      <Weight className="h-3 w-3" />
+                      Weightage: {current.goal.goal_weightage}%
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Description Section */}
+                {current.goal.goal_description && (
+                  <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap pr-2 custom-scrollbar">
+                    {current.goal.goal_description}
+                  </div>
+                )}
               </div>
             </CardHeader>
 
@@ -357,7 +384,10 @@ const AppraiserEvaluation = () => {
                       Self Rating
                     </label>
                     {current.self_rating && (
-                      <Badge variant="outline" className="ml-auto">
+                      <Badge
+                        variant="outline"
+                        className="bg-emerald-50 text-emerald-700 border-emerald-200"
+                      >
                         {current.self_rating}/5
                       </Badge>
                     )}
@@ -424,12 +454,12 @@ const AppraiserEvaluation = () => {
                       htmlFor={`appraiser-rating-${current.goal.goal_id}`}
                       className="text-sm font-medium text-foreground"
                     >
-                      Your Rating (1-5)
+                      Your Rating
                     </label>
                     {form[current.goal.goal_id]?.rating && (
                       <Badge
                         variant="outline"
-                        className="ml-auto bg-lime-50 text-lime-700 border-lime-200"
+                        className="bg-emerald-50 text-emerald-700 border-emerald-200"
                       >
                         {form[current.goal.goal_id]?.rating}/5
                       </Badge>

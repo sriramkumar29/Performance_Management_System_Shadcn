@@ -16,10 +16,12 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
-  Target,
   User,
   UserCheck,
   Home,
+  Weight,
+  Flag,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeaderSkeleton } from "../../components/PageHeaderSkeleton";
@@ -260,36 +262,58 @@ const ReviewerEvaluation = () => {
           <Card className="glass-effect shadow-soft hover-lift border-0 p-6 animate-fade-in">
             <div className="space-y-6">
               {/* Goal Header */}
-              <div className="flex items-start gap-4">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Target className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-xl font-semibold text-foreground mb-2">
-                    {current.goal.goal_title}
-                  </h2>
-                  {current.goal.goal_description && (
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap mb-3">
-                      {current.goal.goal_description}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Star className="h-3 w-3" />
-                      Weightage: {current.goal.goal_weightage}%
+              <div className="space-y-3">
+                {/* Line 1: Goal Number, Category, and Status */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-primary/10 flex-shrink-0">
+                      <Flag className="h-4 w-4 text-primary" />
+                    </div>
+                    <span className="text-base font-bold text-foreground">
+                      Goal {idx + 1}
                     </span>
                     {current.goal.category && (
-                      <span className="flex items-center gap-1">
-                        <Badge
-                          variant="outline"
-                          className="text-xs bg-cyan-50 text-cyan-700 border-cyan-200"
-                        >
-                          {current.goal.category.name}
-                        </Badge>
-                      </span>
+                      <Badge
+                        variant="secondary"
+                        className="text-xs bg-indigo-100 text-indigo-700 border-indigo-200 flex-shrink-0"
+                      >
+                        {current.goal.category.name}
+                      </Badge>
                     )}
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className="bg-violet-50 text-violet-700 border-violet-200 flex items-center gap-1"
+                    >
+                      <Clock className="h-3 w-3" />
+                      Review
+                    </Badge>
+                  </div>
                 </div>
+
+                {/* Line 2: Title and Weightage Badge */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <h2 className="text-base font-semibold text-foreground leading-tight truncate">
+                      {current.goal.goal_title}
+                    </h2>
+                    <Badge
+                      variant="outline"
+                      className="text-xs bg-purple-50 text-purple-700 border-purple-200 flex-shrink-0 flex items-center gap-1"
+                    >
+                      <Weight className="h-3 w-3" />
+                      Weightage: {current.goal.goal_weightage}%
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Description Section */}
+                {current.goal.goal_description && (
+                  <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap pr-2 custom-scrollbar">
+                    {current.goal.goal_description}
+                  </div>
+                )}
               </div>
 
               <div className="grid gap-6">
@@ -302,10 +326,21 @@ const ReviewerEvaluation = () => {
                     </span>
                   </div>
                   <div className="space-y-4">
-                    <div>
-                      <label className="text-xs font-medium text-foreground mb-2 block">
-                        Self Rating: {current.self_rating || "Not rated"}
-                      </label>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Star className="h-4 w-4 text-primary" />
+                        <label className="text-sm font-medium text-foreground">
+                          Self Rating
+                        </label>
+                        {current.self_rating && (
+                          <Badge
+                            variant="outline"
+                            className="bg-emerald-50 text-emerald-700 border-emerald-200"
+                          >
+                            {current.self_rating}/5
+                          </Badge>
+                        )}
+                      </div>
                       <Slider
                         min={1}
                         max={5}
@@ -346,11 +381,21 @@ const ReviewerEvaluation = () => {
                     </span>
                   </div>
                   <div className="space-y-4">
-                    <div>
-                      <label className="text-xs font-medium text-foreground mb-2 block">
-                        Appraiser Rating:{" "}
-                        {current.appraiser_rating || "Not rated"}
-                      </label>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Star className="h-4 w-4 text-primary" />
+                        <label className="text-sm font-medium text-foreground">
+                          Appraiser Rating
+                        </label>
+                        {current.appraiser_rating && (
+                          <Badge
+                            variant="outline"
+                            className="bg-emerald-50 text-emerald-700 border-emerald-200"
+                          >
+                            {current.appraiser_rating}/5
+                          </Badge>
+                        )}
+                      </div>
                       <Slider
                         min={1}
                         max={5}

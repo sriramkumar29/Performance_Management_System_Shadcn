@@ -4,10 +4,10 @@ import ManagerRoute from "./routes/ManagerRoute";
 import Login from "./pages/auth/Login";
 import MyAppraisal from "./pages/my-appraisal/MyAppraisal";
 import TeamAppraisal from "./pages/team-appraisal/TeamAppraisal";
-import SelfAssessment from "./pages/self-assessment/SelfAssessment";
-import AppraiserEvaluation from "./pages/appraiser-evaluation/AppraiserEvaluation";
-import ReviewerEvaluation from "./pages/reviewer-evaluation/ReviewerEvaluation";
-import AppraisalView from "./pages/appraisal-view/AppraisalView";
+import SelfAssessment from "./pages/self-assessment/SelfAssessmentNew";
+import AppraiserEvaluation from "./pages/appraiser-evaluation/AppraiserEvaluationNew";
+import ReviewerEvaluation from "./pages/reviewer-evaluation/ReviewerEvaluationNew";
+import AppraisalView from "./pages/appraisal-view/AppraisalViewNew";
 import CreateAppraisal from "./pages/appraisal-create/CreateAppraisal";
 import GoalTemplates from "./pages/goal-templates/GoalTemplates";
 
