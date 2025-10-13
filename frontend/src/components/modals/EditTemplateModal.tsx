@@ -193,9 +193,21 @@ const EditTemplateModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-        <DialogHeader>
-          <DialogTitle className="text-lg">Edit Template</DialogTitle>
+      <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[85vh] sm:max-h-[90vh] overflow-auto nice-scrollbar p-4 sm:p-6">
+        <DialogHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600">
+              <X className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <DialogTitle className="text-lg sm:text-xl font-semibold text-foreground">
+                Edit Goal Template
+              </DialogTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Update template details. Weightage is assigned during import.
+              </p>
+            </div>
+          </div>
         </DialogHeader>
 
         {loading ? (
@@ -203,110 +215,148 @@ const EditTemplateModal = ({
             <div className="text-muted-foreground">Loading template...</div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <Label htmlFor="edit-title">Title *</Label>
-              <Input
-                id="edit-title"
-                value={tempTitle}
-                onChange={(e) => setTempTitle(e.target.value)}
-                disabled={saving}
-                className="transition-shadow focus:shadow-sm motion-reduce:transition-none"
-                aria-describedby="edit-title-help"
-                required
-              />
-              <p
-                id="edit-title-help"
-                className="mt-1 text-xs text-muted-foreground"
-              >
-                Give your template a concise, descriptive title.
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="edit-description">Description</Label>
-              <Textarea
-                id="edit-description"
-                value={tempDescription}
-                onChange={(e) => setTempDescription(e.target.value)}
-                disabled={saving}
-                className="transition-shadow focus:shadow-sm motion-reduce:transition-none"
-                aria-describedby="edit-description-help"
-              />
-              <p
-                id="edit-description-help"
-                className="mt-1 text-xs text-muted-foreground"
-              >
-                Optional: add context so appraisers understand the goal's
-                intent.
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="edit-perf">Performance Factor</Label>
-              <Textarea
-                id="edit-perf"
-                value={tempPerformanceFactor}
-                onChange={(e) => setTempPerformanceFactor(e.target.value)}
-                disabled={saving}
-                className="transition-shadow focus:shadow-sm motion-reduce:transition-none"
-                aria-describedby="edit-perf-help"
-              />
-              <p
-                id="edit-perf-help"
-                className="mt-1 text-xs text-muted-foreground"
-              >
-                E.g., Quality, Delivery, Ownership, Collaboration.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-weight">Weightage (%) *</Label>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="edit-title"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Template Title *
+                </Label>
                 <Input
-                  id="edit-weight"
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={tempWeightage}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setTempWeightage(val === "" ? "" : Number(val));
-                  }}
+                  id="edit-title"
+                  value={tempTitle}
+                  onChange={(e) => setTempTitle(e.target.value)}
                   disabled={saving}
-                  className="transition-shadow focus:shadow-sm motion-reduce:transition-none"
-                  aria-describedby="edit-weight-help"
+                  placeholder="Enter a descriptive template title"
+                  className="h-11 focus:ring-2 focus:ring-primary/20 border-border/50"
+                  aria-describedby="edit-title-help"
                   required
                 />
                 <p
-                  id="edit-weight-help"
-                  className="mt-1 text-xs text-muted-foreground"
+                  id="edit-title-help"
+                  className="text-xs text-muted-foreground"
                 >
-                  Goal importance from 1-100%.
+                  Give your template a concise, descriptive title.
                 </p>
               </div>
 
-              <div>
-                <Label htmlFor="edit-importance">Importance</Label>
-                <Select
-                  value={tempImportance}
-                  onValueChange={setTempImportance}
-                  disabled={saving}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="edit-description"
+                  className="text-sm font-medium text-foreground"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select importance level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="High">🔴 High Priority</SelectItem>
-                    <SelectItem value="Medium">🟡 Medium Priority</SelectItem>
-                    <SelectItem value="Low">🟢 Low Priority</SelectItem>
-                  </SelectContent>
-                </Select>
+                  Description
+                </Label>
+                <Textarea
+                  id="edit-description"
+                  value={tempDescription}
+                  onChange={(e) => setTempDescription(e.target.value)}
+                  disabled={saving}
+                  rows={3}
+                  placeholder="Describe what this template is used for..."
+                  className="resize-none focus:ring-2 focus:ring-primary/20 border-border/50"
+                  aria-describedby="edit-description-help"
+                />
+                <p
+                  id="edit-description-help"
+                  className="text-xs text-muted-foreground"
+                >
+                  Optional: add context so users understand the template's
+                  purpose.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="edit-perf"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Performance Factor
+                </Label>
+                <Textarea
+                  id="edit-perf"
+                  value={tempPerformanceFactor}
+                  onChange={(e) => setTempPerformanceFactor(e.target.value)}
+                  disabled={saving}
+                  rows={2}
+                  placeholder="Describe how performance will be measured..."
+                  className="resize-none focus:ring-2 focus:ring-primary/20 border-border/50"
+                  aria-describedby="edit-perf-help"
+                />
+                <p
+                  id="edit-perf-help"
+                  className="text-xs text-muted-foreground"
+                >
+                  E.g., Quality, Delivery, Ownership, Collaboration.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="edit-weight"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Weightage (%) *
+                  </Label>
+                  <Input
+                    id="edit-weight"
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={tempWeightage}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setTempWeightage(val === "" ? "" : Number(val));
+                    }}
+                    disabled={saving}
+                    placeholder="Enter weightage"
+                    className="h-11 focus:ring-2 focus:ring-primary/20 border-border/50"
+                    aria-describedby="edit-weight-help"
+                    required
+                  />
+                  <p
+                    id="edit-weight-help"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Default weightage from 1-100%.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="edit-importance"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Importance Level
+                  </Label>
+                  <Select
+                    value={tempImportance}
+                    onValueChange={setTempImportance}
+                    disabled={saving}
+                  >
+                    <SelectTrigger className="h-11 focus:ring-2 focus:ring-primary/20 border-border/50">
+                      <SelectValue placeholder="Select importance level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="High">🔴 High Priority</SelectItem>
+                      <SelectItem value="Medium">🟡 Medium Priority</SelectItem>
+                      <SelectItem value="Low">🟢 Low Priority</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Priority level for this template.
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div>
-              <Label>Categories</Label>
+            <div className="space-y-3">
+              <Label className="text-sm font-medium text-foreground">
+                Categories
+              </Label>
               <div className="space-y-3">
                 <div className="flex gap-2">
                   <Input
@@ -314,8 +364,8 @@ const EditTemplateModal = ({
                     onChange={(e) => setNewCategory(e.target.value)}
                     placeholder="Add a category..."
                     disabled={saving}
-                    className="flex-1"
-                    onKeyPress={(e) => {
+                    className="flex-1 h-11 focus:ring-2 focus:ring-primary/20 border-border/50"
+                    onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
                         handleAddCategory();
@@ -327,6 +377,7 @@ const EditTemplateModal = ({
                     onClick={handleAddCategory}
                     disabled={!newCategory.trim() || saving}
                     variant="outline"
+                    className="h-11"
                   >
                     Add
                   </Button>
@@ -338,14 +389,14 @@ const EditTemplateModal = ({
                       <Badge
                         key={cat}
                         variant="secondary"
-                        className="flex items-center gap-1"
+                        className="flex items-center gap-1 px-3 py-1"
                       >
                         {cat}
                         <button
                           type="button"
                           onClick={() => handleRemoveCategory(cat)}
                           disabled={saving}
-                          className="ml-1 hover:text-destructive"
+                          className="ml-1 hover:text-destructive transition-colors"
                           aria-label={`Remove ${cat}`}
                         >
                           <X className="h-3 w-3" />
@@ -367,7 +418,7 @@ const EditTemplateModal = ({
                           <Badge
                             key={cat.id}
                             variant="outline"
-                            className="cursor-pointer hover:bg-accent"
+                            className="cursor-pointer hover:bg-accent transition-colors px-3 py-1"
                             onClick={() => {
                               if (!categories.includes(cat.name)) {
                                 setCategories([...categories, cat.name]);
@@ -383,19 +434,20 @@ const EditTemplateModal = ({
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
               <Button
                 type="button"
                 variant={BUTTON_STYLES.CANCEL.variant}
                 onClick={() => onOpenChange(false)}
                 disabled={saving}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 variant={BUTTON_STYLES.SUBMIT.variant}
-                className={BUTTON_STYLES.SUBMIT.className}
+                className={`w-full sm:w-auto ${BUTTON_STYLES.SUBMIT.className}`}
                 disabled={saving}
               >
                 {saving ? "Saving..." : "Save Changes"}

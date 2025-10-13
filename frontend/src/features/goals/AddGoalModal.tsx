@@ -195,7 +195,7 @@ const AddGoalModal = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="rounded-md border p-4 space-y-4">
+          <div className="space-y-4">
             <div className="grid gap-4">
               <div className="space-y-2">
                 <Label

@@ -10,7 +10,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
-import { X, Download } from "lucide-react";
+import { X, Download, Weight } from "lucide-react";
 import {
   Select as UiSelect,
   SelectTrigger,
@@ -86,7 +86,10 @@ const ImportFromTemplateModal = ({
   const [loading, setLoading] = useState(false);
   const [templates, setTemplates] = useState<GoalTemplate[]>([]);
   const [selected, setSelected] = useState<
-    Record<number, { checked: boolean; categoryId?: number }>
+    Record<
+      number,
+      { checked: boolean; categoryId?: number; weightage?: number }
+    >
   >({});
   const [filter, setFilter] = useState("");
 
@@ -107,14 +110,22 @@ const ImportFromTemplateModal = ({
     }
   };
 
-  const toggleSelect = (id: number, defaultCategoryId?: number) => {
+  const toggleSelect = (
+    id: number,
+    defaultCategoryId?: number,
+    defaultWeightage?: number
+  ) => {
     setSelected((prev) => {
       const curr = prev[id];
       return {
         ...prev,
         [id]: curr
           ? { ...curr, checked: !curr.checked }
-          : { checked: true, categoryId: defaultCategoryId },
+          : {
+              checked: true,
+              categoryId: defaultCategoryId,
+              weightage: defaultWeightage, // Pre-fill with template's default weightage
+            },
       };
     });
   };
@@ -123,6 +134,13 @@ const ImportFromTemplateModal = ({
     setSelected((prev) => ({
       ...prev,
       [id]: { ...(prev[id] || { checked: true }), categoryId },
+    }));
+  };
+
+  const setWeightageFor = (id: number, weightage: number) => {
+    setSelected((prev) => ({
+      ...prev,
+      [id]: { ...(prev[id] || { checked: true }), weightage },
     }));
   };
 
@@ -135,14 +153,37 @@ const ImportFromTemplateModal = ({
       return;
     }
 
-    // Running remaining weightage
-    let remaining = remainingWeightage;
+    // Validate all selected templates have weightage
+    for (const t of chosen) {
+      const weightage = selected[t.temp_id]?.weightage || 0;
+      if (!weightage || weightage <= 0) {
+        toast.error("Weightage required", {
+          description: `Please enter weightage for "${t.temp_title}"`,
+        });
+        return;
+      }
+    }
+
+    // Calculate total selected weightage
+    const totalSelectedWeightage = chosen.reduce(
+      (sum, t) => sum + (selected[t.temp_id]?.weightage || 0),
+      0
+    );
+
+    if (totalSelectedWeightage > remainingWeightage) {
+      toast.error("Total weightage exceeds remaining", {
+        description: `Total selected: ${totalSelectedWeightage}%, Remaining: ${remainingWeightage}%`,
+      });
+      return;
+    }
 
     setLoading(true);
     try {
       for (const t of chosen) {
         const categoryId =
           selected[t.temp_id]?.categoryId || t.categories?.[0]?.id;
+        const userWeightage = selected[t.temp_id]?.weightage || 0;
+
         if (!categoryId) {
           toast.error("Category required", {
             description: `Template "${t.temp_title}" has no category. Please assign one.`,
@@ -150,15 +191,7 @@ const ImportFromTemplateModal = ({
           continue;
         }
 
-        if (t.temp_weightage > remaining) {
-          toast.error("Insufficient remaining weightage", {
-            description: `Skipping "${t.temp_title}" (${t.temp_weightage}%)`,
-          });
-          continue;
-        }
-
-        // Always build a pseudo AppraisalGoal for local staging only.
-        // Database insertion will occur on Save/Submit via syncGoalChanges().
+        // Build pseudo AppraisalGoal with user-specified weightage
         const tempId = Date.now() + Math.floor(Math.random() * 1000);
         const category = t.categories?.find((c) => c.id === categoryId);
         const pseudo: AppraisalGoal = {
@@ -172,7 +205,7 @@ const ImportFromTemplateModal = ({
             goal_description: t.temp_description,
             goal_performance_factor: t.temp_performance_factor,
             goal_importance: t.temp_importance,
-            goal_weightage: t.temp_weightage,
+            goal_weightage: userWeightage, // Use user-specified weightage
             category_id: categoryId,
             category: category
               ? { id: category.id, name: category.name }
@@ -180,8 +213,6 @@ const ImportFromTemplateModal = ({
           },
         };
         onGoalAdded(pseudo);
-
-        remaining -= t.temp_weightage;
       }
 
       toast.success("Imported", {
@@ -213,122 +244,193 @@ const ImportFromTemplateModal = ({
         if (!o) onClose();
       }}
     >
-      <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[85vh] sm:max-h-[90vh] overflow-auto nice-scrollbar p-4 sm:p-6">
-        <DialogHeader>
-          <DialogTitle>Import Goals from Templates</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
+      <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="pb-3 px-4 sm:px-6 pt-4 sm:pt-6 border-b border-border/50">
           <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <Label htmlFor="filter">Search</Label>
+            <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-blue-600 flex-shrink-0">
+              <Download className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <DialogTitle className="text-lg sm:text-xl font-semibold text-foreground">
+                Import Goals from Templates
+              </DialogTitle>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                Select templates and assign weightage for each goal
+              </p>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex-1 min-w-[150px]">
+              <Label
+                htmlFor="filter"
+                className="text-xs sm:text-sm font-medium text-foreground"
+              >
+                Search Templates
+              </Label>
               <Input
                 id="filter"
-                placeholder="Filter by title or category"
+                placeholder="Filter by title or category..."
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
+                className="h-10 mt-1 focus:ring-2 focus:ring-primary/20 border-border/50"
               />
             </div>
-            <div className="text-xs text-muted-foreground self-end mb-2">
-              Remaining:{" "}
-              <span className="font-medium">{remainingWeightage}%</span>
+            <div className="text-xs sm:text-sm rounded-md px-3 py-2 self-end">
+              <span className="text-muted-foreground">Remaining: </span>
+              <span className="font-semibold text-base sm:text-lg text-primary">
+                {remainingWeightage}%
+              </span>
             </div>
           </div>
 
-          <div className="max-h-64 sm:max-h-80 md:max-h-96 overflow-auto rounded-md border">
+          <div className="space-y-3 rounded-md p-3 bg-card/30">
             {visible.length === 0 && (
-              <div className="p-6 text-sm text-muted-foreground">
-                No templates found.
+              <div className="p-6 text-center text-sm text-muted-foreground">
+                No templates found matching your search.
               </div>
             )}
             {visible.map((t) => (
               <div
                 key={t.temp_id}
-                className="flex items-start gap-3 p-4 border-b last:border-b-0"
+                className={`rounded-lg border ${
+                  selected[t.temp_id]?.checked
+                    ? "border-primary/50 bg-primary/5"
+                    : "border-border/50 bg-card/50"
+                } p-3 transition-all hover:shadow-sm`}
               >
-                <Checkbox
-                  checked={!!selected[t.temp_id]?.checked}
-                  onCheckedChange={() =>
-                    toggleSelect(t.temp_id, t.categories?.[0]?.id)
-                  }
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium">{t.temp_title}</div>
-                    <div className="text-xs">
-                      Weightage:{" "}
-                      <span className="font-semibold">{t.temp_weightage}%</span>
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <Checkbox
+                    checked={!!selected[t.temp_id]?.checked}
+                    onCheckedChange={() =>
+                      toggleSelect(
+                        t.temp_id,
+                        t.categories?.[0]?.id,
+                        t.temp_weightage
+                      )
+                    }
+                    className="mt-1 flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0 space-y-3">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm sm:text-base text-foreground break-words">
+                        {t.temp_title}
+                      </div>
+                      <div className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2 break-words">
+                        {t.temp_description}
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                    {t.temp_description}
-                  </div>
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {t.categories?.map((c) => (
-                      <Badge key={c.id} variant="outline">
-                        {c.name}
+
+                    <div className="flex flex-wrap gap-1">
+                      {t.categories?.map((c) => (
+                        <Badge key={c.id} variant="outline" className="text-xs">
+                          {c.name}
+                        </Badge>
+                      ))}
+                      <Badge variant="secondary" className="text-xs">
+                        {t.temp_importance}
                       </Badge>
-                    ))}
-                  </div>
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs">Assign Category</Label>
-                      <UiSelect
-                        value={getCategorySelectValue(
-                          selected,
-                          t.temp_id,
-                          t.categories
-                        )}
-                        onValueChange={(val) =>
-                          setCategoryFor(t.temp_id, Number.parseInt(val))
-                        }
-                        disabled={!selected[t.temp_id]?.checked}
+                      <Badge
+                        variant="default"
+                        className="text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/20"
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {t.categories?.map((c) => (
-                            <SelectItem key={c.id} value={String(c.id)}>
-                              {c.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </UiSelect>
+                        <Weight className="h-3 w-3 mr-1" />
+                        {t.temp_weightage}%
+                      </Badge>
                     </div>
-                    <div>
-                      <Label className="text-xs">Importance</Label>
-                      <Input disabled value={t.temp_importance} />
-                    </div>
+
+                    {selected[t.temp_id]?.checked && (
+                      <div className="grid grid-cols-1 gap-3 pt-2 border-t border-border/50">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-foreground">
+                            Assign Category *
+                          </Label>
+                          <UiSelect
+                            value={getCategorySelectValue(
+                              selected,
+                              t.temp_id,
+                              t.categories
+                            )}
+                            onValueChange={(val) =>
+                              setCategoryFor(t.temp_id, Number.parseInt(val))
+                            }
+                          >
+                            <SelectTrigger className="h-10 focus:ring-2 focus:ring-primary/20 border-border/50">
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {t.categories?.map((c) => (
+                                <SelectItem key={c.id} value={String(c.id)}>
+                                  {c.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </UiSelect>
+                        </div>
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor={`weightage-${t.temp_id}`}
+                            className="text-xs font-medium text-foreground flex items-center gap-1"
+                          >
+                            <Weight className="h-3 w-3 text-amber-500" />
+                            Weightage (%) *
+                            {selected[t.temp_id]?.weightage ===
+                              t.temp_weightage && (
+                              <span className="text-[10px] text-muted-foreground font-normal ml-1">
+                                (default)
+                              </span>
+                            )}
+                          </Label>
+                          <Input
+                            id={`weightage-${t.temp_id}`}
+                            type="number"
+                            min="1"
+                            max={remainingWeightage}
+                            placeholder={`Default: ${t.temp_weightage}%`}
+                            value={selected[t.temp_id]?.weightage || ""}
+                            onChange={(e) =>
+                              setWeightageFor(
+                                t.temp_id,
+                                Number.parseInt(e.target.value) || 0
+                              )
+                            }
+                            className="h-10 focus:ring-2 focus:ring-primary/20 border-border/50"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
           </div>
+        </div>
 
-          <div className="flex flex-col sm:flex-row justify-end gap-2">
-            <Button
-              variant={BUTTON_STYLES.CANCEL.variant}
-              onClick={onClose}
-              disabled={loading}
-              title="Cancel"
-              aria-label="Cancel"
-            >
-              <span className="hidden sm:inline">Cancel</span>
-              <X className={`${ICON_SIZES.DEFAULT} sm:ml-2`} />
-            </Button>
-            <Button
-              variant={BUTTON_STYLES.SUBMIT.variant}
-              onClick={handleImport}
-              disabled={loading}
-              className={BUTTON_STYLES.SUBMIT.className}
-              title="Import selected templates"
-              aria-label="Import selected templates"
-            >
-              <span className="hidden sm:inline">Import Selected</span>
-              <Download className={`${ICON_SIZES.DEFAULT} sm:ml-2`} />
-            </Button>
-          </div>
+        <div className="flex flex-col sm:flex-row justify-end gap-2 px-4 sm:px-6 py-3 sm:py-4 border-t border-border/50 bg-card/30">
+          <Button
+            variant={BUTTON_STYLES.CANCEL.variant}
+            onClick={onClose}
+            disabled={loading}
+            title="Cancel"
+            aria-label="Cancel"
+            className="w-full sm:w-auto"
+          >
+            <X className={`${ICON_SIZES.DEFAULT} sm:mr-2`} />
+            <span>Cancel</span>
+          </Button>
+          <Button
+            variant={BUTTON_STYLES.SUBMIT.variant}
+            onClick={handleImport}
+            disabled={loading}
+            className={`w-full sm:w-auto ${BUTTON_STYLES.SUBMIT.className}`}
+            title="Import selected templates"
+            aria-label="Import selected templates"
+          >
+            <Download className={`${ICON_SIZES.DEFAULT} sm:mr-2`} />
+            <span>Import Selected</span>
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
