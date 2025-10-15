@@ -80,7 +80,7 @@ export function AppraisalCard(props: Readonly<AppraisalCardProps>) {
         <span className="text-primary font-bold text-base">
           {daysRemaining}
         </span>{" "}
-        <span>day{plural} remaining</span>
+        <span> day{plural} remaining</span>
       </>
     );
   }
@@ -105,7 +105,7 @@ export function AppraisalCard(props: Readonly<AppraisalCardProps>) {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm text-primary font-medium">Appraisee</p>
+                  <p className="text-sm text-gray-600 font-medium">Appraisee</p>
                   <p className="text-base font-semibold text-foreground">
                     {empNameById(a.appraisee_id)}
                   </p>
@@ -120,7 +120,7 @@ export function AppraisalCard(props: Readonly<AppraisalCardProps>) {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm text-primary font-medium">Appraiser</p>
+                  <p className="text-sm text-gray-600 font-medium">Appraiser</p>
                   <p className="text-base font-semibold text-foreground">
                     {empNameById(a.appraiser_id)}
                   </p>
@@ -135,7 +135,7 @@ export function AppraisalCard(props: Readonly<AppraisalCardProps>) {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm text-primary font-medium">Reviewer</p>
+                  <p className="text-sm text-gray-600 font-medium">Reviewer</p>
                   <p className="text-base font-semibold text-foreground">
                     {empNameById(a.reviewer_id)}
                   </p>
@@ -153,7 +153,7 @@ export function AppraisalCard(props: Readonly<AppraisalCardProps>) {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm text-primary font-medium">
+                  <p className="text-sm text-gray-600 font-medium">
                     Appraisal Type
                   </p>
                   <p className="text-base font-semibold text-foreground">
@@ -170,7 +170,7 @@ export function AppraisalCard(props: Readonly<AppraisalCardProps>) {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm text-primary font-medium">
+                  <p className="text-sm text-gray-600 font-medium">
                     Appraisal Period
                   </p>
                   <p className="text-base font-semibold text-foreground">
@@ -187,7 +187,7 @@ export function AppraisalCard(props: Readonly<AppraisalCardProps>) {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm text-primary font-medium">Due</p>
+                  <p className="text-sm text-gray-600 font-medium">Due</p>
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant={badgeVariant} className={badgeClassName}>
                       {badgeContent}

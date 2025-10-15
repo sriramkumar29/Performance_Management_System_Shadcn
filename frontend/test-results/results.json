@@ -1,0 +1,668 @@
+{
+  "config": {
+    "configFile": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\playwright.config.ts",
+    "rootDir": "C:/AppBuilderProject/Performance_Management_System_Shadcn/frontend/e2e",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 4
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "playwright-report"
+        }
+      ],
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "C:/AppBuilderProject/Performance_Management_System_Shadcn/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 4
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/AppBuilderProject/Performance_Management_System_Shadcn/frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/AppBuilderProject/Performance_Management_System_Shadcn/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 4
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "C:/AppBuilderProject/Performance_Management_System_Shadcn/frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/AppBuilderProject/Performance_Management_System_Shadcn/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 4
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "C:/AppBuilderProject/Performance_Management_System_Shadcn/frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/AppBuilderProject/Performance_Management_System_Shadcn/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 4
+        },
+        "id": "Mobile Chrome",
+        "name": "Mobile Chrome",
+        "testDir": "C:/AppBuilderProject/Performance_Management_System_Shadcn/frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/AppBuilderProject/Performance_Management_System_Shadcn/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 4
+        },
+        "id": "Mobile Safari",
+        "name": "Mobile Safari",
+        "testDir": "C:/AppBuilderProject/Performance_Management_System_Shadcn/frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/AppBuilderProject/Performance_Management_System_Shadcn/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 4
+        },
+        "id": "Microsoft Edge",
+        "name": "Microsoft Edge",
+        "testDir": "C:/AppBuilderProject/Performance_Management_System_Shadcn/frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/AppBuilderProject/Performance_Management_System_Shadcn/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 4
+        },
+        "id": "Google Chrome",
+        "name": "Google Chrome",
+        "testDir": "C:/AppBuilderProject/Performance_Management_System_Shadcn/frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.55.0",
+    "workers": 4,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://localhost:5173",
+      "reuseExistingServer": true,
+      "timeout": 120000
+    }
+  },
+  "suites": [
+    {
+      "title": "goal-weightage-category.spec.ts",
+      "file": "goal-weightage-category.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Goal Weightage and Category Assignment - E2E Tests",
+          "file": "goal-weightage-category.spec.ts",
+          "line": 91,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-B01.1 - should create goal successfully with weightage=50",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 14692,
+                      "error": {
+                        "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n",
+                        "stack": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n    at login (C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:21:14)\n    at C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:103:5",
+                        "location": {
+                          "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                          "column": 14,
+                          "line": 21
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 19 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m login(page\u001b[33m:\u001b[39m \u001b[33mPage\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m string\u001b[33m,\u001b[39m password\u001b[33m:\u001b[39m string) {\n \u001b[90m 20 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 21 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m email)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 22 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m password)\u001b[33m;\u001b[39m\n \u001b[90m 23 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]:has-text(\"Sign In\"), button[type=\"submit\"]:has-text(\"Login\")'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 24 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForURL(url \u001b[33m=>\u001b[39m \u001b[33m!\u001b[39murl\u001b[33m.\u001b[39mpathname\u001b[33m.\u001b[39mincludes(\u001b[32m'/login'\u001b[39m))\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                            "column": 14,
+                            "line": 21
+                          },
+                          "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 19 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m login(page\u001b[33m:\u001b[39m \u001b[33mPage\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m string\u001b[33m,\u001b[39m password\u001b[33m:\u001b[39m string) {\n \u001b[90m 20 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 21 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m email)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 22 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m password)\u001b[33m;\u001b[39m\n \u001b[90m 23 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]:has-text(\"Sign In\"), button[type=\"submit\"]:has-text(\"Login\")'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 24 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForURL(url \u001b[33m=>\u001b[39m \u001b[33m!\u001b[39murl\u001b[33m.\u001b[39mpathname\u001b[33m.\u001b[39mincludes(\u001b[32m'/login'\u001b[39m))\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at login (C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:21:14)\u001b[22m\n\u001b[2m    at C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:103:5\u001b[22m"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-13T07:41:34.982Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-b43cb-cessfully-with-weightage-50-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-b43cb-cessfully-with-weightage-50-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-b43cb-cessfully-with-weightage-50-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-b43cb-cessfully-with-weightage-50-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                        "column": 14,
+                        "line": 21
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "ce26661321b0b4d46bc4-05862b8b2823935c83f9",
+              "file": "goal-weightage-category.spec.ts",
+              "line": 101,
+              "column": 3
+            },
+            {
+              "title": "TC-B01.4 - should edit all fields of an existing goal",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "failed",
+                      "duration": 14458,
+                      "error": {
+                        "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n",
+                        "stack": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n    at login (C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:21:14)\n    at C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:146:5",
+                        "location": {
+                          "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                          "column": 14,
+                          "line": 21
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 19 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m login(page\u001b[33m:\u001b[39m \u001b[33mPage\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m string\u001b[33m,\u001b[39m password\u001b[33m:\u001b[39m string) {\n \u001b[90m 20 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 21 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m email)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 22 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m password)\u001b[33m;\u001b[39m\n \u001b[90m 23 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]:has-text(\"Sign In\"), button[type=\"submit\"]:has-text(\"Login\")'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 24 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForURL(url \u001b[33m=>\u001b[39m \u001b[33m!\u001b[39murl\u001b[33m.\u001b[39mpathname\u001b[33m.\u001b[39mincludes(\u001b[32m'/login'\u001b[39m))\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                            "column": 14,
+                            "line": 21
+                          },
+                          "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 19 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m login(page\u001b[33m:\u001b[39m \u001b[33mPage\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m string\u001b[33m,\u001b[39m password\u001b[33m:\u001b[39m string) {\n \u001b[90m 20 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 21 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m email)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 22 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m password)\u001b[33m;\u001b[39m\n \u001b[90m 23 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]:has-text(\"Sign In\"), button[type=\"submit\"]:has-text(\"Login\")'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 24 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForURL(url \u001b[33m=>\u001b[39m \u001b[33m!\u001b[39murl\u001b[33m.\u001b[39mpathname\u001b[33m.\u001b[39mincludes(\u001b[32m'/login'\u001b[39m))\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at login (C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:21:14)\u001b[22m\n\u001b[2m    at C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:146:5\u001b[22m"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-13T07:41:35.001Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-f8dab--fields-of-an-existing-goal-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-f8dab--fields-of-an-existing-goal-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-f8dab--fields-of-an-existing-goal-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-f8dab--fields-of-an-existing-goal-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                        "column": 14,
+                        "line": 21
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "ce26661321b0b4d46bc4-e78e1973e65900a89864",
+              "file": "goal-weightage-category.spec.ts",
+              "line": 145,
+              "column": 3
+            },
+            {
+              "title": "TC-B01.7A - should allow Manager to create goals",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "failed",
+                      "duration": 14980,
+                      "error": {
+                        "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n",
+                        "stack": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n    at login (C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:21:14)\n    at C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:224:5",
+                        "location": {
+                          "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                          "column": 14,
+                          "line": 21
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 19 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m login(page\u001b[33m:\u001b[39m \u001b[33mPage\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m string\u001b[33m,\u001b[39m password\u001b[33m:\u001b[39m string) {\n \u001b[90m 20 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 21 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m email)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 22 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m password)\u001b[33m;\u001b[39m\n \u001b[90m 23 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]:has-text(\"Sign In\"), button[type=\"submit\"]:has-text(\"Login\")'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 24 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForURL(url \u001b[33m=>\u001b[39m \u001b[33m!\u001b[39murl\u001b[33m.\u001b[39mpathname\u001b[33m.\u001b[39mincludes(\u001b[32m'/login'\u001b[39m))\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                            "column": 14,
+                            "line": 21
+                          },
+                          "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 19 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m login(page\u001b[33m:\u001b[39m \u001b[33mPage\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m string\u001b[33m,\u001b[39m password\u001b[33m:\u001b[39m string) {\n \u001b[90m 20 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 21 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m email)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 22 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m password)\u001b[33m;\u001b[39m\n \u001b[90m 23 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]:has-text(\"Sign In\"), button[type=\"submit\"]:has-text(\"Login\")'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 24 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForURL(url \u001b[33m=>\u001b[39m \u001b[33m!\u001b[39murl\u001b[33m.\u001b[39mpathname\u001b[33m.\u001b[39mincludes(\u001b[32m'/login'\u001b[39m))\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at login (C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:21:14)\u001b[22m\n\u001b[2m    at C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:224:5\u001b[22m"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-13T07:41:34.968Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-95570-low-Manager-to-create-goals-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-95570-low-Manager-to-create-goals-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-95570-low-Manager-to-create-goals-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-95570-low-Manager-to-create-goals-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                        "column": 14,
+                        "line": 21
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "ce26661321b0b4d46bc4-3282d2714a12c67f331d",
+              "file": "goal-weightage-category.spec.ts",
+              "line": 223,
+              "column": 3
+            },
+            {
+              "title": "TC-B01.7B - should prevent Employee from creating goals",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "failed",
+                      "duration": 14870,
+                      "error": {
+                        "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n",
+                        "stack": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n    at login (C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:21:14)\n    at C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:237:5",
+                        "location": {
+                          "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                          "column": 14,
+                          "line": 21
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 19 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m login(page\u001b[33m:\u001b[39m \u001b[33mPage\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m string\u001b[33m,\u001b[39m password\u001b[33m:\u001b[39m string) {\n \u001b[90m 20 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 21 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m email)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 22 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m password)\u001b[33m;\u001b[39m\n \u001b[90m 23 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]:has-text(\"Sign In\"), button[type=\"submit\"]:has-text(\"Login\")'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 24 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForURL(url \u001b[33m=>\u001b[39m \u001b[33m!\u001b[39murl\u001b[33m.\u001b[39mpathname\u001b[33m.\u001b[39mincludes(\u001b[32m'/login'\u001b[39m))\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                            "column": 14,
+                            "line": 21
+                          },
+                          "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 19 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m login(page\u001b[33m:\u001b[39m \u001b[33mPage\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m string\u001b[33m,\u001b[39m password\u001b[33m:\u001b[39m string) {\n \u001b[90m 20 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 21 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m email)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 22 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m password)\u001b[33m;\u001b[39m\n \u001b[90m 23 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]:has-text(\"Sign In\"), button[type=\"submit\"]:has-text(\"Login\")'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 24 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForURL(url \u001b[33m=>\u001b[39m \u001b[33m!\u001b[39murl\u001b[33m.\u001b[39mpathname\u001b[33m.\u001b[39mincludes(\u001b[32m'/login'\u001b[39m))\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at login (C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:21:14)\u001b[22m\n\u001b[2m    at C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:237:5\u001b[22m"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-13T07:41:35.005Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-f76d7-mployee-from-creating-goals-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-f76d7-mployee-from-creating-goals-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-f76d7-mployee-from-creating-goals-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-f76d7-mployee-from-creating-goals-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                        "column": 14,
+                        "line": 21
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "ce26661321b0b4d46bc4-c3acf5683634e3f96474",
+              "file": "goal-weightage-category.spec.ts",
+              "line": 236,
+              "column": 3
+            },
+            {
+              "title": "Accessibility - should have proper ARIA labels",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 11859,
+                      "error": {
+                        "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n",
+                        "stack": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n    at login (C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:21:14)\n    at C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:256:5",
+                        "location": {
+                          "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                          "column": 14,
+                          "line": 21
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 19 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m login(page\u001b[33m:\u001b[39m \u001b[33mPage\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m string\u001b[33m,\u001b[39m password\u001b[33m:\u001b[39m string) {\n \u001b[90m 20 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 21 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m email)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 22 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m password)\u001b[33m;\u001b[39m\n \u001b[90m 23 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]:has-text(\"Sign In\"), button[type=\"submit\"]:has-text(\"Login\")'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 24 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForURL(url \u001b[33m=>\u001b[39m \u001b[33m!\u001b[39murl\u001b[33m.\u001b[39mpathname\u001b[33m.\u001b[39mincludes(\u001b[32m'/login'\u001b[39m))\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                            "column": 14,
+                            "line": 21
+                          },
+                          "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 19 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m login(page\u001b[33m:\u001b[39m \u001b[33mPage\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m string\u001b[33m,\u001b[39m password\u001b[33m:\u001b[39m string) {\n \u001b[90m 20 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 21 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m email)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 22 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m password)\u001b[33m;\u001b[39m\n \u001b[90m 23 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]:has-text(\"Sign In\"), button[type=\"submit\"]:has-text(\"Login\")'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 24 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForURL(url \u001b[33m=>\u001b[39m \u001b[33m!\u001b[39murl\u001b[33m.\u001b[39mpathname\u001b[33m.\u001b[39mincludes(\u001b[32m'/login'\u001b[39m))\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at login (C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:21:14)\u001b[22m\n\u001b[2m    at C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:256:5\u001b[22m"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-13T07:42:02.507Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-7f69b-uld-have-proper-ARIA-labels-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-7f69b-uld-have-proper-ARIA-labels-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-7f69b-uld-have-proper-ARIA-labels-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-7f69b-uld-have-proper-ARIA-labels-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                        "column": 14,
+                        "line": 21
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "ce26661321b0b4d46bc4-8308fe00d491e4981435",
+              "file": "goal-weightage-category.spec.ts",
+              "line": 255,
+              "column": 3
+            },
+            {
+              "title": "Mobile - should work on mobile viewport",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 1,
+                      "status": "failed",
+                      "duration": 11753,
+                      "error": {
+                        "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n",
+                        "stack": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n    at login (C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:21:14)\n    at C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:276:5",
+                        "location": {
+                          "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                          "column": 14,
+                          "line": 21
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 19 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m login(page\u001b[33m:\u001b[39m \u001b[33mPage\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m string\u001b[33m,\u001b[39m password\u001b[33m:\u001b[39m string) {\n \u001b[90m 20 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 21 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m email)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 22 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m password)\u001b[33m;\u001b[39m\n \u001b[90m 23 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]:has-text(\"Sign In\"), button[type=\"submit\"]:has-text(\"Login\")'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 24 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForURL(url \u001b[33m=>\u001b[39m \u001b[33m!\u001b[39murl\u001b[33m.\u001b[39mpathname\u001b[33m.\u001b[39mincludes(\u001b[32m'/login'\u001b[39m))\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                            "column": 14,
+                            "line": 21
+                          },
+                          "message": "TimeoutError: page.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 19 |\u001b[39m \u001b[36masync\u001b[39m \u001b[36mfunction\u001b[39m login(page\u001b[33m:\u001b[39m \u001b[33mPage\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m string\u001b[33m,\u001b[39m password\u001b[33m:\u001b[39m string) {\n \u001b[90m 20 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 21 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m email)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 22 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m password)\u001b[33m;\u001b[39m\n \u001b[90m 23 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]:has-text(\"Sign In\"), button[type=\"submit\"]:has-text(\"Login\")'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 24 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForURL(url \u001b[33m=>\u001b[39m \u001b[33m!\u001b[39murl\u001b[33m.\u001b[39mpathname\u001b[33m.\u001b[39mincludes(\u001b[32m'/login'\u001b[39m))\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at login (C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:21:14)\u001b[22m\n\u001b[2m    at C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts:276:5\u001b[22m"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-13T07:42:02.527Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-863c9-uld-work-on-mobile-viewport-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-863c9-uld-work-on-mobile-viewport-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-863c9-uld-work-on-mobile-viewport-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\test-results\\goal-weightage-category-Go-863c9-uld-work-on-mobile-viewport-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\AppBuilderProject\\Performance_Management_System_Shadcn\\frontend\\e2e\\goal-weightage-category.spec.ts",
+                        "column": 14,
+                        "line": 21
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "ce26661321b0b4d46bc4-6d7f044bc026577d417c",
+              "file": "goal-weightage-category.spec.ts",
+              "line": 272,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-10-13T07:41:32.281Z",
+    "duration": 42765.692,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 6,
+    "flaky": 0
+  }
+}
