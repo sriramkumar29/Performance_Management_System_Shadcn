@@ -209,16 +209,17 @@ describe("Appraisal Creation - Role-Based Access Control Tests", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Mock successful API responses
-    (apiFetch as any).mockImplementation((url: string) => {
-      if (url.includes("/employees")) {
-        return Promise.resolve({ ok: true, data: mockEmployees });
-      }
-      if (url.includes("/appraisal-types")) {
-        return Promise.resolve({ ok: true, data: mockAppraisalTypes });
-      }
-      return Promise.resolve({ ok: true, data: [] });
-    });
+    // Install API router to match endpoints by URL instead of relying on call order
+    const mockApiFetch = vi.mocked(apiFetch);
+    // eslint-disable-next-line no-undef
+    return (async () => {
+      const mod = await import("../../../test/utils/mockApi");
+      const createApiRouter = mod.createApiRouter;
+      const router = createApiRouter(mockApiFetch as any);
+      router.route("/employees", { ok: true, data: mockEmployees });
+      router.route("/appraisal-types", { ok: true, data: mockAppraisalTypes });
+      router.install();
+    })();
   });
 
   afterEach(() => {

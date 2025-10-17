@@ -6,7 +6,7 @@ import CreateAppraisalButton from "../../features/appraisal/CreateAppraisalButto
 import EditAppraisalButton from "../../features/appraisal/EditAppraisalButton";
 import DeleteAppraisalButton from "../../features/appraisal/DeleteAppraisalButton";
 import { Button } from "../../components/ui/button";
-// button styles constants were previously imported but are not used in this file
+import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import { Badge } from "../../components/ui/badge";
 import { AppraisalCard } from "../../components/AppraisalCard";
 import { AppraisalCardSkeletonList } from "../../components/AppraisalCardSkeleton";
@@ -23,7 +23,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
-import { Activity, ArrowRight, ArrowLeft, Users } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  ArrowLeft,
+  Users,
+  RefreshCw,
+} from "lucide-react";
 import PeriodFilter, { type Period } from "../../components/PeriodFilter";
 
 type Appraisal = {
@@ -335,7 +341,7 @@ const TeamAppraisal = () => {
           {/* Left: Search + Filters (will wrap on small screens) */}
           <div className="flex-1">
             <div className="flex flex-wrap items-end gap-3">
-              <div className="w-full md:w-1/2 lg:w-1/3 min-w-0">
+              <div className="w-full md:w-1/2 lg:w-2/6 min-w-0">
                 <Label className="mb-1 block">Search</Label>
                 <Input
                   placeholder="Search employee name"
@@ -374,6 +380,25 @@ const TeamAppraisal = () => {
 
           {/* Right: Action buttons */}
           <div className="flex items-center gap-3 md:ml-4">
+            <Button
+              variant={BUTTON_STYLES.GHOST_ICON.variant}
+              size={BUTTON_STYLES.GHOST_ICON.size}
+              onClick={() => {
+                setSearchName("");
+                setSearchTypeId("all");
+                setPeriod(() => {
+                  const y = new Date().getFullYear();
+                  const start = new Date(y, 0, 1).toISOString().slice(0, 10);
+                  const end = new Date(y, 11, 31).toISOString().slice(0, 10);
+                  return { label: "This Year", startDate: start, endDate: end };
+                });
+              }}
+              className="border border-border rounded-md p-2"
+              title="Reset filters"
+              aria-label="Reset filters"
+            >
+              <RefreshCw className={ICON_SIZES.DEFAULT} />
+            </Button>
             <CreateAppraisalButton />
           </div>
         </div>
@@ -411,7 +436,7 @@ const TeamAppraisal = () => {
             Active
             <Badge
               variant="secondary"
-              className="ml-2 bg-blue-100 text-blue-700 border-0 font-semibold"
+              className="ml-2 bg-slate-100 text-slate-700 border-0 font-semibold"
             >
               {active.length}
             </Badge>
@@ -430,7 +455,7 @@ const TeamAppraisal = () => {
             Completed
             <Badge
               variant="secondary"
-              className="ml-2 bg-green-100 text-green-700 border-0 font-semibold"
+              className="ml-2 bg-slate-100 text-slate-700 border-0 font-semibold"
             >
               {completedTeam.length}
             </Badge>
@@ -447,7 +472,7 @@ const TeamAppraisal = () => {
             Draft
             <Badge
               variant="secondary"
-              className="ml-2 bg-amber-100 text-amber-700 border-0 font-semibold"
+              className="ml-2 bg-slate-100 text-slate-700 border-0 font-semibold"
             >
               {drafts.length}
             </Badge>
@@ -464,7 +489,7 @@ const TeamAppraisal = () => {
             Overdue
             <Badge
               variant="secondary"
-              className="ml-2 bg-red-100 text-red-700 border-0 font-semibold"
+              className="ml-2 bg-slate-100 text-slate-700 border-0 font-semibold"
             >
               {overdueTeam.length}
             </Badge>

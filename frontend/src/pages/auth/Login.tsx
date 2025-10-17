@@ -82,7 +82,7 @@ const Login = () => {
               <LogIn className="h-8 w-8" />
             </div>
             <div className="space-y-2">
-              <CardTitle className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-slate-700 to-slate-900 bg-clip-text text-transparent">
+              <CardTitle className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-slate-700 to-slate-900 bg-clip-text ">
                 Performance Management
               </CardTitle>
               <p className="text-muted-foreground">

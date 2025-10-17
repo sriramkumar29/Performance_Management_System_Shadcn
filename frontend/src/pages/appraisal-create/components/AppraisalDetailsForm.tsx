@@ -293,6 +293,8 @@ export const AppraisalDetailsForm = ({
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Input
+                      id="period-start"
+                      data-testid="period-start"
                       type="date"
                       value={formValues.period[0]?.format("YYYY-MM-DD") || ""}
                       max={
@@ -315,6 +317,8 @@ export const AppraisalDetailsForm = ({
                   </div>
                   <div className="relative flex-1">
                     <Input
+                      id="period-end"
+                      data-testid="period-end"
                       type="date"
                       value={formValues.period[1]?.format("YYYY-MM-DD") || ""}
                       min={

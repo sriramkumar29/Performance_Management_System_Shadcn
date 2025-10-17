@@ -17,6 +17,10 @@ import {
   Edit,
   FileText,
   TrendingUp,
+  Tag,
+  Target,
+  Flag,
+  Weight,
 } from "lucide-react";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import {
@@ -27,16 +31,13 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "../../components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../../components/ui/dialog";
 
 interface Category {
   id: number;
@@ -74,6 +75,27 @@ const GoalTemplates = () => {
   const [importanceFilter, setImportanceFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  const openConfirmDelete = (id: number) => setConfirmDeleteId(id);
+  const closeConfirmDelete = () => setConfirmDeleteId(null);
+  const confirmDelete = async () => {
+    if (confirmDeleteId == null) return;
+    try {
+      setDeletingId(confirmDeleteId);
+      const res = await apiFetch(`/api/goals/templates/${confirmDeleteId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error(res.error || "Failed to delete template");
+      toast.success("Template deleted");
+      await loadTemplates();
+    } catch (e: any) {
+      toast.error(e?.message || "Delete failed");
+    } finally {
+      setDeletingId(null);
+      closeConfirmDelete();
+    }
+  };
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<number | null>(
@@ -292,32 +314,36 @@ const GoalTemplates = () => {
               >
                 <CardContent className="p-6">
                   {/* Title Section with Icon */}
-                  <div className="flex items-start justify-between gap-4 mb-4">
+                  <div className="flex items-start justify-between gap-4 mb-2">
                     <div className="flex items-start gap-3 flex-1">
                       <div className="p-2 bg-blue-50 rounded-lg shrink-0">
-                        <FileText className="h-6 w-6 text-blue-600" />
+                        <Target className="h-6 w-6 text-blue-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-blue-600 font-semibold uppercase tracking-wide mb-1">
-                          Template Title
-                        </p>
-                        <h3 className="text-xl font-bold text-foreground mb-2">
-                          {t.temp_title}
-                        </h3>
-                        {/* Categories */}
-                        {t.categories && t.categories.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {t.categories.map((c) => (
-                              <Badge
-                                key={c.id}
-                                variant="outline"
-                                className="bg-amber-50 text-amber-700 border-amber-300 font-medium"
-                              >
-                                {c.name}
+                        <div className="mb-2">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-0">
+                              Template Title
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-rose-100 text-rose-700 border-rose-300 font-semibold text-sm flex items-center gap-1">
+                                <Flag className="h-3 w-3" />
+                                <span>{t.temp_importance}</span>
                               </Badge>
-                            ))}
+                              <Badge
+                                variant="outline"
+                                className="bg-purple-50 text-purple-700 border-purple-300 font-medium text-sm flex items-center gap-1"
+                              >
+                                <Weight className="h-3 w-3 text-purple-600" />
+                                <span>{t.temp_weightage}%</span>
+                              </Badge>
+                            </div>
                           </div>
-                        )}
+
+                          <h3 className="text-xl font-bold text-foreground truncate mt-1">
+                            {t.temp_title}
+                          </h3>
+                        </div>
                       </div>
                     </div>
 
@@ -341,129 +367,133 @@ const GoalTemplates = () => {
                           />
                           <span className="hidden sm:inline">Edit</span>
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              size={BUTTON_STYLES.DELETE.size}
-                              variant={BUTTON_STYLES.DELETE.variant}
-                              disabled={deletingId === t.temp_id}
-                              className={`flex items-center gap-2 ${BUTTON_STYLES.DELETE.className}`}
-                              aria-label={
-                                deletingId === t.temp_id
-                                  ? "Deleting…"
-                                  : "Delete template"
-                              }
-                              title={
-                                deletingId === t.temp_id
-                                  ? "Deleting…"
-                                  : "Delete template"
-                              }
-                            >
-                              <Trash2
-                                className={ICON_SIZES.DEFAULT}
-                                aria-hidden="true"
-                              />
-                              <span className="hidden sm:inline">
-                                {deletingId === t.temp_id
-                                  ? "Deleting…"
-                                  : "Delete"}
-                              </span>
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="shadow-large">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle className="text-xl">
-                                Delete template?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription className="text-base">
-                                This action cannot be undone. This will
-                                permanently delete the goal template "
-                                {t.temp_title}".
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter className="gap-2">
-                              <AlertDialogCancel className="hover:shadow-soft transition-shadow">
-                                Cancel
-                              </AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={async () => {
-                                  try {
-                                    setDeletingId(t.temp_id);
-                                    const res = await apiFetch(
-                                      `/api/goals/templates/${t.temp_id}`,
-                                      { method: "DELETE" }
-                                    );
-                                    if (!res.ok)
-                                      throw new Error(
-                                        res.error || "Failed to delete template"
-                                      );
-                                    toast.success("Template deleted");
-                                    await loadTemplates();
-                                  } catch (e: any) {
-                                    toast.error(e?.message || "Delete failed");
-                                  } finally {
-                                    setDeletingId(null);
-                                  }
-                                }}
-                                className="hover:shadow-glow transition-shadow"
-                              >
-                                Confirm delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <Button
+                          size={BUTTON_STYLES.DELETE.size}
+                          variant={BUTTON_STYLES.DELETE.variant}
+                          disabled={deletingId === t.temp_id}
+                          onClick={() => openConfirmDelete(t.temp_id)}
+                          className={`flex items-center gap-2 ${BUTTON_STYLES.DELETE.className}`}
+                          aria-label={
+                            deletingId === t.temp_id
+                              ? "Deleting…"
+                              : "Delete template"
+                          }
+                          title={
+                            deletingId === t.temp_id
+                              ? "Deleting…"
+                              : "Delete template"
+                          }
+                        >
+                          <Trash2
+                            className={ICON_SIZES.DEFAULT}
+                            aria-hidden="true"
+                          />
+                          <span className="hidden sm:inline">
+                            {deletingId === t.temp_id ? "Deleting…" : "Delete"}
+                          </span>
+                        </Button>
                       </div>
                     )}
+                  </div>
+                  {/* Categories start from the left as a full-width row */}
+                  {t.categories && t.categories.length > 0 && (
+                    <div className="flex items-start gap-3 mt-2 mb-4 pt-0 pl-0">
+                      <div className="p-2 bg-amber-50 rounded-lg shrink-0">
+                        <Tag className="h-4 w-4 text-amber-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-1">
+                          Category
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {t.categories.map((c) => (
+                            <Badge
+                              key={c.id}
+                              variant="outline"
+                              className="bg-amber-50 text-amber-700 border-amber-300 font-medium"
+                            >
+                              {c.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Description Section with Icon */}
+                  {/* Performance Factor (moved above description) */}
+                  <div className="flex items-start gap-3 mb-4 pl-0">
+                    <div className="p-2 bg-indigo-50 rounded-lg shrink-0">
+                      <TrendingUp className="h-4 w-4 text-indigo-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-1">
+                        Performance Factor
+                      </p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {t.temp_performance_factor}
+                      </p>
+                    </div>
                   </div>
 
                   {/* Description Section with Icon */}
                   <div className="flex items-start gap-3 mb-4 pl-0">
                     <div className="p-2 bg-emerald-50 rounded-lg shrink-0">
-                      <FileText className="h-5 w-5 text-emerald-600" />
+                      <FileText className="h-4 w-4 text-emerald-600" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs text-emerald-600 font-semibold uppercase tracking-wide mb-1">
+                      <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-1">
                         Description
                       </p>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
+                      <p className="text-sm text-foreground leading-relaxed max-h-[4.5rem] overflow-y-auto pr-3 scrollbar-y break-words whitespace-normal overflow-x-hidden">
                         {t.temp_description}
                       </p>
-                    </div>
-                  </div>
-
-                  {/* Importance and Performance Factor - Side by Side */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 border-t pt-4">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-rose-50 rounded-lg shrink-0">
-                        <TrendingUp className="h-5 w-5 text-rose-600" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-xs text-rose-600 font-semibold uppercase tracking-wide mb-1">
-                          Importance
-                        </p>
-                        <Badge className="bg-rose-100 text-rose-700 border-rose-300 hover:bg-rose-100 font-semibold text-sm">
-                          {t.temp_importance}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-indigo-50 rounded-lg shrink-0">
-                        <TrendingUp className="h-5 w-5 text-indigo-600" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-xs text-indigo-600 font-semibold uppercase tracking-wide mb-1">
-                          Performance Factor
-                        </p>
-                        <p className="text-sm font-semibold text-foreground">
-                          {t.temp_performance_factor}
-                        </p>
-                      </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             ))}
+            {/* Confirm Delete Dialog (single instance) */}
+            <Dialog
+              open={confirmDeleteId !== null}
+              onOpenChange={(o) => {
+                if (!o) closeConfirmDelete();
+              }}
+            >
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Delete template?</DialogTitle>
+                  <DialogDescription>
+                    This action cannot be undone. This will permanently delete
+                    the goal template "
+                    {
+                      templates.find((x) => x.temp_id === confirmDeleteId)
+                        ?.temp_title
+                    }
+                    ".
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="flex-col sm:flex-row gap-2">
+                  <Button
+                    variant={BUTTON_STYLES.CANCEL_SECONDARY.variant}
+                    onClick={closeConfirmDelete}
+                    className={`w-full sm:w-auto ${BUTTON_STYLES.CANCEL_SECONDARY.className}`}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={confirmDelete}
+                    disabled={deletingId === confirmDeleteId}
+                    variant={BUTTON_STYLES.DELETE.variant}
+                    className={`w-full sm:w-auto ${BUTTON_STYLES.DELETE.className}`}
+                  >
+                    {deletingId === confirmDeleteId
+                      ? "Deleting…"
+                      : "Confirm delete"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
       </div>

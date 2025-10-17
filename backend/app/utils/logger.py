@@ -100,55 +100,98 @@ def log_execution_time(logger: Optional[logging.Logger] = None, include_args: bo
     return decorator
 
 
-def log_exception(logger: Optional[logging.Logger] = None, reraise: bool = True):
+def log_exception(*f_args, **f_kwargs):
     """
-    Decorator to log exceptions with full traceback.
-    
-    Args:
-        logger: Optional logger instance. If not provided, will create one.
-        reraise: Whether to reraise the exception after logging.
+    Robust dual-purpose helper/decorator for exception logging.
+
+    Supported usages:
+      - As a bare decorator: @log_exception
+      - As a decorator with parentheses: @log_exception() or @log_exception(reraise=False)
+      - As a decorator with a Logger positional arg: @log_exception(logger)
+      - As a helper: log_exception(logger, exc, context, operation, error_msg=None)
+
+    This implementation avoids the common decorator-factory pitfall where
+    returning the inner factory function directly causes Python to pass the
+    decorated function into the factory's first parameter. That mismatch led
+    to the `_decorator() got an unexpected keyword argument '...'` TypeError.
     """
-    def decorator(func: Callable) -> Callable:
-        
-        @wraps(func)
-        async def async_wrapper(*args, **kwargs):
-            log = logger or get_logger(func.__module__)
-            func_name = f"{func.__module__}.{func.__qualname__}"
-            
-            try:
-                return await func(*args, **kwargs)
-            except Exception as e:
-                log.error(
-                    f"Exception in {func_name}: {str(e)}\n"
-                    f"Traceback:\n{traceback.format_exc()}"
-                )
-                if reraise:
-                    raise
-                return None
-        
-        @wraps(func)
-        def sync_wrapper(*args, **kwargs):
-            log = logger or get_logger(func.__module__)
-            func_name = f"{func.__module__}.{func.__qualname__}"
-            
-            try:
-                return func(*args, **kwargs)
-            except Exception as e:
-                log.error(
-                    f"Exception in {func_name}: {str(e)}\n"
-                    f"Traceback:\n{traceback.format_exc()}"
-                )
-                if reraise:
-                    raise
-                return None
-        
-        # Check if function is async
-        if inspect.iscoroutinefunction(func):
-            return async_wrapper
-        else:
-            return sync_wrapper
-    
-    return decorator
+
+    def _make_decorator(bound_logger: Optional[logging.Logger] = None, reraise: bool = True):
+        """Return a real decorator that accepts a function."""
+        def _decorator(func: Callable) -> Callable:
+            @wraps(func)
+            async def async_wrapper(*args, **kwargs):
+                log = bound_logger or get_logger(func.__module__)
+                func_name = f"{func.__module__}.{func.__qualname__}"
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    try:
+                        log.error(
+                            f"Exception in {func_name}: {str(e)}\n"
+                            f"Traceback:\n{traceback.format_exc()}"
+                        )
+                    except Exception:
+                        # Ensure logging doesn't raise
+                        pass
+                    if reraise:
+                        raise
+                    return None
+
+            @wraps(func)
+            def sync_wrapper(*args, **kwargs):
+                log = bound_logger or get_logger(func.__module__)
+                func_name = f"{func.__module__}.{func.__qualname__}"
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    try:
+                        log.error(
+                            f"Exception in {func_name}: {str(e)}\n"
+                            f"Traceback:\n{traceback.format_exc()}"
+                        )
+                    except Exception:
+                        pass
+                    if reraise:
+                        raise
+                    return None
+
+            return async_wrapper if inspect.iscoroutinefunction(func) else sync_wrapper
+
+        return _decorator
+
+    # Helper-mode: log_exception(logger, exc, context, operation, error_msg=None)
+    if f_args and isinstance(f_args[0], logging.Logger) and len(f_args) > 1:
+        logger = f_args[0]
+        exc = f_args[1] if len(f_args) > 1 else None
+        context = f_args[2] if len(f_args) > 2 else ""
+        operation = f_args[3] if len(f_args) > 3 else ""
+        error_msg = f_args[4] if len(f_args) > 4 else None
+
+        try:
+            logger.error(
+                f"{context}{operation} - Exception: {str(exc)}\nTraceback:\n{traceback.format_exc()}"
+            )
+            if error_msg:
+                logger.error(f"{context}{error_msg}")
+        except Exception:
+            # Avoid raising from logging helper
+            pass
+        return
+
+    # If used as bare decorator without parentheses: @log_exception
+    if len(f_args) == 1 and callable(f_args[0]) and not isinstance(f_args[0], logging.Logger):
+        func = f_args[0]
+        return _make_decorator()(func)
+
+    # If called with a single Logger positional arg as in @log_exception(logger)
+    if len(f_args) == 1 and isinstance(f_args[0], logging.Logger) and not f_kwargs:
+        return _make_decorator(f_args[0])
+
+    # Otherwise treat it as @log_exception(...) where kwargs may include logger/reraise
+    kw_logger = f_kwargs.get('logger') if 'logger' in f_kwargs else None
+    kw_reraise = f_kwargs.get('reraise', True)
+    return _make_decorator(kw_logger, kw_reraise)
 
 
 def log_function_call(

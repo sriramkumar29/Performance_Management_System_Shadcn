@@ -177,7 +177,7 @@ const AddGoalModal = ({
         <DialogHeader className="pb-3">
           <div className="flex items-center justify-between gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
-              <Plus className="h-5 w-5 text-primary" />
+              <Target className="h-5 w-5 text-primary" />
             </div>
             <div>
               <DialogTitle className="text-lg sm:text-xl font-semibold text-foreground">
@@ -188,8 +188,7 @@ const AddGoalModal = ({
               </p>
             </div>
             <div className="text-xs text-muted-foreground ml-auto">
-              Remaining:{" "}
-              <span className="font-medium">{remainingWeightage}%</span>
+
             </div>
           </div>
         </DialogHeader>
@@ -202,7 +201,7 @@ const AddGoalModal = ({
                   htmlFor="goal_title"
                   className="text-sm font-medium text-foreground flex items-center gap-2"
                 >
-                  <Target className="h-4 w-4 text-primary" />
+                  {/*    */}
                   Goal Title
                 </Label>
                 <Input

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -6,6 +7,9 @@ import {
   Plus,
   FolderOpen,
   Target,
+  Tag,
+  Flag,
+  Weight,
 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { Badge } from "../../../components/ui/badge";
@@ -17,9 +21,17 @@ import {
   CardDescription,
 } from "../../../components/ui/card";
 import { Progress } from "../../../components/ui/progress";
-import { getBadgeVariant } from "../helpers/uiHelpers";
+// ...existing code...
 import { calculateTotalWeightage } from "../helpers/goalHelpers";
 import { BUTTON_STYLES, ICON_SIZES } from "../../../constants/buttonStyles";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../../../components/ui/dialog";
 
 interface AppraisalGoal {
   id: number;
@@ -71,6 +83,31 @@ export const GoalsSection = ({
   onRemoveGoal,
 }: GoalsSectionProps) => {
   const totalWeightageUi = calculateTotalWeightage(goals);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const openConfirmRemove = (id: number) => setConfirmRemoveId(id);
+  const closeConfirmRemove = () => setConfirmRemoveId(null);
+  const confirmRemove = async () => {
+    if (confirmRemoveId == null) return;
+    try {
+      setDeletingId(confirmRemoveId);
+      // Call parent handler - may be sync or async. If it returns a promise, await it.
+      // onRemoveGoal might be sync or return a Promise; coerce to any for runtime check
+      const maybePromise: any = (onRemoveGoal as any)(confirmRemoveId);
+      if (maybePromise && typeof maybePromise.then === "function") {
+        await maybePromise;
+      }
+    } catch (e) {
+      // Log so we don't swallow silently and to satisfy linters
+      // Parent is still expected to show user-facing errors/toasts
+      // eslint-disable-next-line no-console
+      console.error("Error removing goal:", e);
+    } finally {
+      setDeletingId(null);
+      closeConfirmRemove();
+    }
+  };
 
   return (
     <Card>
@@ -93,7 +130,7 @@ export const GoalsSection = ({
               title={addGoalDisabledReason}
             >
               <Plus className={ICON_SIZES.DEFAULT} />
-              <span className="ml-2">Add Goal</span>
+              <span className="ml-2">Add Manually</span>
             </Button>
             <Button
               variant={BUTTON_STYLES.VIEW.variant}
@@ -101,6 +138,7 @@ export const GoalsSection = ({
               onClick={onImportFromTemplate}
               disabled={!canAddGoals}
               aria-label="Import from templates"
+              data-testid="import-templates-toolbar"
               title={addGoalDisabledReason}
             >
               <FolderOpen className={`${ICON_SIZES.DEFAULT} text-icon`} />
@@ -118,35 +156,108 @@ export const GoalsSection = ({
                 <span className="font-medium">{totalWeightageUi}%</span>
               </div>
             </div>
+            {/* Confirm Delete Dialog for selected goal */}
+            <Dialog
+              open={confirmRemoveId !== null}
+              onOpenChange={(open) => {
+                if (!open) closeConfirmRemove();
+              }}
+            >
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Delete goal?</DialogTitle>
+                  <DialogDescription>
+                    This action cannot be undone. This will permanently remove
+                    the goal "
+                    {
+                      goals.find((g) => g.goal.goal_id === confirmRemoveId)
+                        ?.goal.goal_title
+                    }
+                    ".
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="flex-col sm:flex-row gap-2">
+                  <Button
+                    variant={BUTTON_STYLES.CANCEL_SECONDARY.variant}
+                    onClick={closeConfirmRemove}
+                    className={`w-full sm:w-auto ${BUTTON_STYLES.CANCEL_SECONDARY.className}`}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={confirmRemove}
+                    disabled={deletingId === confirmRemoveId}
+                    variant={BUTTON_STYLES.DELETE.variant}
+                    className={`w-full sm:w-auto ${BUTTON_STYLES.DELETE.className}`}
+                  >
+                    {deletingId === confirmRemoveId
+                      ? "Deleting…"
+                      : "Confirm delete"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             <Progress value={totalWeightageUi} />
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-6">
               {goals.map((record) => (
                 <Card
                   key={record.goal.goal_id}
                   className="group relative overflow-hidden border shadow-sm hover:shadow-md transition-shadow"
                 >
-                  <CardHeader className="h-full p-4 pr-4 flex flex-col">
-                    {/* Weightage badge */}
-                    <div className="absolute top-2 right-2 rounded-full bg-primary/10 text-primary text-xs font-medium px-2 py-0.5">
-                      {record.goal.goal_weightage}%
-                    </div>
+                  {/* reduced padding to make card more compact */}
+                  {/* increased min height so cards are taller */}
+                  <CardHeader className="h-full p-4 pr-4 flex flex-col min-h-[12rem]">
+                    {/* Remove absolute weightage badge; show inline badges next to title */}
 
                     {/* Header with icon and text */}
                     <div className="flex items-start gap-2">
-                      <div className="p-2 rounded-md bg-primary/10 text-primary">
-                        <Target className="h-4 w-4" />
+                      <div className="p-1.5 rounded-md bg-primary/10 text-primary">
+                        <Target className="h-3.5 w-3.5" />
                       </div>
-                      <div className="min-w-0 space-y-0.5">
-                        <CardTitle
-                          className="text-sm font-semibold truncate"
-                          title={record.goal.goal_title}
-                        >
-                          {record.goal.goal_title}
-                        </CardTitle>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <CardTitle
+                            className="text-sm font-semibold truncate"
+                            title={record.goal.goal_title}
+                          >
+                            {record.goal.goal_title}
+                          </CardTitle>
+
+                          {/* Category badge next to title (if present) */}
+                          {record.goal.category?.name ? (
+                            <Badge
+                              variant="outline"
+                              className="bg-amber-50 text-amber-700 border-amber-300 font-medium text-xs flex items-center gap-1"
+                            >
+                              <Tag className="h-3 w-3 text-amber-600" />
+                              {record.goal.category.name}
+                            </Badge>
+                          ) : null}
+
+                          {/* Importance badge next to title */}
+                          <Badge
+                            variant="secondary"
+                            className="bg-rose-100 text-rose-700 border-rose-300 font-semibold text-xs flex items-center gap-1"
+                          >
+                            <Flag className="h-3 w-3" />
+                            {record.goal.goal_importance}
+                          </Badge>
+
+                          {/* Weightage badge next to title */}
+                          <Badge
+                            variant="default"
+                            className="text-xs bg-purple-50 text-purple-700 border-purple-200 flex-shrink-0 flex items-center gap-1"
+                          >
+                            <Weight className="h-3 w-3 mr-1" />
+                            {record.goal.goal_weightage}%
+                          </Badge>
+                        </div>
+
                         {record.goal.goal_description && (
                           <CardDescription
-                            className="text-xs text-muted-foreground line-clamp-5 leading-snug"
+                            className="text-xs text-muted-foreground leading-snug mt-1 max-h-[6.75rem] overflow-y-auto pr-3 scrollbar-y break-words whitespace-normal overflow-x-hidden"
                             title={record.goal.goal_description}
+                            style={{ WebkitOverflowScrolling: "touch" }}
                           >
                             {record.goal.goal_description}
                           </CardDescription>
@@ -157,26 +268,14 @@ export const GoalsSection = ({
                     {/* Spacer to push meta to bottom */}
                     <div className="flex-1" />
 
-                    {/* Meta row at bottom */}
-                    <div className="pt-2 mt-auto flex flex-wrap items-center gap-2 text-xs">
-                      {record.goal.category?.name ? (
-                        <Badge variant="outline">
-                          {record.goal.category.name}
-                        </Badge>
-                      ) : null}
-                      <Badge
-                        variant={getBadgeVariant(record.goal.goal_importance)}
-                        title="Importance"
-                      >
-                        {record.goal.goal_importance}
-                      </Badge>
-                    </div>
+                    {/* Spacer preserved to keep card layout consistent */}
+                    <div className="pt-2 mt-auto" />
 
                     {/* Action buttons bottom-right (show on hover on larger screens) */}
-                    <div className="absolute bottom-2 right-2 flex items-center gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    <div className="absolute bottom-2 right-2 flex items-center gap-2">
                       <Button
-                        variant={BUTTON_STYLES.EDIT.variant}
-                        size={BUTTON_STYLES.EDIT.size}
+                        variant={BUTTON_STYLES.EDITGOALSECTION.variant}
+                        size={BUTTON_STYLES.EDITGOALSECTION.size}
                         disabled={isLocked}
                         onClick={() => onEditGoal(record)}
                         aria-label="Edit goal"
@@ -186,9 +285,9 @@ export const GoalsSection = ({
                       </Button>
                       <Button
                         variant={BUTTON_STYLES.DELETE.variant}
-                        size={BUTTON_STYLES.DELETE.size}
+                        size={BUTTON_STYLES.EDITGOALSECTION.size}
                         disabled={isLocked}
-                        onClick={() => onRemoveGoal(record.goal.goal_id)}
+                        onClick={() => openConfirmRemove(record.goal.goal_id)}
                         aria-label="Remove goal"
                         title="Remove goal"
                       >
@@ -230,32 +329,6 @@ export const GoalsSection = ({
                   <span>Appraisal type and period set</span>
                 </div>
               </div>
-            </div>
-            <div className="mt-4 flex items-center gap-2 flex-wrap justify-center">
-              <Button
-                variant={BUTTON_STYLES.CREATE.variant}
-                size={BUTTON_STYLES.CREATE.size}
-                onClick={onAddGoal}
-                disabled={!canAddGoals}
-                className="gap-2"
-                data-testid="add-goal-empty"
-                aria-label="Add goal"
-                title={addGoalDisabledReason}
-              >
-                <Plus className={ICON_SIZES.DEFAULT} />
-                <span className="hidden sm:inline sm:ml-2">Add Goal</span>
-              </Button>
-              <Button
-                variant={BUTTON_STYLES.VIEW.variant}
-                size={BUTTON_STYLES.VIEW.size}
-                onClick={onImportFromTemplate}
-                disabled={!canAddGoals}
-                aria-label="Import from templates"
-                title={addGoalDisabledReason}
-              >
-                <FolderOpen className={`${ICON_SIZES.DEFAULT} text-icon`} />
-                <span className="ml-2">Import from Templates</span>
-              </Button>
             </div>
           </div>
         )}

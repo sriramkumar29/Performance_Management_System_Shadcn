@@ -26,6 +26,8 @@ import {
   CheckCircle2,
   Clock,
   Weight,
+  Tag,
+  Target,
   Send,
   User,
   UserCheck,
@@ -742,7 +744,7 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
                 >
                   <Card
                     id={`goal-card-${goalId}`}
-                    className="shadow-soft hover-lift border-0 glass-effect animate-slide-up scroll-mt-24"
+                    className="shadow-soft  hover:shadow-md transition-all border-l-4 scroll-mt-20"
                   >
                     <CollapsibleTrigger asChild>
                       <CardHeader className="pb-4 cursor-pointer hover:bg-accent/50 transition-colors">
@@ -751,18 +753,28 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="p-1.5 rounded-lg bg-primary/10 flex-shrink-0">
-                                <Flag className="h-4 w-4 text-primary" />
+                                <Target className="h-4 w-4 text-primary" />
                               </div>
                               <span className="text-base font-bold text-foreground">
                                 Goal {index + 1}
                               </span>
                               {ag.goal.category && (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-xs bg-indigo-100 text-indigo-700 border-indigo-200 flex-shrink-0"
-                                >
-                                  {ag.goal.category.name}
-                                </Badge>
+                                <>
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs bg-amber-50 text-amber-600 border-amber-200 flex-shrink-0 flex items-center gap-1 "
+                                  >
+                                    <Tag className="h-4 w-4 text-amber-600" />
+                                    {ag.goal.category.name}
+                                  </Badge>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs bg-purple-50 text-purple-700 border-purple-200 flex-shrink-0 flex items-center gap-1"
+                                  >
+                                    <Weight className="h-3 w-3" />
+                                    Weightage: {ag.goal.goal_weightage}%
+                                  </Badge>
+                                </>
                               )}
                             </div>
                             <div className="flex items-center gap-2">
@@ -797,13 +809,6 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
                               <h2 className="text-base font-semibold text-foreground leading-tight truncate">
                                 {ag.goal.goal_title}
                               </h2>
-                              <Badge
-                                variant="outline"
-                                className="text-xs bg-purple-50 text-purple-700 border-purple-200 flex-shrink-0 flex items-center gap-1"
-                              >
-                                <Weight className="h-3 w-3" />
-                                Weightage: {ag.goal.goal_weightage}%
-                              </Badge>
                             </div>
                           </div>
                         </div>

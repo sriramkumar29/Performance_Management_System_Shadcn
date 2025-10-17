@@ -141,6 +141,12 @@ export const BUTTON_STYLES = {
         size: BUTTON_SIZES.DEFAULT,
     },
 
+    EDITGOALSECTION: {
+        variant: BUTTON_VARIANTS.SECONDARY,
+        className: 'border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/40',
+        size: BUTTON_SIZES.SM,
+    },
+
     /** Save draft button (secondary save action) */
     SAVE_DRAFT: {
         variant: BUTTON_VARIANTS.SECONDARY,

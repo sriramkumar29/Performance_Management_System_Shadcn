@@ -98,6 +98,21 @@ export default function PeriodFilter({
     onChange(period);
   }, [period]);
 
+  // Sync internal state when parent-controlled `value` prop changes
+  useEffect(() => {
+    if (!value) return;
+    // Avoid unnecessary updates if the value is identical
+    if (
+      value.label === period.label &&
+      value.startDate === period.startDate &&
+      value.endDate === period.endDate
+    ) {
+      return;
+    }
+    setPeriod(value);
+    setMode(value.label as Preset);
+  }, [value]);
+
   // Ensure the range stays valid: end >= start
   useEffect(() => {
     if (mode !== "Custom Range") return;

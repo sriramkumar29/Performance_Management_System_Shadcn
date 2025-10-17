@@ -13,7 +13,7 @@ import {
   FiltersSkeleton,
   PaginationSkeleton,
 } from "../../components/FiltersSkeleton";
-import { CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
+import { CheckCircle2, ArrowRight, ArrowLeft, RefreshCw } from "lucide-react";
 import { Label } from "../../components/ui/label";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import {
@@ -632,6 +632,32 @@ const MyAppraisal = () => {
                 onChange={setPeriod}
               />
             </div>
+            <div className="w-full md:w-auto flex-none flex items-end md:ml-auto">
+              <Button
+                variant={BUTTON_STYLES.GHOST_ICON.variant}
+                size={BUTTON_STYLES.GHOST_ICON.size}
+                onClick={() => {
+                  setSearchName("");
+                  setSearchTypeId("all");
+                  setMyFilter("Active");
+                  setPeriod(() => {
+                    const y = new Date().getFullYear();
+                    const start = new Date(y, 0, 1).toISOString().slice(0, 10);
+                    const end = new Date(y, 11, 31).toISOString().slice(0, 10);
+                    return {
+                      label: "This Year",
+                      startDate: start,
+                      endDate: end,
+                    };
+                  });
+                }}
+                className="ml-2 border border-border"
+                title="Reset filters"
+                aria-label="Reset filters"
+              >
+                <RefreshCw className={ICON_SIZES.DEFAULT} />
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -675,7 +701,7 @@ const MyAppraisal = () => {
               Active
               <Badge
                 variant="secondary"
-                className="ml-2 bg-blue-100 text-blue-700 border-0 font-semibold"
+                className="ml-2 bg-slate-100 text-slate-700 border-0 font-semibold"
               >
                 {myActives.length}
               </Badge>
@@ -696,7 +722,7 @@ const MyAppraisal = () => {
               Completed
               <Badge
                 variant="secondary"
-                className="ml-2 bg-green-100 text-green-700 border-0 font-semibold"
+                className="ml-2 bg-slate-100 text-slate-700 border-0 font-semibold"
               >
                 {myCompleted.length}
               </Badge>
@@ -717,7 +743,7 @@ const MyAppraisal = () => {
               Overdue
               <Badge
                 variant="secondary"
-                className="ml-2 bg-red-100 text-red-700 border-0 font-semibold"
+                className="ml-2 bg-slate-100 text-slate-700 border-0 font-semibold"
               >
                 {myOverdue.length}
               </Badge>

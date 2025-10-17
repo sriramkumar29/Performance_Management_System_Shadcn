@@ -16,10 +16,17 @@
  */
 
 import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  within,
+  fireEvent,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BrowserRouter } from "react-router-dom";
 import AppraisalWorkflow from "../../../components/AppraisalWorkflow";
+import CreateAppraisal from "../../../pages/appraisal-create/CreateAppraisal";
 import { AuthContext } from "../../../contexts/AuthContext";
 import { apiFetch } from "../../../utils/api";
 
@@ -49,11 +56,13 @@ vi.mock("react-router-dom", async () => {
 // Mock Radix UI components
 vi.mock("@radix-ui/react-select", () => ({
   Root: ({ children }: any) => <div>{children}</div>,
+  Portal: ({ children }: any) => <div>{children}</div>,
   Trigger: ({ children, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
   Value: ({ children }: any) => <span>{children}</span>,
   Content: ({ children }: any) => <div>{children}</div>,
+  Viewport: ({ children }: any) => <div>{children}</div>,
   Item: ({ children, value, ...props }: any) => (
     <option value={value} {...props}>
       {children}
@@ -177,14 +186,15 @@ const renderWithAuth = (ui: React.ReactElement, user = mockManager) => {
 };
 
 describe("Appraisal Status Workflow Tests (TC-B07)", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
-    // Set default mock response for apiFetch
+    // Set default mock response for apiFetch using helper router
     const mockApiFetch = vi.mocked(apiFetch);
-    mockApiFetch.mockResolvedValue({
-      ok: true,
-      data: mockAppraisalDraft,
-    });
+    const mod = await import("../../../test/utils/mockApi");
+    const createApiRouter = mod.createApiRouter;
+    const router = createApiRouter(mockApiFetch);
+    router.route("/appraisals/1", { ok: true, data: mockAppraisalDraft });
+    router.install();
   });
 
   it("TC-B07.1: should accept valid status sequence (Draft → Submitted → Reviewed → Complete)", async () => {
@@ -382,14 +392,14 @@ describe("Self-Assessment Rating Tests (TC-B08)", () => {
 });
 
 describe("Appraiser Rating Tests (TC-B09)", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
-    // Set default mock response for apiFetch
     const mockApiFetch = vi.mocked(apiFetch);
-    mockApiFetch.mockResolvedValue({
-      ok: true,
-      data: mockAppraisalDraft,
-    });
+    const mod = await import("../../../test/utils/mockApi");
+    const createApiRouter = mod.createApiRouter;
+    const router = createApiRouter(mockApiFetch);
+    router.route("/appraisals/1", { ok: true, data: mockAppraisalDraft });
+    router.install();
   });
 
   it("TC-B09.1: should accept boundary values (1 and 5) for appraiser rating", async () => {
@@ -1174,7 +1184,7 @@ describe("Access Control by Role and Status Tests (TC-B17)", () => {
     );
 
     // Appraisee should have access to self-assessment fields
-    const textareas = screen.queryAllByRole("textbox");
+    const textareas = screen.getAllByRole("textbox");
     expect(textareas.length).toBeGreaterThan(0);
   });
 
@@ -1204,7 +1214,7 @@ describe("Access Control by Role and Status Tests (TC-B17)", () => {
     });
 
     // In appraiser mode, component should render (specific text may vary)
-    const textareas = screen.queryAllByRole("textbox");
+    const textareas = screen.getAllByRole("textbox");
     expect(textareas.length).toBeGreaterThan(0);
   });
 
@@ -1234,7 +1244,7 @@ describe("Access Control by Role and Status Tests (TC-B17)", () => {
     });
 
     // Reviewer mode should render with editable fields
-    const textareas = screen.queryAllByRole("textbox");
+    const textareas = screen.getAllByRole("textbox");
     expect(textareas.length).toBeGreaterThan(0);
   });
 
@@ -1281,7 +1291,7 @@ describe("Access Control by Role and Status Tests (TC-B17)", () => {
     });
 
     // All textareas should be disabled in read-only mode
-    const textareas = screen.queryAllByRole("textbox");
+    const textareas = screen.getAllByRole("textbox");
     if (textareas.length > 0) {
       textareas.forEach((textarea) => {
         expect(textarea).toBeDisabled();
@@ -1422,5 +1432,120 @@ describe("Integration Tests: Complete Workflows", () => {
       }
     );
     expect(earlyReviewerAccess.ok).toBe(false);
+  });
+
+  it("UI-TC-B07: should trigger toast and navigate on submit (status transition) via UI", async () => {
+    const mockApiFetch = vi.mocked(apiFetch);
+    const { toast } = await import("sonner");
+
+    // Render the CreateAppraisal modal/page which contains the submit button testid
+    // Provide an appraisal that is Draft and allow submit endpoint to succeed
+    mockApiFetch.mockImplementation((url: string, options?: any) => {
+      if (url.includes("/appraisals/1") && options?.method === "PUT") {
+        return Promise.resolve({
+          ok: true,
+          data: { ...mockAppraisalDraft, status: "Submitted" },
+        });
+      }
+      if (url.includes("/appraisals/1") && !options) {
+        return Promise.resolve({ ok: true, data: mockAppraisalDraft });
+      }
+      return Promise.resolve({ ok: true, data: [] });
+    });
+
+    // Render the Create Appraisal page so the submit button (testid) is present
+    renderWithAuth(<CreateAppraisal />, mockManager);
+
+    // Wait for the submit button to appear (testid provided in CreateAppraisal/Modal)
+    const submitBtn = await screen.findByTestId(
+      "submit-for-acknowledgement-button"
+    );
+    expect(submitBtn).toBeDefined();
+
+    // Click submit and expect toast.success called
+    await userEvent.click(submitBtn);
+
+    await waitFor(() =>
+      expect((toast.success as any).mock.calls.length).toBeGreaterThan(0)
+    );
+  });
+
+  it("UI-TC-B06: should show toast.error when imported templates total != 100%", async () => {
+    const mockApiFetch = vi.mocked(apiFetch);
+    const { toast } = await import("sonner");
+
+    const templates = [
+      {
+        ...mockGoalTemplate,
+        id: 101,
+        temp_id: 101,
+        temp_title: "T1",
+        temp_weightage: 60,
+      },
+      {
+        ...mockGoalTemplate,
+        id: 102,
+        temp_id: 102,
+        temp_title: "T2",
+        temp_weightage: 50,
+      },
+    ];
+
+    // Mock templates fetch and POST /appraisals rejection
+    mockApiFetch.mockImplementation((url: string, options?: any) => {
+      if (url.includes("/goals/templates") && (!options || !options.method)) {
+        return Promise.resolve({ ok: true, data: templates });
+      }
+      if (/\/appraisals\/?$/.test(url) && options?.method === "POST") {
+        return Promise.resolve({
+          ok: false,
+          error: "Total weightage must be 100%. Current total: 110%",
+        });
+      }
+      return Promise.resolve({ ok: true, data: [] });
+    });
+
+    // Render modal directly and interact
+    const stagedGoals: any[] = [];
+    const onGoalAdded = (g: any) => stagedGoals.push(g);
+
+    const { default: ImportFromTemplateModal } = await import(
+      "../../../features/goals/ImportFromTemplateModal"
+    );
+
+    renderWithAuth(
+      <ImportFromTemplateModal
+        open={true}
+        onClose={() => {}}
+        onGoalAdded={onGoalAdded}
+        appraisalId={1}
+        remainingWeightage={100}
+      />,
+      mockManager
+    );
+
+    // Wait for template cards and select both
+    for (const t of templates) {
+      const card = await screen.findByTestId(`template-card-${t.temp_id}`);
+      await userEvent.click(card);
+      const weightInput = await screen.findByTestId(`weightage-${t.temp_id}`);
+      fireEvent.change(weightInput, {
+        target: { value: String(t.temp_weightage) },
+      });
+    }
+
+    const importBtn = screen.getByRole("button", { name: /Import Selected/i });
+    await userEvent.click(importBtn);
+
+    // Simulate save via POST which will be rejected
+    const payload = { appraisal_goals: stagedGoals.map((s) => s.goal) } as any;
+    await (apiFetch as any)("/api/appraisals", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    await waitFor(() =>
+      expect((toast.error as any).mock.calls.length).toBeGreaterThan(0)
+    );
   });
 });

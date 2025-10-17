@@ -10,7 +10,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
-import { X, Download, Weight } from "lucide-react";
+import { X, Download, Weight, Flag, Tag } from "lucide-react";
 import {
   Select as UiSelect,
   SelectTrigger,
@@ -95,9 +95,19 @@ const ImportFromTemplateModal = ({
 
   useEffect(() => {
     if (open) {
+      // clear previous selection when opening
+      setSelected({});
       void loadTemplates();
+    } else {
+      // also clear when modal closes
+      setSelected({});
     }
   }, [open]);
+
+  const closeAndReset = () => {
+    setSelected({});
+    onClose();
+  };
 
   const loadTemplates = async () => {
     try {
@@ -218,7 +228,7 @@ const ImportFromTemplateModal = ({
       toast.success("Imported", {
         description: "Templates staged as goals. Save to apply changes.",
       });
-      onClose();
+      closeAndReset();
     } catch (e: any) {
       toast.error("Import failed", {
         description: e?.message || "Please try again.",
@@ -241,7 +251,7 @@ const ImportFromTemplateModal = ({
     <Dialog
       open={open}
       onOpenChange={(o) => {
-        if (!o) onClose();
+        if (!o) closeAndReset();
       }}
     >
       <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
@@ -293,16 +303,26 @@ const ImportFromTemplateModal = ({
               </div>
             )}
             {visible.map((t) => (
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events
               <div
                 key={t.temp_id}
+                data-testid={`template-card-${t.temp_id}`}
+                onClick={() =>
+                  toggleSelect(
+                    t.temp_id,
+                    t.categories?.[0]?.id,
+                    t.temp_weightage
+                  )
+                }
                 className={`rounded-lg border ${
                   selected[t.temp_id]?.checked
                     ? "border-primary/50 bg-primary/5"
                     : "border-border/50 bg-card/50"
-                } p-3 transition-all hover:shadow-sm`}
+                } p-3 transition-all hover:shadow-sm cursor-pointer`}
               >
                 <div className="flex items-start gap-2 sm:gap-3">
                   <Checkbox
+                    data-testid={`template-checkbox-${t.temp_id}`}
                     checked={!!selected[t.temp_id]?.checked}
                     onCheckedChange={() =>
                       toggleSelect(
@@ -312,33 +332,47 @@ const ImportFromTemplateModal = ({
                       )
                     }
                     className="mt-1 flex-shrink-0"
+                    onClick={(e) => e.stopPropagation()}
                   />
                   <div className="flex-1 min-w-0 space-y-3">
                     <div className="min-w-0">
-                      <div className="font-semibold text-sm sm:text-base text-foreground break-words">
-                        {t.temp_title}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="font-semibold text-sm sm:text-base text-foreground break-words">
+                          {t.temp_title}
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Badge
+                            variant="secondary"
+                            className="bg-rose-100 text-rose-700 border-rose-300 font-semibold text-xs flex items-center gap-1"
+                          >
+                            <Flag className="h-3 w-3" />
+                            {t.temp_importance}
+                          </Badge>
+                          <Badge
+                            variant="default"
+                            className="text-xs bg-purple-50 text-purple-700 border-purple-200 flex-shrink-0 flex items-center gap-1"
+                          >
+                            <Weight className="h-3 w-3 mr-1" />
+                            {t.temp_weightage}%
+                          </Badge>
+                        </div>
                       </div>
-                      <div className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2 break-words">
+                      <div className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-3 break-words overflow-y-auto">
                         {t.temp_description}
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-2">
                       {t.categories?.map((c) => (
-                        <Badge key={c.id} variant="outline" className="text-xs">
+                        <Badge
+                          key={c.id}
+                          variant="outline"
+                          className="bg-amber-50 text-amber-600 border-amber-200 font-semibold text-xs flex items-center gap-1"
+                        >
+                          <Tag className="h-4 w-4 text-amber-600" />
                           {c.name}
                         </Badge>
                       ))}
-                      <Badge variant="secondary" className="text-xs">
-                        {t.temp_importance}
-                      </Badge>
-                      <Badge
-                        variant="default"
-                        className="text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/20"
-                      >
-                        <Weight className="h-3 w-3 mr-1" />
-                        {t.temp_weightage}%
-                      </Badge>
                     </div>
 
                     {selected[t.temp_id]?.checked && (
@@ -357,10 +391,14 @@ const ImportFromTemplateModal = ({
                               setCategoryFor(t.temp_id, Number.parseInt(val))
                             }
                           >
-                            <SelectTrigger className="h-10 focus:ring-2 focus:ring-primary/20 border-border/50">
+                            <SelectTrigger
+                              className="h-10 focus:ring-2 focus:ring-primary/20 border-border/50"
+                              onClick={(e) => e.stopPropagation()}
+                              onMouseDown={(e) => e.stopPropagation()}
+                            >
                               <SelectValue placeholder="Select category" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent onClick={(e) => e.stopPropagation()}>
                               {t.categories?.map((c) => (
                                 <SelectItem key={c.id} value={String(c.id)}>
                                   {c.name}
@@ -385,6 +423,7 @@ const ImportFromTemplateModal = ({
                           </Label>
                           <Input
                             id={`weightage-${t.temp_id}`}
+                            data-testid={`weightage-${t.temp_id}`}
                             type="number"
                             min="1"
                             max={remainingWeightage}
@@ -397,6 +436,9 @@ const ImportFromTemplateModal = ({
                               )
                             }
                             className="h-10 focus:ring-2 focus:ring-primary/20 border-border/50"
+                            onClick={(e) => e.stopPropagation()}
+                            onFocus={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
                           />
                         </div>
                       </div>
@@ -411,7 +453,7 @@ const ImportFromTemplateModal = ({
         <div className="flex flex-col sm:flex-row justify-end gap-2 px-4 sm:px-6 py-3 sm:py-4 border-t border-border/50 bg-card/30">
           <Button
             variant={BUTTON_STYLES.CANCEL.variant}
-            onClick={onClose}
+            onClick={closeAndReset}
             disabled={loading}
             title="Cancel"
             aria-label="Cancel"
