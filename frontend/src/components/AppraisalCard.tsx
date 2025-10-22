@@ -79,8 +79,8 @@ export function AppraisalCard(props: Readonly<AppraisalCardProps>) {
       <>
         <span className="text-primary font-bold text-base">
           {daysRemaining}
-        </span>{" "}
-        <span> day{plural} remaining</span>
+        </span>
+        <span className="ml-1">day(s) remaining</span>
       </>
     );
   }

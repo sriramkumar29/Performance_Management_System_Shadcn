@@ -20,6 +20,14 @@ goal_template_categories = Table(
     Column("category_id", Integer, ForeignKey(CATEGORIES_ID, ondelete=ON_DELETE_CASCADE), primary_key=True)
 )
 
+# Many-to-many association table for goals <-> categories
+goal_categories = Table(
+    "goal_categories",
+    Base.metadata,
+    Column("goal_id", Integer, ForeignKey(GOALS_GOAL_ID, ondelete=ON_DELETE_CASCADE), primary_key=True),
+    Column("category_id", Integer, ForeignKey(CATEGORIES_ID, ondelete=ON_DELETE_CASCADE), primary_key=True)
+)
+
 # Removed goal_categories association table - now using direct foreign key
 
 
@@ -37,7 +45,13 @@ class Category(Base):
         secondary=goal_template_categories,
         back_populates="categories"
     )
-    goals = relationship("Goal", back_populates="category")
+
+    # Many-to-many relationship with goals (a Category can apply to many Goals)
+    goals = relationship(
+        "Goal",
+        secondary=goal_categories,
+        back_populates="categories"
+    )
 
 
 class GoalTemplate(Base):
@@ -68,6 +82,7 @@ class Goal(Base):
     
     goal_id = Column(Integer, primary_key=True, index=True)
     goal_template_id = Column(Integer, ForeignKey(GOALS_TEMPLATE_TEMP_ID, ondelete=ON_DELETE_SET_NULL), nullable=True)
+    # Keep legacy single-category FK for backward compatibility
     category_id = Column(Integer, ForeignKey(CATEGORIES_ID, ondelete=ON_DELETE_SET_NULL), nullable=True)
     goal_title = Column(String, nullable=False)
     goal_description = Column(String, nullable=False)
@@ -77,7 +92,17 @@ class Goal(Base):
     
     # Relationships - using string-based references to avoid circular imports
     template = relationship("GoalTemplate", back_populates="goals")
-    category = relationship("Category", back_populates="goals")
+
+    # Legacy single-category relationship (nullable) kept for compatibility
+    category = relationship("Category", back_populates=None, foreign_keys=[category_id])
+
+    # Many-to-many categories relationship
+    categories = relationship(
+        "Category",
+        secondary=goal_categories,
+        back_populates="goals"
+    )
+
     appraisal_goals = relationship(
         "AppraisalGoal", 
         back_populates="goal", 

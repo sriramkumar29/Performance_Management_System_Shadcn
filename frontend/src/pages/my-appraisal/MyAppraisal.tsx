@@ -632,7 +632,7 @@ const MyAppraisal = () => {
                 onChange={setPeriod}
               />
             </div>
-            <div className="w-full md:w-auto flex-none flex items-end md:ml-auto">
+            <div className="w-full md:w-auto flex-none flex items-end mt-0 pb-1">
               <Button
                 variant={BUTTON_STYLES.GHOST_ICON.variant}
                 size={BUTTON_STYLES.GHOST_ICON.size}

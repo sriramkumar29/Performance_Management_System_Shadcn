@@ -272,14 +272,28 @@ const ReviewerEvaluation = () => {
                     <span className="text-base font-bold text-foreground">
                       Goal {idx + 1}
                     </span>
-                    {current.goal.category && (
-                      <Badge
-                        variant="secondary"
-                        className="text-xs bg-indigo-100 text-indigo-700 border-indigo-200 flex-shrink-0"
-                      >
-                        {current.goal.category.name}
-                      </Badge>
-                    )}
+                    {(() => {
+                      const cats: any[] =
+                        (current.goal as any).categories ??
+                        (current.goal.category ? [current.goal.category] : []);
+                      if (cats && cats.length > 0) {
+                        return (
+                          <div className="flex flex-wrap gap-2 max-w-[40%]">
+                            {cats.map((c: any) => (
+                              <Badge
+                                key={c.id}
+                                variant="secondary"
+                                className="text-xs bg-indigo-100 text-indigo-700 border-indigo-200 flex-shrink-0"
+                                title={c.name}
+                              >
+                                {c.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge

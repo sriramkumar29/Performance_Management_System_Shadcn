@@ -16,7 +16,6 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import {
-  Flag,
   MessageSquare,
   Star,
   ChevronDown,
@@ -32,6 +31,11 @@ import {
   User,
   UserCheck,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+} from "./ui/dropdown-menu";
 import {
   Collapsible,
   CollapsibleContent,
@@ -758,24 +762,79 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
                               <span className="text-base font-bold text-foreground">
                                 Goal {index + 1}
                               </span>
-                              {ag.goal.category && (
-                                <>
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-xs bg-amber-50 text-amber-600 border-amber-200 flex-shrink-0 flex items-center gap-1 "
-                                  >
-                                    <Tag className="h-4 w-4 text-amber-600" />
-                                    {ag.goal.category.name}
-                                  </Badge>
-                                  <Badge
-                                    variant="outline"
-                                    className="text-xs bg-purple-50 text-purple-700 border-purple-200 flex-shrink-0 flex items-center gap-1"
-                                  >
-                                    <Weight className="h-3 w-3" />
-                                    Weightage: {ag.goal.goal_weightage}%
-                                  </Badge>
-                                </>
-                              )}
+                              {(() => {
+                                const cats: any[] =
+                                  (ag.goal as any).categories ??
+                                  (ag.goal.category ? [ag.goal.category] : []);
+                                if (!cats || cats.length === 0) {
+                                  return (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs bg-purple-50 text-purple-700 border-purple-200 flex-shrink-0 flex items-center gap-1"
+                                    >
+                                      <Weight className="h-3 w-3" />
+                                      Weightage: {ag.goal.goal_weightage}%
+                                    </Badge>
+                                  );
+                                }
+
+                                const first = cats[0];
+                                const extra = Math.max(0, cats.length - 1);
+
+                                return (
+                                  <div className="flex items-center gap-2">
+                                    <Badge
+                                      variant="secondary"
+                                      className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 border-amber-200"
+                                      title={first.name}
+                                    >
+                                      <Tag className="h-3 w-3 mr-1 text-amber-600" />
+                                      {first.name}
+                                    </Badge>
+
+                                    {extra > 0 && (
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Badge
+                                            variant="outline"
+                                            className="px-2 py-0.5 rounded-full text-[11px] font-medium text-amber-800 border-amber-200"
+                                            aria-label={`${extra} more categories`}
+                                          >
+                                            +{extra}
+                                          </Badge>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent
+                                          sideOffset={6}
+                                          align="start"
+                                          className="w-auto"
+                                        >
+                                          <div className="flex flex-col gap-1">
+                                            <div className="flex flex-wrap gap-2 p-2">
+                                              {cats.slice(1).map((c: any) => (
+                                                <Badge
+                                                  key={c.id}
+                                                  variant="outline"
+                                                  className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 border-amber-200"
+                                                >
+                                                  {c.name}
+                                                </Badge>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    )}
+
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs bg-purple-50 text-purple-700 border-purple-200 flex-shrink-0 flex items-center gap-1"
+                                    >
+                                      <Weight className="h-3 w-3" />
+                                      Weightage: {ag.goal.goal_weightage}%
+                                    </Badge>
+                                  </div>
+                                );
+                              })()}
                             </div>
                             <div className="flex items-center gap-2">
                               {isComplete ? (

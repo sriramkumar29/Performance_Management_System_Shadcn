@@ -306,9 +306,30 @@ const AcknowledgeAppraisalModal = ({
                                 <p className="text-xs text-muted-foreground">
                                   Category
                                 </p>
-                                <Badge variant="secondary" className="mt-1">
-                                  {goalData.goal.category.name}
-                                </Badge>
+                                {(() => {
+                                  const cats: any[] =
+                                    (goalData.goal as any).categories ??
+                                    (goalData.goal.category
+                                      ? [goalData.goal.category]
+                                      : []);
+                                  if (cats && cats.length > 0) {
+                                    return (
+                                      <div className="flex flex-wrap gap-2 mt-1 max-w-[80%]">
+                                        {cats.map((c: any) => (
+                                          <Badge
+                                            key={c.id}
+                                            variant="secondary"
+                                            className="truncate"
+                                            title={c.name}
+                                          >
+                                            {c.name}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
                               </div>
                               <div>
                                 <p className="text-xs text-muted-foreground">

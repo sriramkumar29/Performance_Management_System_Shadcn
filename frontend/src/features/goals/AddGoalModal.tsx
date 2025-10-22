@@ -17,6 +17,7 @@ import {
   SelectContent,
   SelectItem,
 } from "../../components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Target, Weight, X } from "lucide-react";
 import { toast } from "sonner";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
@@ -56,7 +57,7 @@ interface GoalFormValues {
   goal_performance_factor: string;
   goal_importance: string;
   goal_weightage: number;
-  category_id: number;
+  category_ids: number[];
 }
 
 const AddGoalModal = ({
@@ -75,7 +76,7 @@ const AddGoalModal = ({
     goal_performance_factor: "",
     goal_importance: "",
     goal_weightage: 0,
-    category_id: 0,
+    category_ids: [],
   });
 
   // Load categories when modal opens
@@ -115,7 +116,7 @@ const AddGoalModal = ({
         !values.goal_description ||
         !values.goal_performance_factor ||
         !values.goal_importance ||
-        !values.category_id ||
+        !(values.category_ids && values.category_ids.length > 0) ||
         !values.goal_weightage
       ) {
         throw new Error("Please complete all fields before submitting");
@@ -123,7 +124,9 @@ const AddGoalModal = ({
 
       // Always: build a pseudo AppraisalGoal for in-memory staging only.
       // Database insertion will occur on Save/Submit via syncGoalChanges().
-      const category = categories.find((c) => c.id === values.category_id);
+      // pick first selected category as primary
+      const primaryCategoryId = values.category_ids?.[0];
+      const category = categories.find((c) => c.id === primaryCategoryId);
       const tempId = Date.now();
       const pseudo: AppraisalGoal = {
         id: tempId,
@@ -136,12 +139,20 @@ const AddGoalModal = ({
           goal_performance_factor: values.goal_performance_factor,
           goal_importance: values.goal_importance,
           goal_weightage: values.goal_weightage,
-          category_id: values.category_id,
+          category_id: primaryCategoryId || 0,
           category: category
             ? { id: category.id, name: category.name }
             : ({} as any),
         },
       };
+      // Attach multi-category shape for new API consumers
+      (pseudo as any).goal.category_ids = values.category_ids || [];
+      (pseudo as any).goal.categories = (values.category_ids || []).map(
+        (cid) => {
+          const c = categories.find((x) => x.id === cid);
+          return c ? { id: c.id, name: c.name } : { id: cid, name: "" };
+        }
+      );
       toast.success("Goal added to appraisal", {
         description: "Staged. Save to apply changes.",
       });
@@ -161,7 +172,7 @@ const AddGoalModal = ({
       goal_performance_factor: "",
       goal_importance: "",
       goal_weightage: 0,
-      category_id: 0,
+      category_ids: [],
     });
     onClose();
   };
@@ -187,9 +198,7 @@ const AddGoalModal = ({
                 Create a new performance goal for this appraisal
               </p>
             </div>
-            <div className="text-xs text-muted-foreground ml-auto">
-
-            </div>
+            <div className="text-xs text-muted-foreground ml-auto"></div>
           </div>
         </DialogHeader>
 
@@ -296,35 +305,50 @@ const AddGoalModal = ({
                   >
                     Category
                   </Label>
-                  <UiSelect
-                    value={
-                      formValues.category_id
-                        ? String(formValues.category_id)
-                        : ""
-                    }
-                    onValueChange={(value) =>
-                      setFormValues((v) => ({
-                        ...v,
-                        category_id: Number.parseInt(value) || 0,
-                      }))
-                    }
-                  >
+                  <UiSelect value={""} onValueChange={() => {}}>
                     <SelectTrigger
                       id="category_id"
                       className="h-11 focus:ring-2 focus:ring-primary/20 border-border/50"
                     >
                       <SelectValue
                         placeholder={
-                          loadingCategories ? "Loading..." : "Select category"
+                          loadingCategories ? "Loading..." : "Select categories"
                         }
                       />
+                      <div className="ml-2 text-sm text-muted-foreground truncate">
+                        {(formValues.category_ids || [])
+                          .map(
+                            (id) => categories.find((c) => c.id === id)?.name
+                          )
+                          .filter(Boolean)
+                          .join(", ")}
+                      </div>
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={String(cat.id)}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
+                      <div className="p-2">
+                        {categories.map((cat) => (
+                          <label
+                            key={cat.id}
+                            className="flex items-center gap-2 p-2 rounded hover:bg-muted"
+                          >
+                            <Checkbox
+                              checked={formValues.category_ids.includes(cat.id)}
+                              onCheckedChange={(checked) => {
+                                setFormValues((v) => {
+                                  const ids = new Set(v.category_ids || []);
+                                  if (checked) ids.add(cat.id);
+                                  else ids.delete(cat.id);
+                                  return {
+                                    ...v,
+                                    category_ids: Array.from(ids),
+                                  };
+                                });
+                              }}
+                            />
+                            <span>{cat.name}</span>
+                          </label>
+                        ))}
+                      </div>
                     </SelectContent>
                   </UiSelect>
                 </div>

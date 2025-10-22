@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../utils/api";
 import { Button } from "../../components/ui/button";
@@ -12,6 +12,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { toast } from "sonner";
 import {
   ArrowLeft,
+  ArrowRight,
   Plus,
   Trash2,
   Edit,
@@ -21,6 +22,7 @@ import {
   Target,
   Flag,
   Weight,
+  RefreshCw,
 } from "lucide-react";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import {
@@ -53,6 +55,51 @@ interface GoalTemplate {
   temp_performance_factor: string;
   categories?: Category[];
 }
+
+// Pagination controls (shared pattern used in MyAppraisal)
+const PaginationControls = ({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) => (
+  <div
+    className="inline-flex items-center gap-1 rounded-full border border-border bg-background/60 px-1.5 py-1 shadow-sm backdrop-blur flex-shrink-0 whitespace-nowrap"
+    aria-live="polite"
+  >
+    <Button
+      variant={BUTTON_STYLES.PAGINATION.variant}
+      size={BUTTON_STYLES.PAGINATION.size}
+      onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+      disabled={currentPage <= 1}
+      title="Previous page"
+      aria-label="Previous page"
+      className={BUTTON_STYLES.PAGINATION.className}
+    >
+      <ArrowLeft className={ICON_SIZES.DEFAULT} />
+    </Button>
+    <span className="hidden sm:inline px-2 text-xs font-medium text-muted-foreground">
+      Page {currentPage} <span className="mx-1">/</span> {totalPages}
+    </span>
+    <span className="sr-only sm:hidden">
+      Page {currentPage} of {totalPages}
+    </span>
+    <Button
+      variant={BUTTON_STYLES.PAGINATION.variant}
+      size={BUTTON_STYLES.PAGINATION.size}
+      onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+      disabled={currentPage >= totalPages}
+      title="Next page"
+      aria-label="Next page"
+      className={BUTTON_STYLES.PAGINATION.className}
+    >
+      <ArrowRight className={ICON_SIZES.DEFAULT} />
+    </Button>
+  </div>
+);
 
 /**
  * Helper to check if user is a manager or above (Director or CEO).
@@ -151,28 +198,50 @@ const GoalTemplates = () => {
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b));
 
-  const visible = templates.filter((t) => {
-    // Text search filter
-    const matchesSearch =
-      !filter.trim() ||
-      t.temp_title.toLowerCase().includes(filter.toLowerCase()) ||
-      t.temp_description.toLowerCase().includes(filter.toLowerCase()) ||
-      t.temp_performance_factor.toLowerCase().includes(filter.toLowerCase()) ||
-      t.categories?.some((c) =>
-        c.name.toLowerCase().includes(filter.toLowerCase())
-      );
+  const visible = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    return templates.filter((t) => {
+      // Text search filter
+      const matchesSearch =
+        !q ||
+        t.temp_title.toLowerCase().includes(q) ||
+        t.temp_description.toLowerCase().includes(q) ||
+        t.temp_performance_factor.toLowerCase().includes(q) ||
+        t.categories?.some((c) => c.name.toLowerCase().includes(q));
 
-    // Importance filter
-    const matchesImportance =
-      importanceFilter === "all" || t.temp_importance === importanceFilter;
+      // Importance filter
+      const matchesImportance =
+        importanceFilter === "all" || t.temp_importance === importanceFilter;
 
-    // Category filter
-    const matchesCategory =
-      categoryFilter === "all" ||
-      t.categories?.some((c) => c.name === categoryFilter);
+      // Category filter
+      const matchesCategory =
+        categoryFilter === "all" ||
+        t.categories?.some((c) => c.name === categoryFilter);
 
-    return matchesSearch && matchesImportance && matchesCategory;
-  });
+      return matchesSearch && matchesImportance && matchesCategory;
+    });
+  }, [templates, filter, importanceFilter, categoryFilter]);
+
+  // Pagination (5 per page)
+  const ITEMS_PER_PAGE = 5;
+  const [page, setPage] = useState(1);
+
+  const listTotalPages = Math.max(
+    1,
+    Math.ceil(visible.length / ITEMS_PER_PAGE)
+  );
+
+  const visiblePaged = useMemo(
+    () => visible.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE),
+    [visible, page]
+  );
+
+  // Reset to first page when filters or data change
+  useEffect(() => {
+    setPage(1);
+  }, [visible.length, filter, importanceFilter, categoryFilter]);
+
+  // (PaginationControls is defined at module scope above)
 
   return (
     <div className="space-y-3 text-foreground">
@@ -190,10 +259,10 @@ const GoalTemplates = () => {
             <ArrowLeft className={ICON_SIZES.DEFAULT} />
           </Button>
           <div>
-            <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent leading-normal pb-1">
               Manage Goal Templates
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm">
               {loading ? "Loading…" : `${visible.length} template(s)`}
             </p>
           </div>
@@ -263,6 +332,32 @@ const GoalTemplates = () => {
               </SelectContent>
             </Select>
           </div>
+          <div className="w-full sm:w-auto flex-none flex items-end gap-3">
+            <Button
+              variant={BUTTON_STYLES.GHOST_ICON.variant}
+              size={BUTTON_STYLES.GHOST_ICON.size}
+              onClick={() => {
+                setFilter("");
+                setImportanceFilter("all");
+                setCategoryFilter("all");
+              }}
+              className="ml-2 border border-border -mt-5"
+              title="Reset filters"
+              aria-label="Reset filters"
+            >
+              <RefreshCw className={ICON_SIZES.DEFAULT} />
+            </Button>
+            {/* Pagination next to refresh */}
+            {visible.length > ITEMS_PER_PAGE && (
+              <div className="hidden sm:flex items-center">
+                <PaginationControls
+                  currentPage={page}
+                  totalPages={listTotalPages}
+                  onPageChange={setPage}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -306,10 +401,10 @@ const GoalTemplates = () => {
                 </CardContent>
               </Card>
             )}
-            {visible.map((t) => (
+            {visiblePaged.map((t: GoalTemplate) => (
               <Card
                 key={t.temp_id}
-                className="shadow-soft hover-lift border-0 glass-effect transition-all relative"
+                className="shadow-soft hover-lift border border-border bg-white/40 dark:bg-transparent glass-effect transition-transform transform hover:-translate-y-1 hover:shadow-xl rounded-xl relative overflow-hidden"
                 data-testid="template-item"
               >
                 <CardContent className="p-6">
@@ -321,28 +416,24 @@ const GoalTemplates = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="mb-2">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-0">
-                              Template Title
-                            </p>
-                            <div className="flex items-center gap-2">
-                              <Badge className="bg-rose-100 text-rose-700 border-rose-300 font-semibold text-sm flex items-center gap-1">
-                                <Flag className="h-3 w-3" />
-                                <span>{t.temp_importance}</span>
-                              </Badge>
-                              <Badge
-                                variant="outline"
-                                className="bg-purple-50 text-purple-700 border-purple-300 font-medium text-sm flex items-center gap-1"
-                              >
-                                <Weight className="h-3 w-3 text-purple-600" />
-                                <span>{t.temp_weightage}%</span>
-                              </Badge>
-                            </div>
-                          </div>
-
-                          <h3 className="text-xl font-bold text-foreground truncate mt-1">
+                          <h3 className="text-xl font-bold text-foreground truncate mt-1 leading-normal">
                             {t.temp_title}
                           </h3>
+
+                          {/* Importance & Weightage (separate section) */}
+                          <div className="mt-2 flex items-center gap-2">
+                            <Badge className="bg-rose-100 text-rose-700 border-rose-300 font-semibold text-sm flex items-center gap-1">
+                              <Flag className="h-3 w-3" />
+                              <span>{t.temp_importance}</span>
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className="bg-purple-50 text-purple-700 border-purple-300 font-medium text-sm flex items-center gap-1"
+                            >
+                              <Weight className="h-3 w-3 text-purple-600" />
+                              <span>{t.temp_weightage}%</span>
+                            </Badge>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -402,15 +493,23 @@ const GoalTemplates = () => {
                         <Tag className="h-4 w-4 text-amber-600" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-1">
+                        <p
+                          className="text-xs text-gray-600 font-semibold uppercase tracking-wide mb-1"
+                          title={`${
+                            t.categories.length
+                          } categories: ${t.categories
+                            .map((x) => x.name)
+                            .join(", ")}`}
+                        >
                           Category
                         </p>
                         <div className="flex flex-wrap gap-2">
-                          {t.categories.map((c) => (
+                          {t.categories.map((c: Category) => (
                             <Badge
                               key={c.id}
                               variant="outline"
                               className="bg-amber-50 text-amber-700 border-amber-300 font-medium"
+                              title={c.name}
                             >
                               {c.name}
                             </Badge>

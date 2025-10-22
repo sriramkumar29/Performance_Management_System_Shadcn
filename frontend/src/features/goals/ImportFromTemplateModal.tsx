@@ -11,13 +11,6 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
 import { X, Download, Weight, Flag, Tag } from "lucide-react";
-import {
-  Select as UiSelect,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "../../components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
@@ -61,20 +54,6 @@ interface AppraisalGoal {
     category: Category;
   };
 }
-
-const getCategorySelectValue = (
-  selected: Record<number, { checked: boolean; categoryId?: number }>,
-  tempId: number,
-  categories?: Category[]
-) => {
-  if (selected[tempId]?.categoryId) {
-    return String(selected[tempId].categoryId);
-  }
-  if (categories?.[0]?.id) {
-    return String(categories[0].id);
-  }
-  return "";
-};
 
 const ImportFromTemplateModal = ({
   open,
@@ -140,13 +119,6 @@ const ImportFromTemplateModal = ({
     });
   };
 
-  const setCategoryFor = (id: number, categoryId: number) => {
-    setSelected((prev) => ({
-      ...prev,
-      [id]: { ...(prev[id] || { checked: true }), categoryId },
-    }));
-  };
-
   const setWeightageFor = (id: number, weightage: number) => {
     setSelected((prev) => ({
       ...prev,
@@ -190,11 +162,19 @@ const ImportFromTemplateModal = ({
     setLoading(true);
     try {
       for (const t of chosen) {
-        const categoryId =
-          selected[t.temp_id]?.categoryId || t.categories?.[0]?.id;
         const userWeightage = selected[t.temp_id]?.weightage || 0;
 
-        if (!categoryId) {
+        // Use all categories present on the template. If a user specifically
+        // selected a single category (legacy behaviour), respect it; otherwise
+        // import the full set of template categories.
+        const selectedEntry = selected[t.temp_id];
+        const allTemplateCategoryIds = t.categories?.map((c) => c.id) ?? [];
+        const categoryIds: number[] =
+          selectedEntry && selectedEntry.categoryId
+            ? [selectedEntry.categoryId]
+            : allTemplateCategoryIds;
+
+        if (!categoryIds.length) {
           toast.error("Category required", {
             description: `Template "${t.temp_title}" has no category. Please assign one.`,
           });
@@ -203,7 +183,11 @@ const ImportFromTemplateModal = ({
 
         // Build pseudo AppraisalGoal with user-specified weightage
         const tempId = Date.now() + Math.floor(Math.random() * 1000);
-        const category = t.categories?.find((c) => c.id === categoryId);
+        const categoriesForPseudo = t.categories?.filter((c) =>
+          categoryIds.includes(c.id)
+        );
+        const firstCategory = categoriesForPseudo?.[0];
+
         const pseudo: AppraisalGoal = {
           id: tempId,
           appraisal_id: 0,
@@ -216,12 +200,19 @@ const ImportFromTemplateModal = ({
             goal_performance_factor: t.temp_performance_factor,
             goal_importance: t.temp_importance,
             goal_weightage: userWeightage, // Use user-specified weightage
-            category_id: categoryId,
-            category: category
-              ? { id: category.id, name: category.name }
-              : ({ id: categoryId, name: "" } as any),
+            // legacy single category field: set to first category id for compatibility
+            category_id: firstCategory ? firstCategory.id : categoryIds[0],
+            category: firstCategory
+              ? { id: firstCategory.id, name: firstCategory.name }
+              : ({ id: categoryIds[0], name: "" } as any),
           },
         };
+        // Attach new multi-category shape for compatibility with updated UI
+        (pseudo as any).goal.category_ids = categoryIds;
+        (pseudo as any).goal.categories =
+          categoriesForPseudo && categoriesForPseudo.length
+            ? categoriesForPseudo.map((c) => ({ id: c.id, name: c.name }))
+            : categoryIds.map((id) => ({ id, name: "" }));
         onGoalAdded(pseudo);
       }
 
@@ -308,11 +299,7 @@ const ImportFromTemplateModal = ({
                 key={t.temp_id}
                 data-testid={`template-card-${t.temp_id}`}
                 onClick={() =>
-                  toggleSelect(
-                    t.temp_id,
-                    t.categories?.[0]?.id,
-                    t.temp_weightage
-                  )
+                  toggleSelect(t.temp_id, undefined, t.temp_weightage)
                 }
                 className={`rounded-lg border ${
                   selected[t.temp_id]?.checked
@@ -325,11 +312,7 @@ const ImportFromTemplateModal = ({
                     data-testid={`template-checkbox-${t.temp_id}`}
                     checked={!!selected[t.temp_id]?.checked}
                     onCheckedChange={() =>
-                      toggleSelect(
-                        t.temp_id,
-                        t.categories?.[0]?.id,
-                        t.temp_weightage
-                      )
+                      toggleSelect(t.temp_id, undefined, t.temp_weightage)
                     }
                     className="mt-1 flex-shrink-0"
                     onClick={(e) => e.stopPropagation()}
@@ -377,36 +360,6 @@ const ImportFromTemplateModal = ({
 
                     {selected[t.temp_id]?.checked && (
                       <div className="grid grid-cols-1 gap-3 pt-2 border-t border-border/50">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium text-foreground">
-                            Assign Category *
-                          </Label>
-                          <UiSelect
-                            value={getCategorySelectValue(
-                              selected,
-                              t.temp_id,
-                              t.categories
-                            )}
-                            onValueChange={(val) =>
-                              setCategoryFor(t.temp_id, Number.parseInt(val))
-                            }
-                          >
-                            <SelectTrigger
-                              className="h-10 focus:ring-2 focus:ring-primary/20 border-border/50"
-                              onClick={(e) => e.stopPropagation()}
-                              onMouseDown={(e) => e.stopPropagation()}
-                            >
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                            <SelectContent onClick={(e) => e.stopPropagation()}>
-                              {t.categories?.map((c) => (
-                                <SelectItem key={c.id} value={String(c.id)}>
-                                  {c.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </UiSelect>
-                        </div>
                         <div className="space-y-2">
                           <Label
                             htmlFor={`weightage-${t.temp_id}`}

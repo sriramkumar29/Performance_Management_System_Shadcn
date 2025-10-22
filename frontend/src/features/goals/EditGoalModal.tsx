@@ -56,7 +56,7 @@ interface GoalFormValues {
   goal_performance_factor: string;
   goal_importance: string;
   goal_weightage: number;
-  category_id: number;
+  category_ids: number[];
 }
 
 const EditGoalModal = ({
@@ -75,7 +75,7 @@ const EditGoalModal = ({
     goal_performance_factor: "",
     goal_importance: "",
     goal_weightage: 0,
-    category_id: 0,
+    category_ids: [],
   });
 
   // Load categories when modal opens
@@ -88,13 +88,30 @@ const EditGoalModal = ({
   // Prefill form when goalData changes
   useEffect(() => {
     if (open && goalData) {
+      // Support multiple shapes: new `category_ids: number[]`,
+      // `categories: { id }[]` returned from API, or legacy `category_id`.
+      const gd: any = (goalData as any).goal || goalData.goal;
+      let existingCategoryIds: number[] = [];
+
+      if (gd) {
+        if (Array.isArray(gd.category_ids) && gd.category_ids.length) {
+          existingCategoryIds = gd.category_ids as number[];
+        } else if (Array.isArray(gd.categories) && gd.categories.length) {
+          existingCategoryIds = gd.categories
+            .map((c: any) => c?.id ?? c?.category_id)
+            .filter(Boolean);
+        } else if (gd.category_id) {
+          existingCategoryIds = [gd.category_id];
+        }
+      }
+
       setFormValues({
-        goal_title: goalData.goal.goal_title,
-        goal_description: goalData.goal.goal_description,
-        goal_performance_factor: goalData.goal.goal_performance_factor,
-        goal_importance: goalData.goal.goal_importance,
-        goal_weightage: goalData.goal.goal_weightage,
-        category_id: goalData.goal.category_id,
+        goal_title: gd.goal_title,
+        goal_description: gd.goal_description,
+        goal_performance_factor: gd.goal_performance_factor,
+        goal_importance: gd.goal_importance,
+        goal_weightage: gd.goal_weightage,
+        category_ids: existingCategoryIds,
       });
     }
   }, [open, goalData]);
@@ -128,7 +145,7 @@ const EditGoalModal = ({
       !values.goal_description ||
       !values.goal_performance_factor ||
       !values.goal_importance ||
-      !values.category_id ||
+      !(values.category_ids && values.category_ids.length > 0) ||
       !values.goal_weightage
     ) {
       toast.error("Please complete all fields before submitting");
@@ -148,6 +165,7 @@ const EditGoalModal = ({
 
     setLoading(true);
     try {
+      const primaryCategoryId = values.category_ids?.[0];
       const updatedGoal: AppraisalGoal = {
         ...goalData,
         goal: {
@@ -157,9 +175,12 @@ const EditGoalModal = ({
           goal_performance_factor: values.goal_performance_factor,
           goal_importance: values.goal_importance,
           goal_weightage: values.goal_weightage,
-          category_id: values.category_id,
+          // keep legacy single id for compatibility
+          category_id: primaryCategoryId || values.category_ids?.[0] || 0,
+          // attach category_ids for new API consumers
+          ...(values.category_ids ? { category_ids: values.category_ids } : {}),
           category:
-            categories.find((c) => c.id === values.category_id) ||
+            categories.find((c) => c.id === primaryCategoryId) ||
             goalData.goal.category,
         },
       };
@@ -183,7 +204,7 @@ const EditGoalModal = ({
       goal_performance_factor: "",
       goal_importance: "",
       goal_weightage: 0,
-      category_id: 0,
+      category_ids: [],
     });
     onClose();
   };
@@ -312,37 +333,54 @@ const EditGoalModal = ({
 
                 <div className="space-y-2">
                   <Label
-                    htmlFor="category_id"
+                    htmlFor="category_ids"
                     className="text-sm font-medium text-foreground"
                   >
-                    Category
+                    Categories
                   </Label>
-                  <UiSelect
-                    value={
-                      formValues.category_id
-                        ? String(formValues.category_id)
-                        : ""
-                    }
-                    onValueChange={(value) =>
-                      setFormValues((v) => ({
-                        ...v,
-                        category_id: Number.parseInt(value) || 0,
-                      }))
-                    }
-                  >
+                  <UiSelect value={""} onValueChange={() => {}}>
                     <SelectTrigger className="h-11 focus:ring-2 focus:ring-primary/20 border-border/50">
                       <SelectValue
                         placeholder={
-                          loadingCategories ? "Loading..." : "Select category"
+                          loadingCategories ? "Loading..." : "Select categories"
                         }
                       />
+                      <div className="ml-2 text-sm text-muted-foreground truncate">
+                        {(formValues.category_ids || [])
+                          .map(
+                            (id) => categories.find((c) => c.id === id)?.name
+                          )
+                          .filter(Boolean)
+                          .join(", ")}
+                      </div>
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={String(cat.id)}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
+                      <div className="p-2">
+                        {categories.map((cat) => (
+                          <label
+                            key={cat.id}
+                            className="flex items-center gap-2 p-2 rounded hover:bg-muted"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={formValues.category_ids.includes(cat.id)}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setFormValues((v) => {
+                                  const ids = new Set(v.category_ids || []);
+                                  if (checked) ids.add(cat.id);
+                                  else ids.delete(cat.id);
+                                  return {
+                                    ...v,
+                                    category_ids: Array.from(ids),
+                                  };
+                                });
+                              }}
+                            />
+                            <span>{cat.name}</span>
+                          </label>
+                        ))}
+                      </div>
                     </SelectContent>
                   </UiSelect>
                 </div>

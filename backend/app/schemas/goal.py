@@ -118,6 +118,9 @@ class GoalCreate(GoalBase):
     """Schema for creating a Goal."""
     
     goal_template_id: Optional[int] = None
+    # New: accept multiple categories by id
+    category_ids: Optional[List[int]] = None
+    # Keep legacy single id for backward compatibility
     category_id: Optional[int] = None
 
 
@@ -129,6 +132,9 @@ class GoalUpdate(BaseModel):
     goal_performance_factor: Optional[str] = None
     goal_importance: Optional[str] = None
     goal_weightage: Optional[int] = None
+    # Allow updating multiple categories
+    category_ids: Optional[List[int]] = None
+    # Keep legacy single id for compatibility
     category_id: Optional[int] = None
     
     @field_validator('goal_importance')
@@ -149,8 +155,10 @@ class GoalResponse(GoalBase):
     
     goal_id: int
     goal_template_id: Optional[int] = None
+    # Provide both legacy single-id and list of category ids
     category_id: Optional[int] = None
-    category: Optional[CategoryResponse] = None
+    category_ids: List[int] = []
+    categories: List[CategoryResponse] = []
     
     class Config:
         from_attributes = True

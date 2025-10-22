@@ -99,7 +99,8 @@ export const syncGoalChanges = async (
         goal_performance_factor: goalData.goal.goal_performance_factor,
         goal_importance: goalData.goal.goal_importance,
         goal_weightage: goalData.goal.goal_weightage,
-        category_id: goalData.goal.category_id,
+        // send new category_ids array when available, otherwise fall back to legacy category_id
+        ...(goalData.goal as any).category_ids ? { category_ids: (goalData.goal as any).category_ids } : { category_id: goalData.goal.category_id },
       }),
     });
 
@@ -130,7 +131,7 @@ export const syncGoalChanges = async (
         goal_performance_factor: goalData.goal.goal_performance_factor,
         goal_importance: goalData.goal.goal_importance,
         goal_weightage: goalData.goal.goal_weightage,
-        category_id: goalData.goal.category_id,
+        ...(goalData.goal as any).category_ids ? { category_ids: (goalData.goal as any).category_ids } : { category_id: goalData.goal.category_id },
       }),
     });
 

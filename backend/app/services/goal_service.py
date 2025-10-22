@@ -125,9 +125,17 @@ class GoalService(BaseService[Goal, GoalCreate, GoalUpdate]):
             # Apply business logic hooks
             goal_data = await self.before_create(db, goal_data)
             
-            # Use repository to create
-            db_goal = await self.repository.create(db, obj_data=goal_data)
-            
+            # Extract category_ids if provided (new API)
+            category_ids = None
+            if isinstance(goal_data, dict):
+                category_ids = goal_data.pop("category_ids", None)
+
+            # Use repository to create (new helper will persist associations)
+            if category_ids is not None:
+                db_goal = await self.repository.create_with_categories(db, obj_data=goal_data, category_ids=category_ids)
+            else:
+                db_goal = await self.repository.create(db, obj_data=goal_data)
+
             # Apply after-create hook
             db_goal = await self.after_create(db, db_goal, goal_data)
             
@@ -221,13 +229,22 @@ class GoalService(BaseService[Goal, GoalCreate, GoalUpdate]):
             # Convert Pydantic model to dict, excluding unset values
             update_data = obj_in.model_dump(exclude_unset=True)
             self.logger.debug(f"Update data: {sanitize_log_data(update_data)}")
-            
+
+            # Extract category_ids if present
+            category_ids = None
+            if isinstance(update_data, dict):
+                category_ids = update_data.pop("category_ids", None)
+
             # Apply business logic hooks
             update_data = await self.before_update(db, db_obj, update_data)
-            
-            # Use repository to update
+
+            # Use repository to update basic fields
             updated_goal = await self.repository.update(db, db_obj=db_obj, obj_data=update_data)
-            
+
+            # Update categories association if requested
+            if category_ids is not None:
+                await self.repository.update_categories(db, updated_goal, category_ids=category_ids)
+
             # Apply after-update hook
             updated_goal = await self.after_update(db, updated_goal, db_obj, update_data)
             

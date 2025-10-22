@@ -527,23 +527,24 @@ async def create_goal(
     try:
         db_goal = await goal_service.create(db, obj_in=goal, current_user=current_user)
         await db.commit()
-        await db.refresh(db_goal)
-        
-        # For now, create response without loading category relationship
-        response_data = GoalResponse(
-            goal_id=db_goal.goal_id,
-            goal_template_id=db_goal.goal_template_id,
-            category_id=db_goal.category_id,
-            goal_title=db_goal.goal_title,
-            goal_description=db_goal.goal_description,
-            goal_performance_factor=db_goal.goal_performance_factor,
-            goal_importance=db_goal.goal_importance,
-            goal_weightage=db_goal.goal_weightage,
-            category=None  # Set to None for now to avoid relationship loading issues
-        )
-        
-        logger.info(f"{context}API_SUCCESS: Created goal - ID: {db_goal.goal_id}")
-        return response_data
+
+        # Reload the goal with categories relationship to avoid lazy-load IO outside
+        # the async context (this prevents greenlet_spawn errors when accessing
+        # relationship attributes).
+        final_goal = await goal_service.get_by_id_or_404(db, db_goal.goal_id, load_relationships=["categories"])
+
+        # Convert loaded relationships into response fields
+        if getattr(final_goal, "categories", None) is not None:
+            category_ids = [c.id for c in getattr(final_goal, "categories", [])]
+            categories = [CategoryResponse.model_validate(c) for c in getattr(final_goal, "categories", [])]
+        else:
+            category_ids = [] if final_goal.category_id is None else [final_goal.category_id]
+            categories = []
+
+        result_dict = {**{k: v for k, v in final_goal.__dict__.items() if not k.startswith('_')}, "category_ids": category_ids, "categories": categories}
+
+        logger.info(f"{context}API_SUCCESS: Created goal - ID: {final_goal.goal_id}")
+        return GoalResponse.model_validate(result_dict)
         
     except BaseDomainException as e:
         # Convert domain exceptions to HTTP exceptions
@@ -728,10 +729,20 @@ async def update_goal(
         await db.commit()
         
         # Reload the goal with relationships for the response
-        final_goal = await goal_service.get_by_id_or_404(db, goal_id, load_relationships=["category"])
+        final_goal = await goal_service.get_by_id_or_404(db, goal_id, load_relationships=["categories"])
         
         logger.info(f"{context}API_SUCCESS: Updated goal - ID: {goal_id}")
-        return GoalResponse.model_validate(final_goal)
+        # Convert category relationships into response fields
+        if getattr(final_goal, "categories", None) is not None:
+            category_ids = [c.id for c in getattr(final_goal, "categories", [])]
+            categories = [CategoryResponse.model_validate(c) for c in getattr(final_goal, "categories", [])]
+        else:
+            category_ids = [] if final_goal.category_id is None else [final_goal.category_id]
+            categories = []
+
+        # Build a serializable dict for validation
+        result_dict = {**{k: v for k, v in final_goal.__dict__.items() if not k.startswith('_')}, "category_ids": category_ids, "categories": categories}
+        return GoalResponse.model_validate(result_dict)
         
     except BaseDomainException as e:
         # Convert domain exceptions to HTTP exceptions

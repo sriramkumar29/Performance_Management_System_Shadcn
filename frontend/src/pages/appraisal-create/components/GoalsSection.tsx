@@ -7,7 +7,6 @@ import {
   Plus,
   FolderOpen,
   Target,
-  Tag,
   Flag,
   Weight,
 } from "lucide-react";
@@ -32,6 +31,11 @@ import {
   DialogDescription,
   DialogFooter,
 } from "../../../components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+} from "../../../components/ui/dropdown-menu";
 
 interface AppraisalGoal {
   id: number;
@@ -223,21 +227,79 @@ export const GoalsSection = ({
                             {record.goal.goal_title}
                           </CardTitle>
 
-                          {/* Category badge next to title (if present) */}
-                          {record.goal.category?.name ? (
-                            <Badge
-                              variant="outline"
-                              className="bg-amber-50 text-amber-700 border-amber-300 font-medium text-xs flex items-center gap-1"
-                            >
-                              <Tag className="h-3 w-3 text-amber-600" />
-                              {record.goal.category.name}
-                            </Badge>
-                          ) : null}
+                          {/* Category badge next to title (support multiple categories) */}
+                          {(() => {
+                            const cats: any[] =
+                              (record.goal as any).categories ??
+                              (record.goal.category
+                                ? [record.goal.category]
+                                : []);
+                            if (!cats || cats.length === 0) return null;
+
+                            const MAX_VISIBLE = 1;
+                            const visible = cats.slice(0, MAX_VISIBLE);
+                            const extra = cats.length - visible.length;
+
+                            return (
+                              <div className="flex items-center gap-2 max-w-[40%]">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {visible.map((c: any) => (
+                                    <Badge
+                                      key={c.id}
+                                      variant="outline"
+                                      className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 border-amber-200"
+                                      title={c.name}
+                                    >
+                                      {c.name}
+                                    </Badge>
+                                  ))}
+                                  {extra > 0 && (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Badge
+                                          variant="outline"
+                                          className="px-2 py-0.5 rounded-full text-[11px] font-medium text-amber-800 border-amber-200"
+                                          aria-label={`${extra} more categories`}
+                                          title={`${extra} more categories: ${cats
+                                            .slice(MAX_VISIBLE)
+                                            .map((x: any) => x.name)
+                                            .join(", ")}`}
+                                        >
+                                          +{extra}
+                                        </Badge>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent
+                                        sideOffset={6}
+                                        align="start"
+                                        className="w-auto"
+                                      >
+                                        <div className="flex flex-col gap-1">
+                                          <div className="flex flex-wrap gap-2 p-2">
+                                            {cats
+                                              .slice(MAX_VISIBLE)
+                                              .map((c: any) => (
+                                                <Badge
+                                                  key={c.id}
+                                                  variant="outline"
+                                                  className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 border-amber-200"
+                                                >
+                                                  {c.name}
+                                                </Badge>
+                                              ))}
+                                          </div>
+                                        </div>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
 
                           {/* Importance badge next to title */}
                           <Badge
                             variant="secondary"
-                            className="bg-rose-100 text-rose-700 border-rose-300 font-semibold text-xs flex items-center gap-1"
+                            className="bg-rose-50 text-rose-700 border-rose-200 font-semibold text-xs flex items-center gap-1"
                           >
                             <Flag className="h-3 w-3" />
                             {record.goal.goal_importance}

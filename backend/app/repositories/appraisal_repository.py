@@ -267,7 +267,7 @@ class AppraisalRepository(BaseRepository[Appraisal]):
                 .options(
                     selectinload(Appraisal.appraisal_goals)
                     .selectinload(AppraisalGoal.goal)
-                    .selectinload(Goal.category),
+                    .selectinload(Goal.categories),
                     selectinload(Appraisal.appraisal_type)
                 )
             )
@@ -627,7 +627,7 @@ class AppraisalRepository(BaseRepository[Appraisal]):
             query = query.options(
                 selectinload(Appraisal.appraisal_goals)
                 .selectinload(AppraisalGoal.goal)
-                .selectinload(Goal.category)
+                .selectinload(Goal.categories)
             )
             result = await db.execute(query)
             appraisal = result.scalars().first()
@@ -806,7 +806,7 @@ class AppraisalRepository(BaseRepository[Appraisal]):
                 .options(
                     selectinload(Appraisal.appraisal_goals)
                     .selectinload(AppraisalGoal.goal)
-                    .selectinload(Goal.category)
+                    .selectinload(Goal.categories)
                 )
                 .where(Appraisal.appraisal_id == db_appraisal.appraisal_id)
             )

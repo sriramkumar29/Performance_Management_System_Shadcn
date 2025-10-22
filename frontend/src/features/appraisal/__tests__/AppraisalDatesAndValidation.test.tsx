@@ -783,9 +783,12 @@ describe("Goal Template Import Tests", () => {
     expect(addedArg).toBeDefined();
     expect(addedArg.goal).toBeDefined();
     const categoryId = mockGoalTemplate.categories[0].id;
-    expect(addedArg.goal.category_id).toBe(categoryId);
-    expect(addedArg.goal.category).toBeDefined();
-    expect(addedArg.goal.category.name).toBe(
+    // New multi-category support: expect category_ids and categories shape
+    expect(addedArg.goal.category_ids).toBeDefined();
+    expect(Array.isArray(addedArg.goal.category_ids)).toBe(true);
+    expect(addedArg.goal.category_ids[0]).toBe(categoryId);
+    expect(addedArg.goal.categories).toBeDefined();
+    expect(addedArg.goal.categories[0].name).toBe(
       mockGoalTemplate.categories[0].name
     );
   });

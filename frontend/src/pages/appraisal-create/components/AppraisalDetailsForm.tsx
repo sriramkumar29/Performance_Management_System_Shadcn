@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Calendar } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { Label } from "../../../components/ui/label";
 import { Input } from "../../../components/ui/input";
@@ -160,193 +160,285 @@ export const AppraisalDetailsForm = ({
       </CardHeader>
       {!isCollapsed && (
         <CardContent id="appraisal-details-content">
-          <div className="grid gap-6">
-            {/* Employee Selection */}
-            <div className="grid gap-2">
-              <Label>Employee (Appraisee)</Label>
-              <UiSelect
-                value={
-                  formValues.appraisee_id
-                    ? String(formValues.appraisee_id)
-                    : undefined
-                }
-                onValueChange={(val) => {
-                  const empId = Number(val);
-                  setFormValues((v) => ({ ...v, appraisee_id: empId }));
-                }}
-                disabled={isLocked}
-              >
-                <SelectTrigger aria-label="Employee">
-                  <SelectValue placeholder="Select employee" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees.map((emp) => (
-                    <SelectItem key={emp.emp_id} value={String(emp.emp_id)}>
-                      {emp.emp_name} ({emp.emp_email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </UiSelect>
-              {selectedEmployee && (
-                <p className="text-xs text-muted-foreground">
-                  Role: {selectedEmployee.emp_roles || "N/A"}
-                </p>
-              )}
-            </div>
-
-            {/* Reviewer Selection */}
-            <div className="grid gap-2">
-              <Label>Reviewer</Label>
-              <UiSelect
-                value={
-                  formValues.reviewer_id
-                    ? String(formValues.reviewer_id)
-                    : undefined
-                }
-                onValueChange={(val) => {
-                  const empId = Number(val);
-                  setFormValues((v) => ({ ...v, reviewer_id: empId }));
-                }}
-                disabled={isLocked}
-              >
-                <SelectTrigger aria-label="Reviewer">
-                  <SelectValue placeholder="Select reviewer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {eligibleReviewers.map((emp) => (
-                    <SelectItem key={emp.emp_id} value={String(emp.emp_id)}>
-                      {emp.emp_name} ({emp.emp_email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </UiSelect>
-              {selectedReviewer && (
-                <p className="text-xs text-muted-foreground">
-                  Role: {selectedReviewer.emp_roles || "N/A"}
-                </p>
-              )}
-            </div>
-
-            {/* Appraisal Type */}
-            <div className="grid gap-2">
-              <Label>Appraisal Type</Label>
-              <UiSelect
-                value={selectedTypeId ? String(selectedTypeId) : undefined}
-                onValueChange={handleTypeChange}
-                disabled={isLocked}
-              >
-                <SelectTrigger aria-label="Appraisal Type">
-                  <SelectValue placeholder="Select appraisal type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {appraisalTypes.map((type) => (
-                    <SelectItem key={type.id} value={String(type.id)}>
-                      {type.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </UiSelect>
-              <p className="text-xs text-muted-foreground">
-                Type determines the period automatically. If the type has
-                ranges, choose one next.
-              </p>
-            </div>
-
-            {/* Range (only if type has range) */}
-            {(() => {
-              const meta = appraisalTypes.find((t) => t.id === selectedTypeId);
-              if (!meta?.has_range) return null;
-              return (
-                <div className="grid gap-2">
-                  <Label>Range</Label>
-                  <UiSelect
-                    value={
-                      formValues.appraisal_type_range_id
-                        ? String(formValues.appraisal_type_range_id)
-                        : undefined
-                    }
-                    onValueChange={handleRangeChange}
-                    disabled={isLocked}
-                  >
-                    <SelectTrigger aria-label="Range">
-                      <SelectValue placeholder="Select range" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ranges.map((range) => (
-                        <SelectItem key={range.id} value={String(range.id)}>
-                          {range.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </UiSelect>
-                </div>
-              );
-            })()}
-
-            {/* Period Selection */}
-            {formValues.period && formValues.period.length === 2 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left column: Appraisee and Reviewer */}
+            <div className="space-y-6">
               <div className="grid gap-2">
-                <Label className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  Period
-                </Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      id="period-start"
-                      data-testid="period-start"
-                      type="date"
-                      value={formValues.period[0]?.format("YYYY-MM-DD") || ""}
-                      max={
-                        formValues.period[1]?.format("YYYY-MM-DD") || undefined
-                      }
-                      onChange={(e) => {
-                        const newStartDate = e.target.value;
-                        if (newStartDate && formValues.period) {
-                          const startDate = dayjs(newStartDate);
-                          setFormValues((v) => ({
-                            ...v,
-                            period: [startDate, v.period![1]],
-                          }));
-                        }
-                      }}
-                      disabled={isLocked}
-                      aria-label="Start date"
-                      placeholder="Start date"
-                    />
-                  </div>
-                  <div className="relative flex-1">
-                    <Input
-                      id="period-end"
-                      data-testid="period-end"
-                      type="date"
-                      value={formValues.period[1]?.format("YYYY-MM-DD") || ""}
-                      min={
-                        formValues.period[0]?.format("YYYY-MM-DD") || undefined
-                      }
-                      onChange={(e) => {
-                        const newEndDate = e.target.value;
-                        if (newEndDate && formValues.period) {
-                          const endDate = dayjs(newEndDate);
-                          setFormValues((v) => ({
-                            ...v,
-                            period: [v.period![0], endDate],
-                          }));
-                        }
-                      }}
-                      disabled={isLocked}
-                      aria-label="End date"
-                      placeholder="End date"
-                    />
-                  </div>
-                </div>
+                <Label>Employee (Appraisee)</Label>
+                <UiSelect
+                  value={
+                    formValues.appraisee_id
+                      ? String(formValues.appraisee_id)
+                      : undefined
+                  }
+                  onValueChange={(val) => {
+                    const empId = Number(val);
+                    setFormValues((v) => ({ ...v, appraisee_id: empId }));
+                  }}
+                  disabled={isLocked}
+                >
+                  <SelectTrigger aria-label="Employee">
+                    <SelectValue placeholder="Select employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map((emp) => (
+                      <SelectItem key={emp.emp_id} value={String(emp.emp_id)}>
+                        {emp.emp_name} ({emp.emp_email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </UiSelect>
+                {selectedEmployee && (
+                  <p className="text-xs text-muted-foreground">
+                    Role: {selectedEmployee.emp_roles || "N/A"}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Reviewer</Label>
+                <UiSelect
+                  value={
+                    formValues.reviewer_id
+                      ? String(formValues.reviewer_id)
+                      : undefined
+                  }
+                  onValueChange={(val) => {
+                    const empId = Number(val);
+                    setFormValues((v) => ({ ...v, reviewer_id: empId }));
+                  }}
+                  disabled={isLocked}
+                >
+                  <SelectTrigger aria-label="Reviewer">
+                    <SelectValue placeholder="Select reviewer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {eligibleReviewers.map((emp) => (
+                      <SelectItem key={emp.emp_id} value={String(emp.emp_id)}>
+                        {emp.emp_name} ({emp.emp_email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </UiSelect>
+                {selectedReviewer && (
+                  <p className="text-xs text-muted-foreground">
+                    Role: {selectedReviewer.emp_roles || "N/A"}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Right column: Appraisal Type, Range and Period */}
+            <div className="space-y-6">
+              <div className="grid gap-2">
+                <Label>Appraisal Type</Label>
+                <UiSelect
+                  value={selectedTypeId ? String(selectedTypeId) : undefined}
+                  onValueChange={handleTypeChange}
+                  disabled={isLocked}
+                >
+                  <SelectTrigger aria-label="Appraisal Type">
+                    <SelectValue placeholder="Select appraisal type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {appraisalTypes.map((type) => (
+                      <SelectItem key={type.id} value={String(type.id)}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </UiSelect>
                 <p className="text-xs text-muted-foreground">
-                  Period is initially calculated based on the selected type and
-                  range, but can be manually adjusted using the calendar
-                  pickers.
+                  Type determines the period automatically. If the type has
+                  ranges, choose one next.
                 </p>
               </div>
-            )}
+
+              {(() => {
+                const meta = appraisalTypes.find(
+                  (t) => t.id === selectedTypeId
+                );
+
+                // If the appraisal type has ranges, render the range radios and period inputs
+                if (meta?.has_range) {
+                  return (
+                    <div className="grid gap-2">
+                      <Label>Range</Label>
+                      <div className="flex flex-col md:flex-row gap-4 items-start">
+                        <div className="flex flex-row flex-wrap gap-2 items-center">
+                          {ranges.map((range) => (
+                            <label
+                              key={range.id}
+                              className="inline-flex items-center gap-2 p-2 rounded hover:bg-muted"
+                            >
+                              <input
+                                type="radio"
+                                name="appraisal-range"
+                                value={String(range.id)}
+                                checked={
+                                  formValues.appraisal_type_range_id ===
+                                  range.id
+                                }
+                                onChange={() =>
+                                  handleRangeChange(String(range.id))
+                                }
+                                disabled={isLocked}
+                                aria-label={`Select range ${range.name}`}
+                              />
+                              <span className="text-sm">{range.name}</span>
+                            </label>
+                          ))}
+                        </div>
+
+                        {/* Period inputs placed next to the radio buttons */}
+                        {formValues.period &&
+                          formValues.period.length === 2 && (
+                            <div className="flex gap-2 items-center">
+                              <div className="relative w-[160px]">
+                                <Input
+                                  id="period-start"
+                                  data-testid="period-start"
+                                  type="date"
+                                  value={
+                                    formValues.period[0]?.format(
+                                      "YYYY-MM-DD"
+                                    ) || ""
+                                  }
+                                  max={
+                                    formValues.period[1]?.format(
+                                      "YYYY-MM-DD"
+                                    ) || undefined
+                                  }
+                                  onChange={(e) => {
+                                    const newStartDate = e.target.value;
+                                    if (newStartDate && formValues.period) {
+                                      const startDate = dayjs(newStartDate);
+                                      setFormValues((v) => ({
+                                        ...v,
+                                        period: [startDate, v.period![1]],
+                                      }));
+                                    }
+                                  }}
+                                  disabled={isLocked}
+                                  aria-label="Start date"
+                                  placeholder="Start date"
+                                />
+                              </div>
+
+                              <div className="relative w-[160px]">
+                                <Input
+                                  id="period-end"
+                                  data-testid="period-end"
+                                  type="date"
+                                  value={
+                                    formValues.period[1]?.format(
+                                      "YYYY-MM-DD"
+                                    ) || ""
+                                  }
+                                  min={
+                                    formValues.period[0]?.format(
+                                      "YYYY-MM-DD"
+                                    ) || undefined
+                                  }
+                                  onChange={(e) => {
+                                    const newEndDate = e.target.value;
+                                    if (newEndDate && formValues.period) {
+                                      const endDate = dayjs(newEndDate);
+                                      setFormValues((v) => ({
+                                        ...v,
+                                        period: [v.period![0], endDate],
+                                      }));
+                                    }
+                                  }}
+                                  disabled={isLocked}
+                                  aria-label="End date"
+                                  placeholder="End date"
+                                />
+                              </div>
+                            </div>
+                          )}
+                      </div>
+
+                      <p className="text-xs text-muted-foreground">
+                        Period is initially calculated based on the selected
+                        type and range, but can be manually adjusted using the
+                        calendar pickers.
+                      </p>
+                    </div>
+                  );
+                }
+
+                // If the appraisal type does NOT have ranges, show the period inputs directly
+                return (
+                  <div className="grid gap-2">
+                    <Label>Period</Label>
+                    {formValues.period && formValues.period.length === 2 ? (
+                      <div className="flex gap-2 items-center">
+                        <div className="relative w-[160px]">
+                          <Input
+                            id="period-start"
+                            data-testid="period-start"
+                            type="date"
+                            value={
+                              formValues.period[0]?.format("YYYY-MM-DD") || ""
+                            }
+                            max={
+                              formValues.period[1]?.format("YYYY-MM-DD") ||
+                              undefined
+                            }
+                            onChange={(e) => {
+                              const newStartDate = e.target.value;
+                              if (newStartDate && formValues.period) {
+                                const startDate = dayjs(newStartDate);
+                                setFormValues((v) => ({
+                                  ...v,
+                                  period: [startDate, v.period![1]],
+                                }));
+                              }
+                            }}
+                            disabled={isLocked}
+                            aria-label="Start date"
+                            placeholder="Start date"
+                          />
+                        </div>
+
+                        <div className="relative w-[160px]">
+                          <Input
+                            id="period-end"
+                            data-testid="period-end"
+                            type="date"
+                            value={
+                              formValues.period[1]?.format("YYYY-MM-DD") || ""
+                            }
+                            min={
+                              formValues.period[0]?.format("YYYY-MM-DD") ||
+                              undefined
+                            }
+                            onChange={(e) => {
+                              const newEndDate = e.target.value;
+                              if (newEndDate && formValues.period) {
+                                const endDate = dayjs(newEndDate);
+                                setFormValues((v) => ({
+                                  ...v,
+                                  period: [v.period![0], endDate],
+                                }));
+                              }
+                            }}
+                            disabled={isLocked}
+                            aria-label="End date"
+                            placeholder="End date"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Period will be calculated based on the selected type.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         </CardContent>
       )}
