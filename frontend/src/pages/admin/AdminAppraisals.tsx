@@ -22,7 +22,8 @@ import {
 } from "../../components/ui/table";
 import { Badge } from "../../components/ui/badge";
 import { getStatusBadgeVariant } from "../../utils/appraisalUtils";
-import { Edit, RefreshCw } from "lucide-react";
+import { Edit, RefreshCw, Plus } from "lucide-react";
+import CategoryModal from "../../components/modals/CategoryModal";
 
 interface Appraisal {
   appraisal_id: number;
@@ -53,6 +54,7 @@ const AdminAppraisals = () => {
     null
   );
   const [dialogMode, setDialogMode] = useState<"view" | "edit">("view");
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -205,15 +207,22 @@ const AdminAppraisals = () => {
           </Select>
         </div>
 
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={handleReset}
-          title="Reset filters"
-          aria-label="Reset filters"
-        >
-          <RefreshCw className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="primary" onClick={() => setShowCategoryModal(true)}>
+            <Plus className="h-4 w-4" />
+            Categories
+          </Button>
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleReset}
+            title="Reset filters"
+            aria-label="Reset filters"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -304,6 +313,12 @@ const AdminAppraisals = () => {
         appraisal={selectedAppraisal}
         mode={dialogMode}
         employees={employees}
+      />
+
+      <CategoryModal
+        open={showCategoryModal}
+        onOpenChange={(o: boolean) => setShowCategoryModal(o)}
+        onCreated={() => load()}
       />
     </div>
   );

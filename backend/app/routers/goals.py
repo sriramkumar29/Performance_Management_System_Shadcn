@@ -98,9 +98,10 @@ async def create_category(
     try:
         db_category = await category_service.create(db, obj_in=category)
         await db.commit()
-        
+
         logger.info(f"{context}API_SUCCESS: Created category - ID: {db_category.id}")
-        return CategoryResponse.model_validate(db_category)
+        # Return plain dict to avoid Pydantic validation issues when converting ORM objects
+        return {"id": getattr(db_category, "id", None), "name": getattr(db_category, "name", None)}
         
     except BaseDomainException as e:
         # Convert domain exceptions to HTTP exceptions
@@ -161,9 +162,10 @@ async def get_categories(
             skip=pagination.skip,
             limit=pagination.limit
         )
-        
+
         logger.info(f"{context}API_SUCCESS: Retrieved {len(categories)} categories")
-        return [CategoryResponse.model_validate(cat) for cat in categories]
+        # Convert ORM objects to plain dicts to avoid unexpected serialization errors
+        return [{"id": getattr(cat, "id", None), "name": getattr(cat, "name", None)} for cat in categories]
         
     except BaseDomainException as e:
         # Convert domain exceptions to HTTP exceptions
@@ -187,6 +189,53 @@ async def get_categories(
             detail={
                 "error": "InternalServerError",
                 "message": "An unexpected error occurred while retrieving categories"
+            }
+        )
+
+
+@router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_category(
+    category_id: int,
+    db: AsyncSession = Depends(get_db),
+    category_service: CategoryService = Depends(get_category_service),
+    current_user: Employee = Depends(get_current_active_user)
+) -> None:
+    """
+    Delete a category by ID with proper error handling and logging.
+    """
+    user_id = current_user.emp_id
+    context = build_log_context(user_id=str(user_id))
+
+    logger.info(f"{context}API_REQUEST: DELETE /categories/{category_id}")
+
+    try:
+        await category_service.delete(db, entity_id=category_id)
+        await db.commit()
+
+        logger.info(f"{context}API_SUCCESS: Deleted category - ID: {category_id}")
+
+    except BaseDomainException as e:
+        # Convert domain exceptions to HTTP exceptions
+        status_code = map_domain_exception_to_http_status(e)
+        logger.warning(f"{context}DOMAIN_ERROR: {e.__class__.__name__} - {e.message}")
+
+        raise HTTPException(
+            status_code=status_code,
+            detail={
+                "error": e.__class__.__name__,
+                "message": e.message,
+                "details": e.details
+            }
+        )
+
+    except Exception as e:
+        # Handle unexpected errors
+        logger.error(f"{context}UNEXPECTED_ERROR: Failed to delete category {category_id} - {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "InternalServerError",
+                "message": f"An unexpected error occurred while deleting category {category_id}"
             }
         )
 

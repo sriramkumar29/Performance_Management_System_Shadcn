@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
+import { apiFetch } from "../../utils/api";
 import {
   Card,
   CardContent,
@@ -62,6 +63,22 @@ const Login = () => {
     try {
       await loginWithCredentials(email, password);
       toast.success("Welcome back!");
+
+      // Fetch the latest profile to determine post-login redirect (ensure role is fresh)
+      try {
+        const profileRes = await apiFetch(`/employees/profile`);
+        if (profileRes.ok && profileRes.data) {
+          const roles = (profileRes.data as any).emp_roles || "";
+          if (/admin/i.test(roles)) {
+            navigate("/admin/users", { replace: true });
+            return;
+          }
+        }
+      } catch (e) {
+        // ignore and fallback
+      }
+
+      // default redirect
       navigate("/");
     } catch (err: unknown) {
       const errorMessage =

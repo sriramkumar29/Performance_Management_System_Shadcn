@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { api } from "../../utils/api";
+import CategoryModal from "../modals/CategoryModal";
 
 interface Appraisal {
   appraisal_id: number;
@@ -64,6 +65,7 @@ const AppraisalDialog = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [details, setDetails] = useState<any>(null);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   useEffect(() => {
     if (appraisal && open) {
@@ -384,9 +386,30 @@ const AppraisalDialog = ({
         )}
 
         {mode === "view" && (
-          <DialogFooter>
-            <Button onClick={onClose}>Close</Button>
-          </DialogFooter>
+          <>
+            <DialogFooter>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCategoryModal(true)}
+                >
+                  Categories
+                </Button>
+              </div>
+              <div className="ml-auto">
+                <Button onClick={onClose}>Close</Button>
+              </div>
+            </DialogFooter>
+
+            <CategoryModal
+              open={showCategoryModal}
+              onOpenChange={(o: boolean) => setShowCategoryModal(o)}
+              onCreated={() => {
+                // optionally reload details if open
+                if (mode === "view") loadDetails();
+              }}
+            />
+          </>
         )}
       </DialogContent>
     </Dialog>

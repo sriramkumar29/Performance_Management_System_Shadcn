@@ -474,6 +474,43 @@ class CategoryService(BaseService[Category, CategoryCreate, None]):
     @property
     def id_field(self) -> str:
         return "id"
+
+    @log_execution_time()
+    @log_exception()
+    async def create(
+        self,
+        db: AsyncSession,
+        *,
+        obj_in: CategoryCreate,
+        current_user: Optional[Any] = None
+    ) -> Category:
+        """Create a category (or return existing) using repository helper.
+
+        Uses get_or_create_by_name to make the operation idempotent and
+        avoids duplicate entries at the DB level.
+        """
+        context = build_log_context()
+
+        self.logger.info(f"{context}SERVICE_REQUEST: Create {self.entity_name} - Name: {getattr(obj_in, 'name', None)}")
+
+        try:
+            name = getattr(obj_in, "name", None)
+            if name is None:
+                raise ValueError("Category name is required")
+
+            name = name.strip()
+            category = await self.repository.get_or_create_by_name(db, name)
+
+            self.logger.info(f"{context}SERVICE_SUCCESS: Created/returned {self.entity_name} - ID: {getattr(category, 'id', None)}")
+            return category
+
+        except BaseRepositoryException as e:
+            self.logger.error(f"{context}REPOSITORY_ERROR: Failed to create {self.entity_name} - {e.message}")
+            raise GoalServiceError(f"Failed to create {self.entity_name}: {e.message}")
+
+        except Exception as e:
+            self.logger.error(f"{context}UNEXPECTED_ERROR: Failed to create {self.entity_name} - {str(e)}")
+            raise GoalServiceError(f"Unexpected error creating {self.entity_name}: {str(e)}")
     
     async def get_multi(
         self,
