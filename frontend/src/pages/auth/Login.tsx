@@ -68,8 +68,8 @@ const Login = () => {
       try {
         const profileRes = await apiFetch(`/employees/profile`);
         if (profileRes.ok && profileRes.data) {
-          const roles = (profileRes.data as any).emp_roles || "";
-          if (/admin/i.test(roles)) {
+          const roleName = (profileRes.data as any).role?.role_name || "";
+          if (/admin/i.test(roleName)) {
             navigate("/admin/users", { replace: true });
             return;
           }

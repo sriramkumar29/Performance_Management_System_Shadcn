@@ -424,20 +424,24 @@ class AppraisalRepository(BaseRepository[Appraisal]):
     async def get_employee_by_id(self, db: AsyncSession, emp_id: int) -> Optional[Employee]:
         """Get employee by ID with comprehensive logging."""
         context = build_log_context()
-        
+
         self.logger.debug(f"{context}REPO_GET_EMPLOYEE: Getting employee - ID: {emp_id}")
-        
+
         try:
-            result = await db.execute(select(Employee).where(Employee.emp_id == emp_id))
+            result = await db.execute(
+                select(Employee)
+                .options(selectinload(Employee.role))
+                .where(Employee.emp_id == emp_id)
+            )
             employee = result.scalars().first()
-            
+
             if employee:
                 self.logger.debug(f"{context}REPO_GET_EMPLOYEE_SUCCESS: Found employee - ID: {emp_id}, Name: {sanitize_log_data(employee.emp_name)}")
             else:
                 self.logger.debug(f"{context}REPO_GET_EMPLOYEE_NOT_FOUND: Employee not found - ID: {emp_id}")
-                
+
             return employee
-            
+
         except Exception as e:
             error_msg = f"Error retrieving employee by ID: {emp_id}"
             self.logger.error(f"{context}REPO_GET_EMPLOYEE_ERROR: {error_msg} - {str(e)}")

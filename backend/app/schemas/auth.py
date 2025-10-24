@@ -4,6 +4,7 @@ Authentication schemas for the Performance Management System.
 
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+from app.schemas.role import RoleResponse
 
 
 class LoginRequest(BaseModel):
@@ -29,7 +30,8 @@ class UserInfo(BaseModel):
     emp_id: int
     emp_name: str
     emp_email: str
-    emp_roles: Optional[str] = None
+    role_id: int
+    role: RoleResponse
     emp_department: Optional[str] = None
     emp_status: bool
 

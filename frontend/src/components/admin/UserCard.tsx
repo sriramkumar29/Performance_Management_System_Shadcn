@@ -1,12 +1,17 @@
 import { Button } from "../ui/button";
 
+interface Role {
+  id: number;
+  role_name: string;
+}
+
 interface Employee {
   emp_id: number;
   emp_name: string;
   emp_email: string;
   emp_department?: string;
-  emp_roles?: string;
-  emp_roles_level?: number;
+  role_id: number;
+  role: Role;
   emp_status?: boolean;
 }
 
@@ -21,7 +26,7 @@ const UserCard = ({
   onEdit: () => void;
   onDelete?: () => void;
 }) => {
-  const isAdmin = /admin/i.test(employee.emp_roles || "");
+  const isAdmin = /admin/i.test(employee.role?.role_name || "");
 
   return (
     <div className="p-4 border rounded-lg shadow-sm bg-card">
@@ -40,7 +45,7 @@ const UserCard = ({
             ID: {employee.emp_id}
           </p>
           <p className="text-xs text-muted-foreground">
-            Role: {employee.emp_roles || "N/A"}
+            Role: {employee.role?.role_name || "N/A"}
           </p>
           <p className="text-xs text-muted-foreground">
             Status: {employee.emp_status ? "Active" : "Deactivated"}

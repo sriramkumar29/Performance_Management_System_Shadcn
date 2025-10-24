@@ -15,10 +15,17 @@ engine = create_async_engine(
 async def init_db():
     """Initialize the database and create tables."""
     logger.info("Initializing database...")
-    
+
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables created successfully")
+
+        # Initialize roles table with seed data
+        async with async_session() as session:
+            from app.db.init_roles import init_roles
+            await init_roles(session)
+
         logger.info("Database initialization completed successfully")
     except Exception as e:
         logger.error(f"Database initialization failed: {str(e)}")

@@ -102,15 +102,16 @@ const PaginationControls = ({
 );
 
 /**
- * Helper to check if user is a manager or above (Director or CEO).
+ * Helper to check if user is a manager or above using new role system.
  */
 function isManagerOrAbove(
-  roles: string | string[] | undefined,
-  level: number | undefined
+  roleId: number | undefined,
+  roleName: string | undefined
 ): boolean {
-  if (!roles || level === undefined) return false;
-  const arr = Array.isArray(roles) ? roles : [roles];
-  return arr.includes("Manager") || (level !== undefined && level >= 3);
+  // Manager or above (role_id >= 3)
+  if (roleId && roleId >= 3) return true;
+  if (roleName && /manager|ceo|admin/i.test(roleName)) return true;
+  return false;
 }
 
 const GoalTemplates = () => {
@@ -267,7 +268,7 @@ const GoalTemplates = () => {
             </p>
           </div>
         </div>
-        {isManagerOrAbove(user?.emp_roles, user?.emp_roles_level) && (
+        {isManagerOrAbove(user?.role_id, user?.role?.role_name) && (
           <Button
             onClick={() => setShowCreateModal(true)}
             variant={BUTTON_STYLES.CREATE.variant}
@@ -440,8 +441,8 @@ const GoalTemplates = () => {
 
                     {/* Action buttons - positioned absolutely */}
                     {isManagerOrAbove(
-                      user?.emp_roles,
-                      user?.emp_roles_level
+                      user?.role_id,
+                      user?.role?.role_name
                     ) && (
                       <div className="flex gap-2 shrink-0">
                         <Button

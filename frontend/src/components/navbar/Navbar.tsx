@@ -50,7 +50,7 @@ const Navbar = ({ showTeamTab = false }: NavbarProps) => {
   // Don't show navigation tabs on login page
   const showNavTabs = !location.pathname.startsWith("/login");
 
-  const isAdminUser = authUser && /admin/i.test(authUser.emp_roles || "");
+  const isAdminUser = authUser && /admin/i.test(authUser.role?.role_name || "");
 
   return (
     <header className="w-full sticky top-0 z-50 glass-effect border-t-4 border-t-primary shadow-medium backdrop-blur-xl">
@@ -170,7 +170,7 @@ const Navbar = ({ showTeamTab = false }: NavbarProps) => {
                     {firstName}
                   </p>
                   <p className="text-xs text-muted-foreground leading-tight">
-                    {authUser?.emp_roles || "Employee"}
+                    {authUser?.role?.role_name || "Employee"}
                   </p>
                 </div>
               </button>
@@ -194,7 +194,7 @@ const Navbar = ({ showTeamTab = false }: NavbarProps) => {
                       {authUser?.emp_email || "employee@company.com"}
                     </p>
                     <p className="text-xs leading-none text-primary font-semibold">
-                      {authUser?.emp_roles || "Employee"}
+                      {authUser?.role?.role_name || "Employee"}
                     </p>
                   </div>
                 </div>

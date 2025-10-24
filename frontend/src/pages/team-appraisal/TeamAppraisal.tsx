@@ -44,10 +44,16 @@ type Appraisal = {
   status: string;
 };
 
+type Role = {
+  id: number;
+  role_name: string;
+};
+
 type Employee = {
   emp_id: number;
   emp_name: string;
-  emp_roles?: string;
+  role_id: number;
+  role: Role;
   emp_reporting_manager_id?: number | null;
 };
 type AppraisalType = { id: number; name: string };

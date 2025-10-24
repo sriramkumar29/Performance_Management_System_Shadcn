@@ -74,12 +74,17 @@ interface AppraisalGoal {
   };
 }
 
+interface Role {
+  id: number;
+  role_name: string;
+}
+
 interface Employee {
   emp_id: number;
   emp_name: string;
   emp_email: string;
-  emp_roles?: string;
-  emp_roles_level?: number;
+  role_id: number;
+  role: Role;
 }
 
 interface AppraisalType {
@@ -177,8 +182,8 @@ const CreateAppraisalModal = ({
     createdAppraisalStatus === "Draft" &&
     totalWeightageUi === 100;
 
-  // Role-based filtering
-  const appraiserLevel = user?.emp_roles_level ?? 0;
+  // Role-based filtering using new role system
+  const appraiserRoleId = user?.role_id ?? 0;
   const statusLabel = createdAppraisalId
     ? createdAppraisalStatus || "Draft"
     : "New Draft";
@@ -191,14 +196,18 @@ const CreateAppraisalModal = ({
     periodSelected,
     totalWeightageUi,
   });
+
+  // Eligible appraisees: employees with role_id <= appraiser's role_id
   const eligibleAppraisees = employees.filter(
     (emp) =>
-      (emp.emp_roles_level ?? -1) <= appraiserLevel &&
+      (emp.role_id ?? 999) <= appraiserRoleId &&
       emp.emp_id !== user?.emp_id
   );
+
+  // Eligible reviewers: Manager or above (role_id >= 3)
   const eligibleReviewers = employees.filter(
     (emp) =>
-      (emp.emp_roles_level ?? -1) >= appraiserLevel &&
+      emp.role_id >= 3 &&
       emp.emp_id !== user?.emp_id
   );
 

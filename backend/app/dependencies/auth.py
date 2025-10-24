@@ -124,22 +124,22 @@ def get_current_active_user(
 def require_manager_role(
     current_user: Employee = Depends(get_current_active_user)
 ) -> Employee:
-    """Require manager role."""
+    """Require manager role or higher."""
     context = build_log_context(user_id=current_user.emp_id)
-    
+
     try:
-        logger.debug(f"{context}ROLE_CHECK: Verifying manager role - User: {current_user.emp_id}, Roles: {sanitize_log_data(current_user.emp_roles)}")
-        
-        if current_user.emp_roles and ROLE_MANAGER_LOWER in current_user.emp_roles.lower():
+        logger.debug(f"{context}ROLE_CHECK: Verifying manager role - User: {current_user.emp_id}, Role: {current_user.role.role_name if current_user.role else 'None'}")
+
+        if current_user.role and current_user.role.role_name.lower() in [ROLE_MANAGER_LOWER, "ceo", ROLE_ADMIN]:
             logger.info(f"{context}ROLE_APPROVED: Manager role verified - User: {current_user.emp_id}")
             return current_user
-        
+
         logger.warning(f"{context}ROLE_DENIED: Manager role required but not found - User: {current_user.emp_id}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Manager role required"
         )
-        
+
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise
@@ -156,20 +156,20 @@ def require_admin_role(
 ) -> Employee:
     """Require admin role."""
     context = build_log_context(user_id=current_user.emp_id)
-    
+
     try:
-        logger.debug(f"{context}ROLE_CHECK: Verifying admin role - User: {current_user.emp_id}, Roles: {sanitize_log_data(current_user.emp_roles)}")
-        
-        if current_user.emp_roles and ROLE_ADMIN in current_user.emp_roles.lower():
+        logger.debug(f"{context}ROLE_CHECK: Verifying admin role - User: {current_user.emp_id}, Role: {current_user.role.role_name if current_user.role else 'None'}")
+
+        if current_user.role and current_user.role.role_name.lower() == ROLE_ADMIN:
             logger.info(f"{context}ROLE_APPROVED: Admin role verified - User: {current_user.emp_id}")
             return current_user
-        
+
         logger.warning(f"{context}ROLE_DENIED: Admin role required but not found - User: {current_user.emp_id}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin role required"
         )
-        
+
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise
@@ -184,22 +184,23 @@ def require_admin_role(
 def require_hr_role(
     current_user: Employee = Depends(get_current_active_user)
 ) -> Employee:
-    """Require HR role."""
+    """Require HR role (deprecated - HR is not in new role system)."""
     context = build_log_context(user_id=current_user.emp_id)
-    
+
     try:
-        logger.debug(f"{context}ROLE_CHECK: Verifying HR role - User: {current_user.emp_id}, Roles: {sanitize_log_data(current_user.emp_roles)}")
-        
-        if current_user.emp_roles and "hr" in current_user.emp_roles.lower():
-            logger.info(f"{context}ROLE_APPROVED: HR role verified - User: {current_user.emp_id}")
+        logger.debug(f"{context}ROLE_CHECK: Verifying HR role - User: {current_user.emp_id}, Role: {current_user.role.role_name if current_user.role else 'None'}")
+
+        # Note: HR role doesn't exist in new role system, map to Admin for now
+        if current_user.role and current_user.role.role_name.lower() == ROLE_ADMIN:
+            logger.info(f"{context}ROLE_APPROVED: HR role verified (via Admin) - User: {current_user.emp_id}")
             return current_user
-        
+
         logger.warning(f"{context}ROLE_DENIED: HR role required but not found - User: {current_user.emp_id}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="HR role required"
         )
-        
+
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise

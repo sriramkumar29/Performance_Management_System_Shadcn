@@ -1,12 +1,17 @@
 import { apiFetch } from "../../../utils/api";
 import { toast } from "sonner";
 
+interface Role {
+  id: number;
+  role_name: string;
+}
+
 interface Employee {
   emp_id: number;
   emp_name: string;
   emp_email: string;
-  emp_roles?: string;
-  emp_roles_level?: number;
+  role_id: number;
+  role: Role;
 }
 
 interface AppraisalType {

@@ -99,33 +99,22 @@ const AppraisalDialog = ({
     return employee ? employee.emp_name : `ID: ${empId}`;
   };
 
-  // Role helpers — mirror the logic used in CreateAppraisal
-  const isAppraiserEligible = (roles?: string, level?: number | null) => {
-    // Appraiser: lead or above
-    if (
-      roles &&
-      /lead|manager|head|director|vp|chief|cxo|cto|ceo|admin/i.test(roles)
-    )
-      return true;
-    if (typeof level === "number") return level >= 3; // fallback: manager+ (3+)
-    return false;
+  // Role helpers using new role system
+  // Appraiser: Lead or above (role_id >= 2)
+  const isAppraiserEligible = (roleId?: number) => {
+    return roleId && roleId >= 2; // Lead or above
   };
 
-  const isReviewerEligible = (roles?: string, level?: number | null) => {
-    // Reviewer: manager or above — explicitly exclude 'lead' as reviewer if role text contains it
-    if (
-      roles &&
-      /manager|head|director|vp|chief|cxo|cto|ceo|admin/i.test(roles)
-    )
-      return true;
-    if (typeof level === "number") return level >= 3; // fallback: manager+ (3+)
-    return false;
+  // Reviewer: Manager or above (role_id >= 3)
+  const isReviewerEligible = (roleId?: number) => {
+    return roleId && roleId >= 3; // Manager or above
   };
 
   // Compute eligible lists for selects
-  const eligibleAppraisers = employees.filter((e) =>
-    isAppraiserEligible((e as any).emp_roles, (e as any).emp_roles_level)
-  );
+  const eligibleAppraisers = employees
+    .filter((e) => isAppraiserEligible((e as any).role_id))
+    // Exclude currently selected reviewer so the same person can't be both appraiser and reviewer
+    .filter((e) => e.emp_id !== Number(formData.reviewer_id));
 
   const selectedAppraiserId = formData.appraiser_id
     ? parseInt(formData.appraiser_id)
@@ -133,24 +122,22 @@ const AppraisalDialog = ({
   const selectedAppraiser = employees.find(
     (e) => e.emp_id === selectedAppraiserId
   );
-  const selectedAppraiserLevel =
-    (selectedAppraiser as any)?.emp_roles_level ?? null;
+  const selectedAppraiserRoleId = (selectedAppraiser as any)?.role_id ?? null;
 
-  const eligibleReviewers = employees.filter((e) => {
-    const ok = isReviewerEligible(
-      (e as any).emp_roles,
-      (e as any).emp_roles_level
-    );
-    if (!ok) return false;
-    // reviewer must be same or higher rank than appraiser when appraiser selected
-    if (
-      selectedAppraiserLevel != null &&
-      typeof (e as any).emp_roles_level === "number"
-    ) {
-      return (e as any).emp_roles_level >= selectedAppraiserLevel;
-    }
-    return true;
-  });
+  const eligibleReviewers = employees
+    .filter((e) => isReviewerEligible((e as any).role_id))
+    // Exclude currently selected appraiser so the same person can't be both reviewer and appraiser
+    .filter((e) => e.emp_id !== selectedAppraiserId)
+    .filter((e) => {
+      // reviewer must be same or higher rank than appraiser when appraiser selected
+      if (
+        selectedAppraiserRoleId != null &&
+        typeof (e as any).role_id === "number"
+      ) {
+        return (e as any).role_id >= selectedAppraiserRoleId;
+      }
+      return true;
+    });
 
   /*************  ✨ Windsurf Command ⭐  *************/
   /**

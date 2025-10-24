@@ -27,7 +27,7 @@ load_dotenv(env_file, override=True)
 from app.core.logging_config import setup_logging, get_logger
 from app.utils.logger import log_exception
 from app.db.database import engine, Base
-from app.routers import employees, appraisals, goals, appraisal_types, appraisal_goals, frontend_serve
+from app.routers import employees, appraisals, goals, appraisal_types, appraisal_goals, frontend_serve, roles
 from app.core.config import settings
 from app.core.exception_handlers import setup_exception_handlers
 from app.db.database import init_db, close_db
@@ -147,9 +147,20 @@ app.include_router(
 )
 
 app.include_router(
-    appraisal_types.router, 
-    prefix=f"{api_prefix}/appraisal-types", 
+    appraisal_types.router,
+    prefix=f"{api_prefix}/appraisal-types",
     tags=["Appraisal Types"],
+    responses={
+        401: {"description": UNAUTHORIZED_HTTP},
+        404: {"description": NOT_FOUND},
+        422: {"description": VALIDATION_ERROR}
+    }
+)
+
+app.include_router(
+    roles.router,
+    prefix=f"{api_prefix}/roles",
+    tags=["Roles"],
     responses={
         401: {"description": UNAUTHORIZED_HTTP},
         404: {"description": NOT_FOUND},

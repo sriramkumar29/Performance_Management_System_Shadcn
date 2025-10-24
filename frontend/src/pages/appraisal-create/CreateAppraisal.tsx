@@ -78,12 +78,17 @@ interface AppraisalGoal {
   };
 }
 
+interface Role {
+  id: number;
+  role_name: string;
+}
+
 interface Employee {
   emp_id: number;
   emp_name: string;
   emp_email: string;
-  emp_roles?: string;
-  emp_roles_level?: number;
+  role_id: number;
+  role: Role;
 }
 
 interface AppraisalType {
@@ -182,8 +187,8 @@ const CreateAppraisal = () => {
     createdAppraisalStatus === "Draft" &&
     totalWeightageUi === 100;
 
-  // Role-based filtering
-  const appraiserLevel = user?.emp_roles_level ?? 0;
+  // Role-based filtering using new role system
+  const appraiserRoleId = user?.role_id ?? 0;
   const addGoalDisabledReason = getAddGoalDisabledReason({
     canAddGoals,
     isLocked,
@@ -193,29 +198,19 @@ const CreateAppraisal = () => {
     periodSelected,
     totalWeightageUi,
   });
+
+  // Eligible appraisees: employees with role level <= appraiser's role level
   const eligibleAppraisees = employees.filter(
     (emp) =>
-      (emp.emp_roles_level ?? -1) <= appraiserLevel &&
-      emp.emp_id !== user?.emp_id
+      (emp.role_id ?? 999) <= appraiserRoleId && emp.emp_id !== user?.emp_id
   );
 
-  // Reviewers must be manager or above. Explicitly exclude "lead" from allowed
-  // role names. If numeric role levels are used, assume manager starts at > 3
-  // (adjust threshold if your org maps levels differently).
-  const isReviewerEligible = (roles?: string, level?: number | null) => {
-    if (
-      roles &&
-      /manager|head|director|vp|chief|cxo|cto|ceo|admin/i.test(roles)
-    )
-      return true;
-    if (typeof level === "number") return level > 3;
-    return false;
-  };
-
+  // Reviewers must be manager or above (role_id >= 3)
   const eligibleReviewers = employees.filter(
     (emp) =>
-      isReviewerEligible(emp.emp_roles, emp.emp_roles_level) &&
-      emp.emp_id !== user?.emp_id
+      emp.role_id >= 3 && // Manager or above
+      emp.emp_id !== user?.emp_id &&
+      emp.emp_id !== formValues.appraisee_id // reviewer cannot be the appraisee
   );
 
   // Debugging: log reviewer candidates in non-production builds so you can
@@ -227,8 +222,8 @@ const CreateAppraisal = () => {
       eligibleReviewers.map((e) => ({
         emp_id: e.emp_id,
         emp_name: e.emp_name,
-        emp_roles: e.emp_roles,
-        emp_roles_level: e.emp_roles_level,
+        role_id: e.role_id,
+        role_name: e.role?.role_name,
       }))
     );
   }

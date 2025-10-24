@@ -2,17 +2,13 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { useEffect, useRef } from "react";
+import { isAdmin } from "../utils/roleHelpers";
 
 const AdminRoute = () => {
   const { user } = useAuth();
   const hasShownToast = useRef(false);
 
-  const isAdmin = (roles?: string) => {
-    if (!roles) return false;
-    return /admin/i.test(roles);
-  };
-
-  const hasAdminAccess = isAdmin(user?.emp_roles);
+  const hasAdminAccess = isAdmin(user?.role_id, user?.role?.role_name);
 
   useEffect(() => {
     if (!hasAdminAccess && !hasShownToast.current) {

@@ -147,14 +147,38 @@ VALID_IMPORTANCE_LEVELS = [IMPORTANCE_HIGH, IMPORTANCE_MEDIUM, IMPORTANCE_LOW]
 # =============================================================================
 
 ROLE_APPRAISEE = "Appraisee"
-ROLE_APPRAISER = "Appraiser" 
+ROLE_APPRAISER = "Appraiser"
 ROLE_REVIEWER = "Reviewer"
 ROLE_MANAGER = "Manager"
 ROLE_EMPLOYEE = "Employee"
 
-# Employee role levels (for validation)
+# Employee role IDs and names (matches roles table)
+ROLE_ID_EMPLOYEE = 1
+ROLE_ID_LEAD = 2
+ROLE_ID_MANAGER = 3
+ROLE_ID_CEO = 4
+ROLE_ID_ADMIN = 5
+
+ROLE_NAME_EMPLOYEE = "Employee"
+ROLE_NAME_LEAD = "Lead"
+ROLE_NAME_MANAGER = "Manager"
+ROLE_NAME_CEO = "CEO"
+ROLE_NAME_ADMIN = "Admin"
+
+# Role hierarchy mapping (role_id -> hierarchy level for comparisons)
+ROLE_HIERARCHY = {
+    ROLE_ID_EMPLOYEE: 1,
+    ROLE_ID_LEAD: 2,
+    ROLE_ID_MANAGER: 3,
+    ROLE_ID_CEO: 4,
+    ROLE_ID_ADMIN: 5,
+}
+
+# Role names for authorization checks (case-insensitive)
 ROLE_ADMIN = "admin"
 ROLE_MANAGER_LOWER = "manager"
+ROLE_LEAD_LOWER = "lead"
+ROLE_CEO_LOWER = "ceo"
 
 # Entity names for error messages
 ENTITY_EMPLOYEE = "Employee"

@@ -101,6 +101,11 @@ async def login(
             }
         )
         
+    except HTTPException as e:
+        # Already a proper HTTPException (e.g., Duplicate/Conflict), re-raise so FastAPI will use its status
+        logger.warning(f"{context}HTTP_EXCEPTION: {e.status_code} - {getattr(e, 'detail', '')}")
+        raise e
+        
     except UnauthorizedError as e:
         # Handle authentication errors specifically
         logger.warning(f"{context}AUTH_ERROR: Login failed - {e.detail}")
@@ -261,9 +266,14 @@ async def create_employee(
             db, 
             employee_data=employee_data
         )
-        
+
+        # Re-fetch with relationships loaded to avoid lazy-loading during Pydantic validation
+        db_employee_with_rels = await employee_service.get_by_id_or_404(
+            db, getattr(db_employee, 'emp_id'), load_relationships=["role"]
+        )
+
         logger.info(f"{context}API_SUCCESS: Created employee with ID: {db_employee.emp_id}")
-        return EmployeeResponse.model_validate(db_employee)
+        return EmployeeResponse.model_validate(db_employee_with_rels)
         
     except BaseDomainException as e:
         # Convert domain exceptions to HTTP exceptions
@@ -278,6 +288,11 @@ async def create_employee(
                 "details": e.details
             }
         )
+        
+    except HTTPException as e:
+        # Re-raise HTTP exceptions coming from service layer (e.g., conflicts)
+        logger.warning(f"{context}HTTP_EXCEPTION: {e.status_code} - {getattr(e, 'detail', '')}")
+        raise e
         
     except Exception as e:
         # Handle unexpected errors
@@ -399,6 +414,10 @@ async def get_managers(
         # Handle domain exceptions
         logger.error(f"{context}DOMAIN_ERROR: {type(e).__name__} in get_managers - {str(e)}")
         raise e.to_http_exception()
+    except HTTPException as e:
+        # Re-raise HTTP exceptions coming from service layer (e.g., conflict)
+        logger.warning(f"{context}HTTP_EXCEPTION: {e.status_code} - {getattr(e, 'detail', '')}")
+        raise e
         
     except Exception as e:
         # Handle unexpected errors
@@ -542,21 +561,30 @@ async def update_employee(
     logger.info(f"{context}API_REQUEST: PUT /{employee_id} - Update employee with data: {safe_data}")
     
     try:
-        db_employee = await employee_service.update_employee(
+        updated = await employee_service.update_employee(
             db,
             employee_id=employee_id,
             employee_data=employee_data
         )
-        
-        response = EmployeeResponse.model_validate(db_employee)
+
+        # Re-fetch with relationships to ensure response model has role populated without async IO during validation
+        db_employee_with_rels = await employee_service.get_by_id_or_404(
+            db, employee_id, load_relationships=["role"]
+        )
+
+        response = EmployeeResponse.model_validate(db_employee_with_rels)
         logger.info(f"{context}API_SUCCESS: Updated employee with ID: {employee_id}")
-        
+
         return response
         
     except (EmployeeNotFoundError, EmployeeServiceError) as e:
         # Handle domain exceptions
         logger.error(f"{context}DOMAIN_ERROR: {type(e).__name__} in update_employee - {str(e)}")
         raise e.to_http_exception()
+    except HTTPException as e:
+        # Re-raise HTTP exceptions coming from service layer
+        logger.warning(f"{context}HTTP_EXCEPTION: {e.status_code} - {getattr(e, 'detail', '')}")
+        raise e
         
     except Exception as e:
         # Handle unexpected errors

@@ -307,14 +307,21 @@ class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
                 self.logger.debug(f"{context}FILTER_APPLIED: Department filter - {sanitize_log_data(department)}")
             
             if role:
-                filters.append(Employee.emp_roles.ilike(f"%{role}%"))
+                # Join with Role table to filter by role name
+                from app.models.role import Role
+                from sqlalchemy import and_
+                filters.append(
+                    Employee.role_id.in_(
+                        db.query(Role.id).filter(Role.role_name.ilike(f"%{role}%"))
+                    )
+                )
                 self.logger.debug(f"{context}FILTER_APPLIED: Role filter - {sanitize_log_data(role)}")
-            
+
             # Add search filters
             if search:
                 search_filters = self._build_search_filters(
-                    search, 
-                    ["emp_name", "emp_email", "emp_department", "emp_roles"]
+                    search,
+                    ["emp_name", "emp_email", "emp_department"]
                 )
                 filters.extend(search_filters)
                 self.logger.debug(f"{context}SEARCH_APPLIED: Search term - {sanitize_log_data(search)}")

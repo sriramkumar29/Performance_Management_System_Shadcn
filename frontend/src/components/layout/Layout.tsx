@@ -12,18 +12,14 @@ const Layout = ({ children }: LayoutProps) => {
   const { user } = useAuth();
   const location = useLocation();
 
-  const isManagerOrAbove = (roles?: string, level?: number | null) => {
-    // Prefer explicit role names, fallback to hierarchy level if provided
-    if (
-      roles &&
-      /manager|lead|head|director|vp|chief|cxo|cto|ceo|admin/i.test(roles)
-    )
-      return true;
-    if (typeof level === "number") return level > 2;
+  const isManagerOrAbove = (roleId?: number, roleName?: string) => {
+    // Manager or above (role_id >= 3)
+    if (roleId && roleId >= 3) return true;
+    if (roleName && /manager|ceo|admin/i.test(roleName)) return true;
     return false;
   };
 
-  const showTeamTab = isManagerOrAbove(user?.emp_roles, user?.emp_roles_level);
+  const showTeamTab = isManagerOrAbove(user?.role_id, user?.role?.role_name);
 
   // Determine the page title based on the current route
   const getPageTitle = () => {

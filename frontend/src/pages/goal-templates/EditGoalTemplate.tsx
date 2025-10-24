@@ -69,19 +69,16 @@ const EditGoalTemplate = () => {
     [templateId]
   );
 
-  const isManagerOrAbove = (roles?: string, level?: number | null) => {
-    if (
-      roles &&
-      /manager|lead|head|director|vp|chief|cxo|cto|ceo|admin/i.test(roles)
-    )
-      return true;
-    if (typeof level === "number") return level > 2;
+  const isManagerOrAbove = (roleId?: number, roleName?: string) => {
+    // Manager or above (role_id >= 3)
+    if (roleId && roleId >= 3) return true;
+    if (roleName && /manager|ceo|admin/i.test(roleName)) return true;
     return false;
   };
 
   useEffect(() => {
     // Access guard
-    if (!isManagerOrAbove(user?.emp_roles, user?.emp_roles_level)) {
+    if (!isManagerOrAbove(user?.role_id, user?.role?.role_name)) {
       toast.error("You are not authorized to manage goal templates");
       navigate("/goal-templates");
       return;

@@ -6,20 +6,20 @@ from app.constants import EMPLOYEES_EMP_ID, ON_DELETE_SET_NULL
 
 class Employee(Base):
     """Employee model."""
-    
+
     __tablename__ = "employees"
-    
+
     emp_id = Column(Integer, primary_key=True, index=True)
     emp_name = Column(String, nullable=False)
     emp_email = Column(String, unique=True, nullable=False, index=True)
     emp_department = Column(String, nullable=False)
-    emp_roles = Column(String, nullable=False)  # e.g., Intern, Fresher, Developer, Team Lead, Manager, VP, CEO
-    emp_roles_level = Column(Integer, nullable=False)  # e.g., 1..7
+    role_id = Column(Integer, ForeignKey("roles.id", ondelete="RESTRICT"), nullable=False, index=True)
     emp_reporting_manager_id = Column(Integer, ForeignKey(EMPLOYEES_EMP_ID, ondelete=ON_DELETE_SET_NULL), nullable=True)
     emp_status = Column(Boolean, default=True)
     emp_password = Column(String, nullable=False)  # Store hashed password
-    
+
     # Relationships
+    role = relationship("Role", backref="employees")
     reporting_manager = relationship("Employee", remote_side=[emp_id], backref="subordinates")
     # Note: Appraisal relationships defined with string references to avoid circular imports
     appraisals_as_appraisee = relationship("Appraisal", foreign_keys="[Appraisal.appraisee_id]", back_populates="appraisee")

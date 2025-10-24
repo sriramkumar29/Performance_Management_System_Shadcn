@@ -19,12 +19,17 @@ import {
 import dayjs, { type Dayjs } from "dayjs";
 import { computePeriod } from "../helpers/dateHelpers";
 
+interface Role {
+  id: number;
+  role_name: string;
+}
+
 interface Employee {
   emp_id: number;
   emp_name: string;
   emp_email: string;
-  emp_roles?: string;
-  emp_roles_level?: number;
+  role_id: number;
+  role: Role;
 }
 
 interface AppraisalType {
@@ -190,7 +195,7 @@ export const AppraisalDetailsForm = ({
                 </UiSelect>
                 {selectedEmployee && (
                   <p className="text-xs text-muted-foreground">
-                    Role: {selectedEmployee.emp_roles || "N/A"}
+                    Role: {selectedEmployee.role?.role_name || "N/A"}
                   </p>
                 )}
               </div>
@@ -222,7 +227,7 @@ export const AppraisalDetailsForm = ({
                 </UiSelect>
                 {selectedReviewer && (
                   <p className="text-xs text-muted-foreground">
-                    Role: {selectedReviewer.emp_roles || "N/A"}
+                    Role: {selectedReviewer.role?.role_name || "N/A"}
                   </p>
                 )}
               </div>

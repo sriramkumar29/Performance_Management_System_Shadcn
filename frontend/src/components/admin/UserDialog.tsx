@@ -9,7 +9,13 @@ import {
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { api } from "../../utils/api";
+import { api, apiFetch } from "../../utils/api";
+import { isManagerOrAbove } from "../../utils/roleHelpers";
+
+interface Role {
+  id: number;
+  role_name: string;
+}
 
 interface Employee {
   emp_id?: number;
@@ -17,8 +23,10 @@ interface Employee {
   emp_email: string;
   emp_password?: string;
   emp_department?: string;
-  emp_roles?: string;
+  role_id: number;
+  role?: Role;
   emp_roles_level?: number;
+  emp_reporting_manager_id?: number | null;
   emp_status?: boolean;
 }
 
@@ -29,18 +37,61 @@ interface UserDialogProps {
   employee?: Employee | null;
 }
 
-const UserDialog = ({ open, onClose, onSuccess, employee }: UserDialogProps) => {
+const UserDialog = ({
+  open,
+  onClose,
+  onSuccess,
+  employee,
+}: UserDialogProps) => {
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [managers, setManagers] = useState<Employee[]>([]);
   const [formData, setFormData] = useState<Employee>({
     emp_name: "",
     emp_email: "",
     emp_password: "",
     emp_department: "",
-    emp_roles: "",
-    emp_roles_level: 1,
+    role_id: 1, // Default to Employee role
     emp_status: true,
+    emp_reporting_manager_id: null,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Fetch available roles
+  useEffect(() => {
+    const loadRoles = async () => {
+      try {
+        const res = await apiFetch<Role[]>("/roles/");
+        if (res.ok && res.data) {
+          setRoles(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to load roles:", err);
+      }
+    };
+    if (open) {
+      loadRoles();
+
+      // load managers for reporting manager dropdown
+      (async () => {
+        try {
+          // Use the backend's dedicated managers endpoint. buildApiUrl will
+          // prefix with /api so this becomes /api/employees/managers
+          const mgrRes = await apiFetch<Employee[]>("/employees/managers");
+          if (mgrRes.ok && mgrRes.data) {
+            // The endpoint already returns manager-capable employees, but
+            // keep an extra guard using the role helper in case of differences.
+            const list = (mgrRes.data as Employee[]).filter((m) =>
+              isManagerOrAbove((m as any).role_id, m.role?.role_name)
+            );
+            setManagers(list);
+          }
+        } catch (err) {
+          console.error("Failed to load managers:", err);
+        }
+      })();
+    }
+  }, [open]);
 
   useEffect(() => {
     if (employee) {
@@ -48,9 +99,9 @@ const UserDialog = ({ open, onClose, onSuccess, employee }: UserDialogProps) => 
         emp_name: employee.emp_name,
         emp_email: employee.emp_email,
         emp_department: employee.emp_department || "",
-        emp_roles: employee.emp_roles || "",
-        emp_roles_level: employee.emp_roles_level || 1,
+        role_id: employee.role_id,
         emp_status: employee.emp_status ?? true,
+        emp_reporting_manager_id: employee.emp_reporting_manager_id ?? null,
       });
     } else {
       setFormData({
@@ -58,9 +109,9 @@ const UserDialog = ({ open, onClose, onSuccess, employee }: UserDialogProps) => 
         emp_email: "",
         emp_password: "",
         emp_department: "",
-        emp_roles: "",
-        emp_roles_level: 1,
+        role_id: 1, // Default to Employee role
         emp_status: true,
+        emp_reporting_manager_id: null,
       });
     }
     setError("");
@@ -79,8 +130,8 @@ const UserDialog = ({ open, onClose, onSuccess, employee }: UserDialogProps) => 
           emp_name: formData.emp_name,
           emp_email: formData.emp_email,
           emp_department: formData.emp_department,
-          emp_roles: formData.emp_roles,
-          emp_roles_level: formData.emp_roles_level,
+          role_id: formData.role_id,
+          emp_reporting_manager_id: formData.emp_reporting_manager_id ?? null,
         };
 
         res = await api.put(`/employees/${employee.emp_id}`, updateData);
@@ -92,15 +143,21 @@ const UserDialog = ({ open, onClose, onSuccess, employee }: UserDialogProps) => 
           return;
         }
 
+        // Enforce minimum password length client-side to match backend validation
+        if ((formData.emp_password || "").length < 8) {
+          setError("Password must be at least 8 characters long");
+          setLoading(false);
+          return;
+        }
+
         const createData = {
           emp_name: formData.emp_name,
           emp_email: formData.emp_email,
           password: formData.emp_password, // Backend expects 'password', not 'emp_password'
           emp_department: formData.emp_department,
-          emp_roles: formData.emp_roles,
-          emp_roles_level: formData.emp_roles_level,
+          role_id: formData.role_id,
           emp_status: true,
-          emp_reporting_manager_id: null, // Optional field
+          emp_reporting_manager_id: formData.emp_reporting_manager_id ?? null, // Optional field
         };
 
         res = await api.post("/employees/", createData);
@@ -188,44 +245,54 @@ const UserDialog = ({ open, onClose, onSuccess, employee }: UserDialogProps) => 
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="emp_roles">Role</Label>
+              <Label htmlFor="role_id">Role</Label>
               <select
-                id="emp_roles"
-                className="w-full p-2 rounded border"
-                value={formData.emp_roles}
+                id="role_id"
+                className="w-full p-2 rounded border bg-background"
+                value={formData.role_id}
                 onChange={(e) =>
-                  setFormData({ ...formData, emp_roles: e.target.value })
+                  setFormData({
+                    ...formData,
+                    role_id: parseInt(e.target.value),
+                  })
                 }
+                required
               >
-                <option value="">Select Role</option>
-                <option value="Employee">Employee</option>
-                <option value="Manager">Manager</option>
-                <option value="Admin">Admin</option>
-                <option value="HR">HR</option>
+                {roles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.role_name}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="emp_roles_level">Role Level</Label>
-              <Input
-                id="emp_roles_level"
-                type="number"
-                min="1"
-                max="10"
-                value={formData.emp_roles_level}
+              <Label htmlFor="emp_reporting_manager_id">
+                Reporting Manager
+              </Label>
+              <select
+                id="emp_reporting_manager_id"
+                className="w-full p-2 rounded border bg-background"
+                value={formData.emp_reporting_manager_id ?? ""}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    emp_roles_level: parseInt(e.target.value),
+                    emp_reporting_manager_id:
+                      e.target.value === "" ? null : parseInt(e.target.value),
                   })
                 }
-              />
+              >
+                <option value="">-- None --</option>
+                {managers.map((m) => (
+                  <option key={m.emp_id} value={m.emp_id}>
+                    {m.emp_name}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
 
-          {error && (
-            <div className="text-sm text-red-500 mb-4">{error}</div>
-          )}
+            {error && <div className="text-red-500 text-sm mt-2">{error}</div>}
+          </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>

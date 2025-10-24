@@ -37,22 +37,24 @@ class EmployeeRepository(BaseRepository[Employee]):
     async def get_by_id(self, db: AsyncSession, emp_id: int) -> Optional[Employee]:
         """Get employee by ID with comprehensive logging."""
         context = build_log_context()
-        
+
         self.logger.debug(f"{context}REPO_GET_BY_ID: Getting employee - ID: {emp_id}")
-        
+
         try:
             result = await db.execute(
-                select(Employee).where(Employee.emp_id == emp_id)
+                select(Employee)
+                .options(selectinload(Employee.role))
+                .where(Employee.emp_id == emp_id)
             )
             employee = result.scalars().first()
-            
+
             if employee:
                 self.logger.debug(f"{context}REPO_GET_BY_ID_SUCCESS: Found employee - ID: {emp_id}, Name: {sanitize_log_data(employee.emp_name)}")
             else:
                 self.logger.debug(f"{context}REPO_GET_BY_ID_NOT_FOUND: Employee not found - ID: {emp_id}")
-                
+
             return employee
-            
+
         except Exception as e:
             error_msg = f"Error retrieving employee by ID: {emp_id}"
             self.logger.error(f"{context}REPO_GET_BY_ID_ERROR: {error_msg} - {str(e)}")
@@ -63,22 +65,24 @@ class EmployeeRepository(BaseRepository[Employee]):
         """Get employee by email with comprehensive logging."""
         context = build_log_context()
         sanitized_email = sanitize_log_data(email)
-        
+
         self.logger.debug(f"{context}REPO_GET_BY_EMAIL: Getting employee - Email: {sanitized_email}")
-        
+
         try:
             result = await db.execute(
-                select(Employee).where(Employee.emp_email == email)
+                select(Employee)
+                .options(selectinload(Employee.role))
+                .where(Employee.emp_email == email)
             )
             employee = result.scalars().first()
-            
+
             if employee:
                 self.logger.debug(f"{context}REPO_GET_BY_EMAIL_SUCCESS: Found employee - Email: {sanitized_email}, ID: {employee.emp_id}")
             else:
                 self.logger.debug(f"{context}REPO_GET_BY_EMAIL_NOT_FOUND: Employee not found - Email: {sanitized_email}")
-                
+
             return employee
-            
+
         except Exception as e:
             error_msg = f"Error retrieving employee by email"
             self.logger.error(f"{context}REPO_GET_BY_EMAIL_ERROR: {error_msg} - Email: {sanitized_email}, Error: {str(e)}")
@@ -101,7 +105,7 @@ class EmployeeRepository(BaseRepository[Employee]):
         self.logger.debug(f"{context}REPO_GET_MULTI: Getting employees - Skip: {skip}, Limit: {limit}, Filters: {filter_count}")
         
         try:
-            query = select(Employee)
+            query = select(Employee).options(selectinload(Employee.role))
             if filters:
                 query = query.where(and_(*filters))
             if order_by:
@@ -130,6 +134,8 @@ class EmployeeRepository(BaseRepository[Employee]):
         try:
             db.add(employee)
             await db.flush()
+            # Refresh entire instance so that SQLAlchemy loads column-based attributes
+            # (refreshing only relationship attributes can raise InvalidRequestError)
             await db.refresh(employee)
 
             self.logger.info(f"{context}REPO_CREATE_SUCCESS: Employee created - ID: {employee.emp_id}, Name: {employee.emp_name}, Email: {sanitized_email}")
@@ -151,6 +157,7 @@ class EmployeeRepository(BaseRepository[Employee]):
 
         try:
             await db.flush()
+            # Refresh entire instance to ensure relationships and column attrs are populated
             await db.refresh(employee)
 
             self.logger.info(f"{context}REPO_UPDATE_SUCCESS: Employee updated - ID: {employee.emp_id}, Name: {employee.emp_name}, Email: {sanitized_email}")
@@ -202,6 +209,8 @@ class EmployeeRepository(BaseRepository[Employee]):
                 for rel in load_relationships:
                     if rel == "subordinates":
                         query = query.options(selectinload(Employee.subordinates))
+                    if rel == "role":
+                        query = query.options(selectinload(Employee.role))
                     # Add other relationships as needed
             
             result = await db.execute(query)
@@ -253,12 +262,14 @@ class EmployeeRepository(BaseRepository[Employee]):
     async def validate_manager_exists(self, db: AsyncSession, manager_id: int) -> Optional[Employee]:
         """Get manager by ID for validation purposes with comprehensive logging."""
         context = build_log_context()
-        
+
         self.logger.debug(f"{context}REPO_VALIDATE_MANAGER: Validating manager existence - Manager ID: {manager_id}")
-        
+
         try:
             result = await db.execute(
-                select(Employee).where(
+                select(Employee)
+                .options(selectinload(Employee.role))
+                .where(
                     and_(
                         Employee.emp_id == manager_id,
                         Employee.emp_status == True
@@ -266,14 +277,14 @@ class EmployeeRepository(BaseRepository[Employee]):
                 )
             )
             manager = result.scalars().first()
-            
+
             if manager:
                 self.logger.debug(f"{context}REPO_VALIDATE_MANAGER_SUCCESS: Valid manager found - ID: {manager_id}, Name: {manager.emp_name}")
             else:
                 self.logger.debug(f"{context}REPO_VALIDATE_MANAGER_NOT_FOUND: Manager not found or inactive - ID: {manager_id}")
-                
+
             return manager
-            
+
         except Exception as e:
             error_msg = f"Error validating manager existence"
             self.logger.error(f"{context}REPO_VALIDATE_MANAGER_ERROR: {error_msg} - Manager ID: {manager_id}, Error: {str(e)}")
@@ -289,24 +300,25 @@ class EmployeeRepository(BaseRepository[Employee]):
     ) -> List[Employee]:
         """Get active employees for manager selection with comprehensive logging."""
         context = build_log_context()
-        
+
         self.logger.debug(f"{context}REPO_GET_ACTIVE_EMPLOYEES: Getting active employees - Skip: {skip}, Limit: {limit}")
-        
+
         try:
             query = (
                 select(Employee)
+                .options(selectinload(Employee.role))
                 .where(Employee.emp_status == True)
                 .order_by(Employee.emp_name)
                 .offset(skip)
                 .limit(limit)
             )
-            
+
             result = await db.execute(query)
             employees = result.scalars().all()
-            
+
             self.logger.debug(f"{context}REPO_GET_ACTIVE_EMPLOYEES_SUCCESS: Retrieved {len(employees)} active employees - Skip: {skip}, Limit: {limit}")
             return employees
-            
+
         except Exception as e:
             error_msg = f"Error retrieving active employees"
             self.logger.error(f"{context}REPO_GET_ACTIVE_EMPLOYEES_ERROR: {error_msg} - Skip: {skip}, Limit: {limit}, Error: {str(e)}")

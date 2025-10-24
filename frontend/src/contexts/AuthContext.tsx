@@ -10,13 +10,18 @@ import { apiFetch } from "../utils/api";
 import { onUnauthorized } from "../utils/auth-events";
 import { toast } from "../hooks/use-toast";
 
+export interface Role {
+  id: number;
+  role_name: string;
+}
+
 export interface Employee {
   emp_id: number;
   emp_name: string;
   emp_email: string;
   emp_department?: string;
-  emp_roles?: string;
-  emp_roles_level?: number;
+  role_id: number;
+  role: Role;
   emp_reporting_manager_id?: number | null;
   emp_status?: boolean;
 }
