@@ -18,6 +18,9 @@ const badgeVariants = cva(
           "border-transparent bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))] shadow-soft hover:shadow-medium",
         warning:
           "border-transparent bg-[hsl(var(--warning))] text-[hsl(var(--warning-foreground))] shadow-soft hover:shadow-medium",
+        info: "border-transparent bg-blue-600 text-white shadow-soft hover:shadow-medium",
+        muted:
+          "border-transparent bg-muted text-muted-foreground hover:bg-muted/80",
       },
     },
     defaultVariants: {

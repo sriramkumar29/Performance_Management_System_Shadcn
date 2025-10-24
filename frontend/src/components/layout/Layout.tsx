@@ -32,10 +32,9 @@ const Layout = ({ children }: LayoutProps) => {
         return "My Appraisal";
       case "/team-appraisal":
         return "Team Appraisal";
-      case "/":
-        return "Performance Management";
+      // For root and fallback routes, return empty so no heading is shown
       default:
-        return "Performance Management";
+        return "";
     }
   };
 
@@ -57,7 +56,9 @@ const Layout = ({ children }: LayoutProps) => {
     /^\/appraisal\/edit\/\d+$/.test(location.pathname) ||
     /^\/appraisal\/\d+$/.test(location.pathname);
 
-  const showMainHeader = !shouldHideHeader;
+  const pageTitle = getPageTitle();
+  // Only show main header when not on hidden routes and a title is provided
+  const showMainHeader = !shouldHideHeader && !!pageTitle;
 
   // Only show Create Appraisal button on Team Appraisal page
   const showCreateAppraisalButton = location.pathname === "/team-appraisal";
@@ -66,20 +67,20 @@ const Layout = ({ children }: LayoutProps) => {
     <>
       <Navbar showTeamTab={showTeamTab} />
       <main className="px-3 sm:px-6 py-4 sm:py-6 flex-1 transition-opacity duration-150">
-        <div className="container w-full">
-          {showMainHeader && (
-            <div className="flex justify-between items-center mb-6 animate-fade-in-up">
-              <h1
-                data-testid="performance-management-title"
-                className="text-3xl font-bold text-foreground bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent"
-              >
-                {getPageTitle()}
-              </h1>
-              {showCreateAppraisalButton && <CreateAppraisalButton />}
-            </div>
-          )}
-          <div className="animate-fade-in">{children}</div>
-        </div>
+        {showMainHeader && (
+          <div className="flex justify-between items-center mb-6 animate-fade-in-up container">
+            <h1
+              data-testid="page-title"
+              className="text-3xl font-bold text-foreground bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent"
+            >
+              {pageTitle}
+            </h1>
+            {showCreateAppraisalButton && <CreateAppraisalButton />}
+          </div>
+        )}
+
+        {/* Let child pages control their own container width so they can match MyAppraisal */}
+        <div className="animate-fade-in">{children}</div>
       </main>
       <Toaster />
     </>

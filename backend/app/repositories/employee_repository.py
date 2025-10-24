@@ -123,20 +123,20 @@ class EmployeeRepository(BaseRepository[Employee]):
     async def create(self, db: AsyncSession, employee: Employee) -> Employee:
         """Create a new employee with comprehensive logging."""
         context = build_log_context()
-        
+
         sanitized_email = employee.emp_email.replace("@", "[at]") if employee.emp_email else "None"
         self.logger.debug(f"{context}REPO_CREATE: Creating employee - Name: {employee.emp_name}, Email: {sanitized_email}")
-        
+
         try:
             db.add(employee)
             await db.flush()
             await db.refresh(employee)
-            
+
             self.logger.info(f"{context}REPO_CREATE_SUCCESS: Employee created - ID: {employee.emp_id}, Name: {employee.emp_name}, Email: {sanitized_email}")
             return employee
-            
+
         except Exception as e:
-            await db.rollback()
+            # Don't rollback here - let the session dependency handle it
             error_msg = f"Error creating employee"
             self.logger.error(f"{context}REPO_CREATE_ERROR: {error_msg} - Name: {employee.emp_name}, Email: {sanitized_email}, Error: {str(e)}")
             raise RepositoryException(error_msg, details={"employee_name": employee.emp_name, "original_error": str(e)})
@@ -145,19 +145,19 @@ class EmployeeRepository(BaseRepository[Employee]):
     async def update(self, db: AsyncSession, employee: Employee) -> Employee:
         """Update an existing employee with comprehensive logging."""
         context = build_log_context()
-        
+
         sanitized_email = employee.emp_email.replace("@", "[at]") if employee.emp_email else "None"
         self.logger.debug(f"{context}REPO_UPDATE: Updating employee - ID: {employee.emp_id}, Name: {employee.emp_name}, Email: {sanitized_email}")
-        
+
         try:
             await db.flush()
             await db.refresh(employee)
-            
+
             self.logger.info(f"{context}REPO_UPDATE_SUCCESS: Employee updated - ID: {employee.emp_id}, Name: {employee.emp_name}, Email: {sanitized_email}")
             return employee
-            
+
         except Exception as e:
-            await db.rollback()
+            # Don't rollback here - let the session dependency handle it
             error_msg = f"Error updating employee"
             self.logger.error(f"{context}REPO_UPDATE_ERROR: {error_msg} - ID: {employee.emp_id}, Name: {employee.emp_name}, Error: {str(e)}")
             raise RepositoryException(error_msg, details={"employee_id": employee.emp_id, "original_error": str(e)})
@@ -166,18 +166,18 @@ class EmployeeRepository(BaseRepository[Employee]):
     async def delete(self, db: AsyncSession, employee: Employee) -> None:
         """Delete an employee with comprehensive logging."""
         context = build_log_context()
-        
+
         sanitized_email = employee.emp_email.replace("@", "[at]") if employee.emp_email else "None"
         self.logger.debug(f"{context}REPO_DELETE: Deleting employee - ID: {employee.emp_id}, Name: {employee.emp_name}, Email: {sanitized_email}")
-        
+
         try:
             await db.delete(employee)
             await db.flush()
-            
+
             self.logger.info(f"{context}REPO_DELETE_SUCCESS: Employee deleted - ID: {employee.emp_id}, Name: {employee.emp_name}")
-            
+
         except Exception as e:
-            await db.rollback()
+            # Don't rollback here - let the session dependency handle it
             error_msg = f"Error deleting employee"
             self.logger.error(f"{context}REPO_DELETE_ERROR: {error_msg} - ID: {employee.emp_id}, Name: {employee.emp_name}, Error: {str(e)}")
             raise RepositoryException(error_msg, details={"employee_id": employee.emp_id, "original_error": str(e)})

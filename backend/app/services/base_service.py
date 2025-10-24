@@ -278,32 +278,86 @@ class BaseService(ABC, Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     ) -> None:
         """Delete an entity by ID with comprehensive logging and error handling."""
         context = build_log_context()
-        
+
         self.logger.info(f"{context}SERVICE_DELETE_REQUEST: Deleting {self.entity_name} with ID: {entity_id}")
-        
+
         try:
             # Get the entity first
             db_obj = await self.get_by_id_or_404(db, entity_id)
-            
+
             # Apply before-delete hook
             await self.before_delete(db, db_obj)
-            
+
             # Use repository to delete
             await self.repository.delete(db, db_obj=db_obj)
-            
+
             # Apply after-delete hook
             await self.after_delete(db, db_obj)
-            
+
             self.logger.info(f"{context}SERVICE_DELETE_SUCCESS: Successfully deleted {self.entity_name} with ID: {entity_id}")
-            
+
         except BaseServiceException:
             # Re-raise service exceptions as-is
             raise
-            
+
         except BaseRepositoryException as e:
             self.logger.error(f"{context}REPOSITORY_DELETE_ERROR: {e.__class__.__name__} - {e.message}")
             raise BaseServiceException(f"Failed to delete {self.entity_name}: {e.message}")
-            
+
         except Exception as e:
             self.logger.error(f"{context}UNEXPECTED_DELETE_ERROR: Failed to delete {self.entity_name} with ID {entity_id} - {str(e)}")
             raise BaseServiceException(f"Unexpected error deleting {self.entity_name}")
+
+    async def soft_delete(
+        self,
+        db: AsyncSession,
+        *,
+        entity_id: int,
+        status_field: str = "emp_status"
+    ) -> ModelType:
+        """
+        Soft delete an entity by setting its status to False with comprehensive logging and error handling.
+
+        Args:
+            db: Database session
+            entity_id: ID of entity to soft delete
+            status_field: Name of the status field (default: "emp_status")
+
+        Returns:
+            ModelType: Updated entity with status set to False
+
+        Raises:
+            BaseServiceException: For service-level errors
+        """
+        context = build_log_context()
+
+        self.logger.info(f"{context}SERVICE_SOFT_DELETE_REQUEST: Soft deleting {self.entity_name} with ID: {entity_id}")
+
+        try:
+            # Get the entity first
+            db_obj = await self.get_by_id_or_404(db, entity_id)
+
+            # Apply before-delete hook
+            await self.before_delete(db, db_obj)
+
+            # Use repository to soft delete
+            updated_obj = await self.repository.soft_delete(db, db_obj=db_obj, status_field=status_field)
+
+            # Apply after-delete hook
+            await self.after_delete(db, updated_obj)
+
+            self.logger.info(f"{context}SERVICE_SOFT_DELETE_SUCCESS: Successfully soft deleted {self.entity_name} with ID: {entity_id}")
+
+            return updated_obj
+
+        except BaseServiceException:
+            # Re-raise service exceptions as-is
+            raise
+
+        except BaseRepositoryException as e:
+            self.logger.error(f"{context}REPOSITORY_SOFT_DELETE_ERROR: {e.__class__.__name__} - {e.message}")
+            raise BaseServiceException(f"Failed to soft delete {self.entity_name}: {e.message}")
+
+        except Exception as e:
+            self.logger.error(f"{context}UNEXPECTED_SOFT_DELETE_ERROR: Failed to soft delete {self.entity_name} with ID {entity_id} - {str(e)}")
+            raise BaseServiceException(f"Unexpected error soft deleting {self.entity_name}")

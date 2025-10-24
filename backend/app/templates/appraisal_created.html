@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>New Appraisal Created</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#333;">
+    <!-- Preheader text (hidden in email clients) -->
+    <div style="display:none;max-height:0px;overflow:hidden;">A new appraisal {{ appraisal_id}} has been created for you. View details inside.</div>
+
+    <table role="presentation" style="border-collapse:collapse;width:100%;">
+      <tr>
+        <td style="text-align:center;padding:20px 12px;">
+          <table role="presentation" align="center" style="border-collapse:collapse;width:100%;max-width:600px;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e9eef2;margin:0 auto;">
+            <tr>
+              <td style="background:linear-gradient(90deg,#2b8aef,#1f6fd6);padding:20px 24px;color:#ffffff;">
+                <h1 style="margin:0;font-size:20px;font-weight:600;">New Appraisal Created</h1>
+              </td>
+            </tr>
+            <!-- Progress bar (initial state) -->
+            <tr>
+              <td style="padding:18px 24px 6px 24px;background:#ffffff;">
+                {% set steps = ['Draft','Submitted','Appraisee Self Assessment','Appraiser Evaluation','Reviewer Evaluation','Complete'] %}
+                <table role="presentation" style="border-collapse:collapse;width:100%;font-family:Arial,Helvetica,sans-serif;table-layout:fixed;">
+                  <tr>
+                    <td style="padding:8px 0 0 0;text-align:center;">
+                      <div style="display:inline-block;width:100%;max-width:520px;">
+                        <table role="presentation" style="border-collapse:collapse;width:100%;">
+                          <tr>
+                            {% for step in steps %}
+                              {% set idx = loop.index0 %}
+                              {% set completed = (status in steps and steps.index(status) >= idx) %}
+                              <td style="width:15%;text-align:center;vertical-align:middle;padding:6px 4px;">
+                                <div style="display:inline-block;text-align:center;vertical-align:middle;">
+                                  {% if completed %}
+                                    <div style="width:36px;height:36px;border-radius:18px;line-height:36px;margin:0 auto;background:#2b8aef;color:#ffffff;font-weight:700;font-size:14px;box-shadow:0 2px 4px rgba(43,138,239,0.18);">
+                                      &#10003;
+                                    </div>
+                                  {% else %}
+                                    <div style="width:36px;height:36px;border-radius:18px;line-height:36px;margin:0 auto;background:#f1f5f9;color:#6b7280;font-weight:700;font-size:14px;">
+                                      {{ loop.index }}
+                                    </div>
+                                  {% endif %}
+                                  <div style="margin-top:8px;font-size:12px;color:#6b7280;">{{ step }}</div>
+                                </div>
+                              </td>
+                              {% if not loop.last %}
+                                <td style="width:2%;vertical-align:middle;">
+                                  <div style="height:2px;background:#e6eefb;width:100%;display:inline-block;margin:0 2px;">&nbsp;</div>
+                                </td>
+                              {% endif %}
+                            {% endfor %}
+                          </tr>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;">
+                <p style="margin:0 0 12px 0;font-size:15px;">Hello <strong>{{ appraisee_name }}</strong>,</p>
+                <p style="margin:0 0 16px 0;color:#444;font-size:14px;line-height:1.5;">An appraisal has been created for you. Below are the details — please review and complete any required actions within the deadline.</p>
+
+                <table role="presentation" style="border-collapse:collapse;width:100%;margin:16px 0 20px 0;">
+                  <tr>
+                    <td style="padding:8px 12px;background:#f7f9fb;border:1px solid #eef4fb;border-radius:6px;color:#333;font-size:14px;">
+                      <div style="margin-bottom:6px"><strong>Appraisal ID:</strong> {{ appraisal_id }}</div>
+                      <div style="margin-bottom:6px"><strong>Start Date:</strong> {{ start_date }}</div>
+                      <div style="margin-bottom:6px"><strong>End Date:</strong> {{ end_date }}</div>
+                      {% if appraisal_type %}
+                      <div style="margin-bottom:6px"><strong>Type:</strong> {{ appraisal_type }}</div>
+                      {% endif %}
+                      {% if status %}
+                      <div style="margin-bottom:6px"><strong>Status:</strong> {{ status }}</div>
+                      {% endif %}
+                      {% if appraiser_name %}
+                      <div style="margin-bottom:6px"><strong>Appraiser:</strong> {{ appraiser_name }}</div>
+                      {% endif %}
+                      {% if reviewer_name %}
+                      <div style="margin-bottom:6px"><strong>Reviewer:</strong> {{ reviewer_name }}</div>
+                      {% endif %}
+                      {% if goals_count is not none %}
+                      <div style="margin-bottom:6px"><strong>Goals:</strong> {{ goals_count }}</div>
+                      {% endif %}
+                      {% if created_at %}
+                      <div style="margin-bottom:6px"><strong>Created:</strong> {{ created_at }}</div>
+                      {% endif %}
+                    </td>
+                  </tr>
+                </table>
+
+                {% if appraisal_url %}
+                <p style="text-align:center;margin:0 0 18px 0;">
+                  <a href="{{ appraisal_url }}" style="display:inline-block;padding:12px 20px;background:#2b8aef;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Appraisal</a>
+                </p>
+                {% endif %}
+
+                <p style="margin:0;color:#6b7280;font-size:13px;">If you have any questions, reply to this email or contact your manager.</p>
+                <p style="margin:18px 0 0 0;color:#6b7280;font-size:13px;">Regards,<br/>Performance Management System</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#fbfdff;padding:14px 24px;color:#8a93a0;font-size:12px;text-align:center;">&copy; {{ now().year }} Performance Management System — This is an automated message.</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

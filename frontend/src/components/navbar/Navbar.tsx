@@ -50,6 +50,8 @@ const Navbar = ({ showTeamTab = false }: NavbarProps) => {
   // Don't show navigation tabs on login page
   const showNavTabs = !location.pathname.startsWith("/login");
 
+  const isAdminUser = authUser && /admin/i.test(authUser.emp_roles || "");
+
   return (
     <header className="w-full sticky top-0 z-50 glass-effect border-t-4 border-t-primary shadow-medium backdrop-blur-xl">
       <div className="container h-16 sm:h-18 flex items-center justify-between">
@@ -74,19 +76,22 @@ const Navbar = ({ showTeamTab = false }: NavbarProps) => {
           {/* Navigation tabs */}
           {showNavTabs && (
             <nav className="flex items-center gap-1 sm:gap-2">
-              <Link
-                to="/my-appraisal"
-                className={cn(
-                  "px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300",
-                  location.pathname === "/my-appraisal" ||
-                    location.pathname === "/"
-                    ? "bg-primary text-primary-foreground shadow-medium hover:shadow-glow"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:shadow-soft"
-                )}
-              >
-                My Appraisal
-              </Link>
-              {showTeamTab && (
+              {!isAdminUser && (
+                <Link
+                  to="/my-appraisal"
+                  className={cn(
+                    "px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300",
+                    location.pathname === "/my-appraisal" ||
+                      location.pathname === "/"
+                      ? "bg-primary text-primary-foreground shadow-medium hover:shadow-glow"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:shadow-soft"
+                  )}
+                >
+                  My Appraisal
+                </Link>
+              )}
+
+              {!isAdminUser && showTeamTab && (
                 <Link
                   to="/team-appraisal"
                   className={cn(
@@ -98,6 +103,35 @@ const Navbar = ({ showTeamTab = false }: NavbarProps) => {
                 >
                   Team Appraisal
                 </Link>
+              )}
+
+              {/* Admin tabs: shown to admin users */}
+              {authUser && isAdminUser && (
+                <>
+                  <Link
+                    to="/admin/users"
+                    className={cn(
+                      "px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300",
+                      location.pathname === "/admin/users"
+                        ? "bg-primary text-primary-foreground shadow-medium hover:shadow-glow"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:shadow-soft"
+                    )}
+                  >
+                    User Management
+                  </Link>
+
+                  <Link
+                    to="/admin/appraisals"
+                    className={cn(
+                      "px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300",
+                      location.pathname === "/admin/appraisals"
+                        ? "bg-primary text-primary-foreground shadow-medium hover:shadow-glow"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:shadow-soft"
+                    )}
+                  >
+                    Appraisal Details
+                  </Link>
+                </>
               )}
             </nav>
           )}

@@ -396,6 +396,51 @@ class BaseRepository(ABC, Generic[ModelType]):
             domain_exception = convert_sqlalchemy_error(e, self.entity_name)
             raise domain_exception
 
+    @log_execution_time()
+    async def soft_delete(
+        self,
+        db: AsyncSession,
+        *,
+        db_obj: ModelType,
+        status_field: str = "emp_status"
+    ) -> ModelType:
+        """
+        Soft delete an entity by setting its status to False.
+
+        Args:
+            db: Database session
+            db_obj: Entity to soft delete
+            status_field: Name of the status field (default: "emp_status")
+
+        Returns:
+            ModelType: Updated entity with status set to False
+
+        Raises:
+            DatabaseError: For database operation errors
+        """
+        entity_id = getattr(db_obj, self.id_field, "unknown")
+        self.logger.debug(f"Soft deleting {self.entity_name} with ID: {entity_id}")
+        log_database_operation("SOFT_DELETE", self.entity_name, self.logger)
+
+        try:
+            # Set the status field to False
+            if hasattr(db_obj, status_field):
+                setattr(db_obj, status_field, False)
+                await db.flush()
+                await db.refresh(db_obj)
+
+                self.logger.info(f"Database record soft deleted - {self.entity_name} with ID: {entity_id}")
+                return db_obj
+            else:
+                error_msg = f"{self.entity_name} does not have a '{status_field}' field for soft delete"
+                self.logger.error(error_msg)
+                raise AttributeError(error_msg)
+
+        except Exception as e:
+            self.logger.error(f"Database error soft deleting {self.entity_name} with ID {entity_id}: {str(e)}")
+            domain_exception = convert_sqlalchemy_error(e, self.entity_name)
+            raise domain_exception
+
     def _build_search_filters(
         self,
         search_term: Optional[str],

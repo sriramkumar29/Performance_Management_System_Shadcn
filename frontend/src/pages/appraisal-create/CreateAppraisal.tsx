@@ -198,11 +198,40 @@ const CreateAppraisal = () => {
       (emp.emp_roles_level ?? -1) <= appraiserLevel &&
       emp.emp_id !== user?.emp_id
   );
+
+  // Reviewers must be manager or above. Explicitly exclude "lead" from allowed
+  // role names. If numeric role levels are used, assume manager starts at > 3
+  // (adjust threshold if your org maps levels differently).
+  const isReviewerEligible = (roles?: string, level?: number | null) => {
+    if (
+      roles &&
+      /manager|head|director|vp|chief|cxo|cto|ceo|admin/i.test(roles)
+    )
+      return true;
+    if (typeof level === "number") return level > 3;
+    return false;
+  };
+
   const eligibleReviewers = employees.filter(
     (emp) =>
-      (emp.emp_roles_level ?? -1) >= appraiserLevel &&
+      isReviewerEligible(emp.emp_roles, emp.emp_roles_level) &&
       emp.emp_id !== user?.emp_id
   );
+
+  // Debugging: log reviewer candidates in non-production builds so you can
+  // inspect why the dropdown may be empty or different than expected.
+  if (import.meta.env.MODE !== "production") {
+    // Keep the log concise and safe for console viewing
+    console.debug(
+      "[CreateAppraisal] eligibleReviewers:",
+      eligibleReviewers.map((e) => ({
+        emp_id: e.emp_id,
+        emp_name: e.emp_name,
+        emp_roles: e.emp_roles,
+        emp_roles_level: e.emp_roles_level,
+      }))
+    );
+  }
 
   const handleGoalAdded = (appraisalGoal: AppraisalGoal) => {
     handleAddGoal(appraisalGoal, goals, setGoals, setAddGoalModalOpen);
