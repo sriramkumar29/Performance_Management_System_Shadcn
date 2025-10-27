@@ -15,6 +15,7 @@ Implement Microsoft Entra ID (Azure AD) Single Sign-On with three authentication
 - **Password**: Bcrypt hashing via passlib
 - **User Model**: Employee table with emp_email, emp_password
 
+
 ### Target Integration Points
 - **Backend Routes**: `/api/employees/login`, `/api/employees/refresh`, `/api/employees/profile`
 - **Auth Service**: `backend/app/services/auth_service.py` (JWT generation)

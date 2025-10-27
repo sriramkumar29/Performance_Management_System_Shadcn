@@ -76,6 +76,7 @@ const Login = () => {
         }
       } catch (e) {
         // ignore and fallback
+        console.error("Failed to fetch profile:", e);
       }
 
       // default redirect

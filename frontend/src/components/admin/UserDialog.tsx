@@ -81,7 +81,7 @@ const UserDialog = ({
           if (mgrRes.ok && mgrRes.data) {
             // The endpoint already returns manager-capable employees, but
             // keep an extra guard using the role helper in case of differences.
-            const list = (mgrRes.data as Employee[]).filter((m) =>
+            const list = mgrRes.data.filter((m) =>
               isManagerOrAbove((m as any).role_id, m.role?.role_name)
             );
             setManagers(list);
@@ -253,7 +253,7 @@ const UserDialog = ({
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    role_id: parseInt(e.target.value),
+                    role_id: Number.parseInt(e.target.value),
                   })
                 }
                 required
@@ -278,7 +278,9 @@ const UserDialog = ({
                   setFormData({
                     ...formData,
                     emp_reporting_manager_id:
-                      e.target.value === "" ? null : parseInt(e.target.value),
+                      e.target.value === ""
+                        ? null
+                        : Number.parseInt(e.target.value),
                   })
                 }
               >

@@ -2,7 +2,7 @@
 Authentication routes for the Performance Management System.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,8 +16,15 @@ from app.models.employee import Employee
 from app.utils.logger import get_logger, build_log_context, sanitize_log_data
 from app.utils.email import send_email_background
 from app.core.config import settings
+from app.utils.rate_limiter import RateLimiter
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
+
+# Simple in-process rate limiters. These are defensive; for multi-instance
+# deployments use a shared store (Redis) or a gateway rate limiter.
+# Limit to 10 requests per IP per hour, 3 requests per email per 24h.
+ip_limiter = RateLimiter(limit=10, window_seconds=3600)
+email_limiter = RateLimiter(limit=3, window_seconds=24 * 3600)
 
 # Initialize logger
 logger = get_logger(__name__)
@@ -183,27 +190,56 @@ async def get_current_user_info(
 
 @router.post("/password/forgot")
 async def password_forgot(
-    request: PasswordResetRequest,
+    request: Request,
+    data: PasswordResetRequest,
     db: AsyncSession = Depends(get_db),
     auth_service: AuthService = Depends(get_auth_service)
 ):
-    """Request a password reset link. If the email exists, a reset link will be sent."""
+    """Request a password reset link. If the email exists, a reset link will be sent.
+
+    Implements basic rate-limiting by IP and by email to reduce abuse.
+    """
     context = build_log_context()
-    sanitized_email = sanitize_log_data(request.email)
+    sanitized_email = sanitize_log_data(data.email)
 
     logger.info(f"{context}API_REQUEST: POST /password/forgot - Password reset requested - Email: {sanitized_email}")
 
+    # Determine client IP (best-effort). If behind a proxy, consider X-Forwarded-For parsing.
+    client_ip = None
     try:
-        employee = await auth_service.employee_service.get_employee_by_email(db, email=request.email)
+        client_ip = request.client.host if request.client else "unknown"
+    except Exception:
+        client_ip = "unknown"
+
+    # Enforce per-IP rate limit
+    if not await ip_limiter.allow(client_ip):
+        logger.warning(f"{context}RATE_LIMIT: IP rate limit exceeded - ip={client_ip}")
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail={"message": "Too many requests"})
+
+    # Enforce per-email rate limit (best-effort even if email doesn't exist)
+    if not await email_limiter.allow(data.email.lower()):
+        logger.warning(f"{context}RATE_LIMIT: Email rate limit exceeded - email={sanitized_email}")
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail={"message": "Too many requests"})
+
+    try:
+        employee = await auth_service.employee_service.get_employee_by_email(db, email=data.email)
 
         # Always return success message to avoid leaking user existence
+        generic_message = {"message": "If an account with that email exists, a password reset link has been sent."}
         if not employee:
             logger.info(f"{context}API_INFO: Password reset requested for non-existent email - {sanitized_email}")
-            return {"message": "If an account with that email exists, a password reset link has been sent."}
+            return generic_message
 
-        # Create token and send email (background)
-        token = auth_service.create_password_reset_token(employee=employee)
-        reset_url = f"{settings.FRONTEND_URL.rstrip('/')}" + f"/reset-password?token={token}"
+        # Create token and persist jti (one-time use) then send email
+        token = await auth_service.create_password_reset_token(db, employee=employee)
+
+        # Build reset URL; fallback to request base URL if FRONTEND_URL not configured
+        frontend_base = (settings.FRONTEND_URL or "").rstrip('/')
+        if not frontend_base:
+            # request.base_url is a URL object; convert to string and strip trailing slash
+            frontend_base = str(request.base_url).rstrip('/')
+
+        reset_url = f"{frontend_base}/reset-password?token={token}"
 
         email_context = {
             "appraisee_name": employee.emp_name,
@@ -219,8 +255,11 @@ async def password_forgot(
         )
 
         logger.info(f"{context}API_SUCCESS: Password reset email scheduled - Employee ID: {employee.emp_id}")
-        return {"message": "If an account with that email exists, a password reset link has been sent."}
+        return generic_message
 
+    except HTTPException:
+        # Propagate rate-limit related HTTP exceptions
+        raise
     except Exception as e:
         logger.error(f"{context}UNEXPECTED_ERROR: Password forgot failed - Email: {sanitized_email}, Error: {str(e)}")
         # Return generic message

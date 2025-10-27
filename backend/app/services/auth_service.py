@@ -10,6 +10,8 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from jwt import InvalidTokenError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import insert, select
+from app.models.password_reset_token import PasswordResetToken
 
 from app.models.employee import Employee
 from app.services.employee_service import EmployeeService
@@ -198,13 +200,20 @@ class AuthService:
             raise UnauthorizedError(INVALID_REFRESH_TOKEN if token_type == "refresh" else INVALID_ACCESS_TOKEN)
 
     @log_execution_time()
-    def create_password_reset_token(
+    async def create_password_reset_token(
         self,
+        db: Optional[AsyncSession],
         *,
         employee: Employee,
         expires_delta: Optional[timedelta] = None
     ) -> str:
-        """Create a short-lived JWT used for password reset links."""
+        """Create a short-lived JWT used for password reset links and persist its jti as one-time use.
+
+        If `db` is provided the token jti and expiry will be stored so the token can be
+        invalidated after use.
+        """
+        import uuid
+
         context = build_log_context(user_id=employee.emp_id)
 
         try:
@@ -215,15 +224,35 @@ class AuthService:
                     minutes=settings.PASSWORD_RESET_EXPIRE_MINUTES
                 )
 
+            jti = str(uuid.uuid4())
+
             payload = {
                 "sub": employee.emp_email,
                 "emp_id": employee.emp_id,
                 "type": "password_reset",
+                "jti": jti,
                 "exp": expire,
                 "iat": datetime.now(timezone.utc)
             }
 
             token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+            # Persist token jti if DB provided so we can enforce single-use
+            if db is not None:
+                prt = PasswordResetToken(
+                    emp_id=employee.emp_id,
+                    jti=jti,
+                    used=False,
+                    created_at=datetime.utcnow(),
+                    expires_at=expire.replace(tzinfo=None)
+                )
+                db.add(prt)
+                try:
+                    await db.flush()
+                except Exception:
+                    # Do not fail whole flow if DB write fails — log and continue
+                    self.logger.exception(f"{context}TOKEN_PERSIST_WARN: Failed to persist password reset token jti")
+
             self.logger.info(f"{context}TOKEN_CREATE_PWRESET_SUCCESS: Password reset token created - Employee ID: {employee.emp_id}")
             return token
 
@@ -232,8 +261,11 @@ class AuthService:
             raise
 
     @log_execution_time()
-    def verify_password_reset_token(self, token: str) -> Dict[str, Any]:
-        """Verify a password-reset token and return the payload or raise UnauthorizedError."""
+    async def verify_password_reset_token(self, db: Optional[AsyncSession], token: str) -> Dict[str, Any]:
+        """Verify a password-reset token and return the payload or raise UnauthorizedError.
+
+        If `db` is provided the method also ensures the jti exists and hasn't been used/expired.
+        """
         context = build_log_context()
 
         try:
@@ -243,9 +275,24 @@ class AuthService:
                 self.logger.warning(f"{context}TOKEN_VERIFY_FAILED: Invalid token type for password reset - Got: {payload.get('type')}")
                 raise UnauthorizedError("Invalid password reset token")
 
-            if not payload.get("sub") or not payload.get("emp_id"):
+            if not payload.get("sub") or not payload.get("emp_id") or not payload.get("jti"):
                 self.logger.warning(f"{context}TOKEN_VERIFY_FAILED: Missing required fields in password reset token")
                 raise UnauthorizedError("Invalid password reset token")
+
+            # If DB provided, ensure token jti exists and not used and not expired
+            if db is not None:
+                jti = payload.get("jti")
+                q = await db.execute(select(PasswordResetToken).where(PasswordResetToken.jti == jti))
+                rec = q.scalars().first()
+                if not rec:
+                    self.logger.warning(f"{context}TOKEN_VERIFY_FAILED: Password reset jti not found - jti={jti}")
+                    raise UnauthorizedError("Invalid password reset token")
+
+                if rec.used:
+                    self.logger.warning(f"{context}TOKEN_VERIFY_FAILED: Password reset token already used - jti={jti}")
+                    raise UnauthorizedError("Password reset token already used")
+
+                # expires_at is stored naive UTC; payload exp may be aware — rely on jwt decode for expiration
 
             self.logger.debug(f"{context}TOKEN_VERIFY_SUCCESS: Password reset token verified - Employee ID: {payload.get('emp_id')}")
             return payload
@@ -256,6 +303,9 @@ class AuthService:
         except InvalidTokenError as e:
             self.logger.warning(f"{context}TOKEN_VERIFY_FAILED: Invalid password reset token - Error: {str(e)}")
             raise UnauthorizedError("Invalid password reset token")
+        except UnauthorizedError:
+            # re-raise
+            raise
         except Exception as e:
             self.logger.error(f"{context}TOKEN_VERIFY_ERROR: Unexpected error verifying password reset token - Error: {str(e)}")
             raise UnauthorizedError("Invalid password reset token")
@@ -266,11 +316,22 @@ class AuthService:
         context = build_log_context()
 
         try:
-            payload = self.verify_password_reset_token(token)
+            payload = await self.verify_password_reset_token(db, token)
             emp_id = payload.get("emp_id")
+            jti = payload.get("jti")
 
             # Use employee service to set password (hashing handled there)
             await self.employee_service.set_password(db, employee_id=emp_id, new_password=new_password)
+
+            # Mark token as used if exists
+            try:
+                await db.execute(
+                    PasswordResetToken.__table__.update().where(PasswordResetToken.jti == jti).values(used=True)
+                )
+                await db.flush()
+            except Exception:
+                # Log and continue — do not fail password reset if marking fails
+                self.logger.exception(f"{context}TOKEN_MARK_USED_WARN: Failed to mark password reset token used - jti={jti}")
 
             self.logger.info(f"{context}PASSWORD_RESET_SUCCESS: Password reset completed - Employee ID: {emp_id}")
             return

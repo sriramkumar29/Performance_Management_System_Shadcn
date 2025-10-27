@@ -10,6 +10,7 @@ from app.models.appraisal import Appraisal, AppraisalStatus
 from app.models.goal import Goal, GoalTemplate, Category, AppraisalGoal
 from app.models.appraisal_type import AppraisalType
 from app.models.role import Role
+from app.models.password_reset_token import PasswordResetToken
 
 __all__ = [
     "Employee",
@@ -21,4 +22,5 @@ __all__ = [
     "AppraisalGoal",
     "AppraisalType",
     "Role",
+    "PasswordResetToken",
 ]
