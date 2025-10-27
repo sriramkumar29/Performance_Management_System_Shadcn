@@ -228,9 +228,10 @@ class AppraisalService(BaseService):
                     except Exception:
                         reviewer_name = None
 
+                    # compute goals_count using repository to avoid lazy-loading
                     goals_count = None
                     try:
-                        goals_count = len(getattr(db_appraisal, "appraisal_goals", []) or [])
+                        _tw, goals_count = await self.repository.get_weightage_and_count(db, db_appraisal.appraisal_id)
                     except Exception:
                         goals_count = None
 
@@ -323,6 +324,13 @@ class AppraisalService(BaseService):
             # Send notification emails for certain status transitions (non-blocking)
             try:
                 employee_service = EmployeeService()
+                # Precompute goals_count using repository to avoid lazy-loading
+                # relationships (which can trigger DB IO in threads without
+                # the async/greenlet context and raise MissingGreenlet).
+                try:
+                    _total_weightage, goals_count = await self.repository.get_weightage_and_count(db, appraisal_id)
+                except Exception:
+                    goals_count = None
 
                 # Notify appraiser when appraisal moves to APPRAISER_EVALUATION
                 if new_status == AppraisalStatus.APPRAISER_EVALUATION and getattr(db_appraisal, "appraiser_id", None):
@@ -342,21 +350,18 @@ class AppraisalService(BaseService):
                         except Exception:
                             appraiser_name = None
 
-                        goals_count = None
-                        try:
-                            goals_count = len(getattr(db_appraisal, "appraisal_goals", []) or [])
-                        except Exception:
-                            goals_count = None
+                        # use precomputed goals_count
+                        goals_count = goals_count
 
                         template_context = {
-                            "appraisee_name": getattr(db_appraisal, "appraisee", None) and getattr(db_appraisal.appraisee, "emp_name", None) or getattr(db_appraisal, "appraisee_name", None) or None,
+                            "appraisee_name": getattr(db_appraisal, "appraisee_name", None) or None,
                             "appraisal_id": db_appraisal.appraisal_id,
                             "start_date": db_appraisal.start_date,
                             "end_date": db_appraisal.end_date,
                             "appraisal_type": appraisal_type_name,
                             "status": getattr(getattr(db_appraisal, "status", None), "value", getattr(db_appraisal, "status", None)),
                             "appraiser_name": appraiser_name,
-                            "reviewer_name": getattr(db_appraisal, "reviewer", None) and getattr(db_appraisal.reviewer, "emp_name", None) or None,
+                            "reviewer_name": getattr(db_appraisal, "reviewer_name", None) or None,
                             "goals_count": goals_count,
                             "updated_at": getattr(db_appraisal, "updated_at", None),
                             "appraisal_url": None
@@ -382,15 +387,15 @@ class AppraisalService(BaseService):
                             appraisal_type_name = None
 
                         template_context = {
-                            "appraisee_name": getattr(db_appraisal, "appraisee", None) and getattr(db_appraisal.appraisee, "emp_name", None) or getattr(db_appraisal, "appraisee_name", None) or None,
+                            "appraisee_name": getattr(db_appraisal, "appraisee_name", None) or None,
                             "appraisal_id": db_appraisal.appraisal_id,
                             "start_date": db_appraisal.start_date,
                             "end_date": db_appraisal.end_date,
                             "appraisal_type": appraisal_type_name,
                             "status": getattr(getattr(db_appraisal, "status", None), "value", getattr(db_appraisal, "status", None)),
-                            "appraiser_name": getattr(db_appraisal, "appraiser", None) and getattr(db_appraisal.appraiser, "emp_name", None) or None,
+                            "appraiser_name": getattr(db_appraisal, "appraiser_name", None) or None,
                             "reviewer_name": getattr(reviewer, "emp_name", None),
-                            "goals_count": len(getattr(db_appraisal, "appraisal_goals", []) or []),
+                            "goals_count": goals_count,
                             "updated_at": getattr(db_appraisal, "updated_at", None),
                             "appraisal_url": None
                         }
@@ -401,6 +406,43 @@ class AppraisalService(BaseService):
                             self.logger.info(f"{context}EMAIL_SCHEDULE_FALLBACK: Running send_email_background synchronously for {reviewer.emp_email}")
                             loop = asyncio.new_event_loop()
                             loop.run_until_complete(send_email_background(subject=subject, template_name="appraisal_status_changed.html", context=template_context, to=reviewer.emp_email))
+                    # Additionally notify appraisee and appraiser that the appraisal progressed to reviewer evaluation
+                    # (some workflows expect both parties to be aware when review starts)
+                    try:
+                        # Appraisee
+                        if getattr(db_appraisal, "appraisee_id", None):
+                            appraisee = await employee_service.get_by_id(db, db_appraisal.appraisee_id)
+                            if appraisee and getattr(appraisee, "emp_email", None):
+                                subj_a = f"Your appraisal moved to Reviewer Evaluation - ID {db_appraisal.appraisal_id}"
+                                tmpl_ctx_a = dict(template_context)
+                                tmpl_ctx_a.update({
+                                    "appraisee_name": getattr(appraisee, "emp_name", None) or None
+                                })
+                                try:
+                                    self.logger.info(f"{context}EMAIL_SCHEDULE: Scheduling appraisal_status_changed email to appraisee {appraisee.emp_email} for appraisal {db_appraisal.appraisal_id} (status={new_status})")
+                                    asyncio.create_task(send_email_background(subject=subj_a, template_name="appraisal_status_changed.html", context=tmpl_ctx_a, to=appraisee.emp_email))
+                                except RuntimeError:
+                                    loop = asyncio.new_event_loop()
+                                    loop.run_until_complete(send_email_background(subject=subj_a, template_name="appraisal_status_changed.html", context=tmpl_ctx_a, to=appraisee.emp_email))
+
+                        # Appraiser
+                        if getattr(db_appraisal, "appraiser_id", None):
+                            appraiser = await employee_service.get_by_id(db, db_appraisal.appraiser_id)
+                            if appraiser and getattr(appraiser, "emp_email", None):
+                                subj_b = f"Appraisal moved to Reviewer Evaluation - ID {db_appraisal.appraisal_id}"
+                                tmpl_ctx_b = dict(template_context)
+                                tmpl_ctx_b.update({
+                                    "appraiser_name": getattr(appraiser, "emp_name", None) or None
+                                })
+                                try:
+                                    self.logger.info(f"{context}EMAIL_SCHEDULE: Scheduling appraisal_status_changed email to appraiser {appraiser.emp_email} for appraisal {db_appraisal.appraisal_id} (status={new_status})")
+                                    asyncio.create_task(send_email_background(subject=subj_b, template_name="appraisal_status_changed.html", context=tmpl_ctx_b, to=appraiser.emp_email))
+                                except RuntimeError:
+                                    loop = asyncio.new_event_loop()
+                                    loop.run_until_complete(send_email_background(subject=subj_b, template_name="appraisal_status_changed.html", context=tmpl_ctx_b, to=appraiser.emp_email))
+                    except Exception as e:
+                        # Log but don't interrupt main flow
+                        self.logger.warning(f"{context}EMAIL_NOTIFY_PARTIES_FAILED: Failed scheduling additional notifications for reviewer-evaluation - {e}")
 
                 # Notify both appraisee and appraiser when appraisal completes
                 if new_status == AppraisalStatus.COMPLETE:
@@ -417,9 +459,9 @@ class AppraisalService(BaseService):
                                 "end_date": db_appraisal.end_date,
                                 "appraisal_type": getattr(db_appraisal.appraisal_type, "name", None),
                                 "status": getattr(getattr(db_appraisal, "status", None), "value", getattr(db_appraisal, "status", None)),
-                                "appraiser_name": getattr(db_appraisal, "appraiser", None) and getattr(db_appraisal.appraiser, "emp_name", None) or None,
-                                "reviewer_name": getattr(db_appraisal, "reviewer", None) and getattr(db_appraisal.reviewer, "emp_name", None) or None,
-                                "goals_count": len(getattr(db_appraisal, "appraisal_goals", []) or []),
+                                "appraiser_name": getattr(db_appraisal, "appraiser_name", None) or None,
+                                "reviewer_name": getattr(db_appraisal, "reviewer_name", None) or None,
+                                "goals_count": goals_count,
                                 "updated_at": getattr(db_appraisal, "updated_at", None),
                                 "appraisal_url": None
                             }
@@ -438,15 +480,15 @@ class AppraisalService(BaseService):
                             subject = f"Appraisal completed - ID {db_appraisal.appraisal_id}"
                             # Appraiser completion notification context
                             template_context = {
-                                "appraisee_name": getattr(db_appraisal, "appraisee", None) and getattr(db_appraisal.appraisee, "emp_name", None) or getattr(db_appraisal, "appraisee_name", None) or None,
+                                "appraisee_name": getattr(db_appraisal, "appraisee_name", None) or None,
                                 "appraisal_id": db_appraisal.appraisal_id,
                                 "start_date": db_appraisal.start_date,
                                 "end_date": db_appraisal.end_date,
                                 "appraisal_type": getattr(db_appraisal.appraisal_type, "name", None),
                                 "status": getattr(getattr(db_appraisal, "status", None), "value", getattr(db_appraisal, "status", None)),
-                                "appraiser_name": getattr(db_appraisal, "appraiser", None) and getattr(db_appraisal.appraiser, "emp_name", None) or None,
-                                "reviewer_name": getattr(db_appraisal, "reviewer", None) and getattr(db_appraisal.reviewer, "emp_name", None) or None,
-                                "goals_count": len(getattr(db_appraisal, "appraisal_goals", []) or []),
+                                "appraiser_name": getattr(db_appraisal, "appraiser_name", None) or None,
+                                "reviewer_name": getattr(db_appraisal, "reviewer_name", None) or None,
+                                "goals_count": goals_count,
                                 "updated_at": getattr(db_appraisal, "updated_at", None),
                                 "appraisal_url": None
                             }

@@ -207,8 +207,18 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
 }) => {
   const navigate = useNavigate();
   const config = WORKFLOW_CONFIGS[mode];
-  const isReadOnly = externalReadOnly ?? config.isReadOnly;
+  // Allow forcing read-only when the appraisal is past the editable stage
+  const [forceReadOnly, setForceReadOnly] = useState(false);
+  // Prefer an explicit 'externalReadOnly' value (true/false). If it's undefined/null,
+  // fall back to config.isReadOnly or the runtime-set forceReadOnly flag.
+  const isReadOnly = externalReadOnly ?? (config.isReadOnly || forceReadOnly);
 
+  // Effective editable flags — respect the computed read-only state so inputs
+  // are disabled when isReadOnly is true even if the workflow config allows editing.
+  const editableSelfSection = config.editableSelfSection && !isReadOnly;
+  const editableAppraiserSection =
+    config.editableAppraiserSection && !isReadOnly;
+    
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [appraisal, setAppraisal] = useState<AppraisalWithGoals | null>(null);
@@ -239,12 +249,18 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
     if (res.ok && res.data) {
       setAppraisal(res.data);
 
-      // Status guard - skip validation in readonly mode
-      if (!isReadOnly && !config.allowedStatuses.includes(res.data.status)) {
-        toast.info(`This appraisal is in '${res.data.status}' stage`);
-        navigate("/");
-        setLoading(false);
-        return;
+      // Status guard - if the appraisal is not in an editable status:
+      // - If the view was explicitly requested as readonly (externalReadOnly), allow it.
+      // - Otherwise, instead of navigating away, open the view in readonly mode so the
+      //   appraisee can view their submitted self-assessment after the workflow advances.
+      if (!config.allowedStatuses.includes(res.data.status)) {
+        // If caller explicitly set readonly, we just proceed; otherwise force readonly
+        if (!externalReadOnly) {
+          toast.info(
+            `This appraisal is in '${res.data.status}' stage — opening read-only view`
+          );
+          setForceReadOnly(true);
+        }
       }
 
       // Seed form from existing inputs
@@ -889,7 +905,7 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
                         {config.showSelfSection && (
                           <div
                             className={`rounded-lg border ${
-                              config.editableSelfSection
+                              editableSelfSection
                                 ? "border-primary/20 bg-primary/5"
                                 : "border-border/50 bg-background"
                             } p-4 space-y-4`}
@@ -907,7 +923,7 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
                                 <label className="text-sm font-medium text-foreground">
                                   Self Rating
                                 </label>
-                                {config.editableSelfSection ? (
+                                {editableSelfSection ? (
                                   form[goalId]?.rating && (
                                     <Badge
                                       variant="outline"
@@ -932,15 +948,14 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
                                   </Badge>
                                 )}
                               </div>
-                              {(config.editableSelfSection ||
-                                ag.self_rating) && (
+                              {(editableSelfSection || ag.self_rating) && (
                                 <div className="px-3">
                                   <Slider
                                     min={1}
                                     max={5}
                                     step={1}
                                     value={
-                                      config.editableSelfSection
+                                      editableSelfSection
                                         ? form[goalId]?.rating == null
                                           ? [1]
                                           : [form[goalId].rating as number]
@@ -949,16 +964,14 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
                                         : [ag.self_rating]
                                     }
                                     onValueChange={(v: number[]) =>
-                                      config.editableSelfSection &&
+                                      editableSelfSection &&
                                       setCurrentField(goalId, {
                                         rating: Number(v[0]),
                                       })
                                     }
-                                    disabled={!config.editableSelfSection}
+                                    disabled={!editableSelfSection}
                                     className={
-                                      !config.editableSelfSection
-                                        ? "opacity-60"
-                                        : ""
+                                      !editableSelfSection ? "opacity-60" : ""
                                     }
                                   />
                                   <div className="flex justify-between text-xs text-muted-foreground mt-1">
@@ -982,31 +995,31 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
                               <Textarea
                                 rows={3}
                                 placeholder={
-                                  config.editableSelfSection
+                                  editableSelfSection
                                     ? "Share your achievements and challenges..."
                                     : ""
                                 }
                                 value={
-                                  config.editableSelfSection
+                                  editableSelfSection
                                     ? form[goalId]?.comment ?? ""
                                     : ag.self_comment ?? "No comments provided"
                                 }
                                 onChange={(
                                   e: React.ChangeEvent<HTMLTextAreaElement>
                                 ) =>
-                                  config.editableSelfSection &&
+                                  editableSelfSection &&
                                   setCurrentField(goalId, {
                                     comment: e.target.value,
                                   })
                                 }
-                                disabled={!config.editableSelfSection}
+                                disabled={!editableSelfSection}
                                 className={`focus:ring-2 focus:ring-primary/20 border-border/50 ${
-                                  !config.editableSelfSection
+                                  !editableSelfSection
                                     ? "opacity-60 bg-background/50 resize-none"
                                     : ""
                                 }`}
                               />
-                              {config.editableSelfSection && (
+                              {editableSelfSection && (
                                 <div className="text-xs text-muted-foreground">
                                   {form[goalId]?.comment?.length || 0}{" "}
                                   characters
@@ -1020,7 +1033,7 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
                         {config.showAppraiserSection && (
                           <div
                             className={`rounded-lg border ${
-                              config.editableAppraiserSection
+                              editableAppraiserSection
                                 ? "border-primary/20 bg-primary/5"
                                 : "border-border/50 bg-background"
                             } p-4 space-y-4`}
@@ -1038,7 +1051,7 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
                                 <label className="text-sm font-medium text-foreground">
                                   Appraiser Rating
                                 </label>
-                                {config.editableAppraiserSection ? (
+                                {editableAppraiserSection ? (
                                   form[goalId]?.rating && (
                                     <Badge
                                       variant="outline"
@@ -1063,7 +1076,7 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
                                   </Badge>
                                 )}
                               </div>
-                              {(config.editableAppraiserSection ||
+                              {(editableAppraiserSection ||
                                 ag.appraiser_rating) && (
                                 <div className="px-3">
                                   <Slider
@@ -1071,7 +1084,7 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
                                     max={5}
                                     step={1}
                                     value={
-                                      config.editableAppraiserSection
+                                      editableAppraiserSection
                                         ? form[goalId]?.rating == null
                                           ? [1]
                                           : [form[goalId].rating as number]
@@ -1080,14 +1093,14 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
                                         : [ag.appraiser_rating]
                                     }
                                     onValueChange={(v: number[]) =>
-                                      config.editableAppraiserSection &&
+                                      editableAppraiserSection &&
                                       setCurrentField(goalId, {
                                         rating: Number(v[0]),
                                       })
                                     }
-                                    disabled={!config.editableAppraiserSection}
+                                    disabled={!editableAppraiserSection}
                                     className={
-                                      !config.editableAppraiserSection
+                                      !editableAppraiserSection
                                         ? "opacity-60"
                                         : ""
                                     }
@@ -1113,12 +1126,12 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
                               <Textarea
                                 rows={3}
                                 placeholder={
-                                  config.editableAppraiserSection
+                                  editableAppraiserSection
                                     ? "Provide your evaluation and feedback..."
                                     : ""
                                 }
                                 value={
-                                  config.editableAppraiserSection
+                                  editableAppraiserSection
                                     ? form[goalId]?.comment ?? ""
                                     : ag.appraiser_comment ??
                                       "No comments provided"
@@ -1126,19 +1139,19 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
                                 onChange={(
                                   e: React.ChangeEvent<HTMLTextAreaElement>
                                 ) =>
-                                  config.editableAppraiserSection &&
+                                  editableAppraiserSection &&
                                   setCurrentField(goalId, {
                                     comment: e.target.value,
                                   })
                                 }
-                                disabled={!config.editableAppraiserSection}
+                                disabled={!editableAppraiserSection}
                                 className={`focus:ring-2 focus:ring-primary/20 border-border/50 ${
-                                  !config.editableAppraiserSection
+                                  !editableAppraiserSection
                                     ? "opacity-60 bg-background/50 resize-none"
                                     : ""
                                 }`}
                               />
-                              {config.editableAppraiserSection && (
+                              {editableAppraiserSection && (
                                 <div className="text-xs text-muted-foreground">
                                   {form[goalId]?.comment?.length || 0}{" "}
                                   characters
