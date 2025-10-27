@@ -196,6 +196,90 @@ class AuthService:
         except Exception as e:
             self.logger.error(f"{context}TOKEN_VERIFY_ERROR: Unexpected error verifying {token_type} token - Error: {str(e)}")
             raise UnauthorizedError(INVALID_REFRESH_TOKEN if token_type == "refresh" else INVALID_ACCESS_TOKEN)
+
+    @log_execution_time()
+    def create_password_reset_token(
+        self,
+        *,
+        employee: Employee,
+        expires_delta: Optional[timedelta] = None
+    ) -> str:
+        """Create a short-lived JWT used for password reset links."""
+        context = build_log_context(user_id=employee.emp_id)
+
+        try:
+            if expires_delta:
+                expire = datetime.now(timezone.utc) + expires_delta
+            else:
+                expire = datetime.now(timezone.utc) + timedelta(
+                    minutes=settings.PASSWORD_RESET_EXPIRE_MINUTES
+                )
+
+            payload = {
+                "sub": employee.emp_email,
+                "emp_id": employee.emp_id,
+                "type": "password_reset",
+                "exp": expire,
+                "iat": datetime.now(timezone.utc)
+            }
+
+            token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+            self.logger.info(f"{context}TOKEN_CREATE_PWRESET_SUCCESS: Password reset token created - Employee ID: {employee.emp_id}")
+            return token
+
+        except Exception as e:
+            self.logger.error(f"{context}TOKEN_CREATE_PWRESET_ERROR: Failed to create password reset token - Employee ID: {employee.emp_id}, Error: {str(e)}")
+            raise
+
+    @log_execution_time()
+    def verify_password_reset_token(self, token: str) -> Dict[str, Any]:
+        """Verify a password-reset token and return the payload or raise UnauthorizedError."""
+        context = build_log_context()
+
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+
+            if payload.get("type") != "password_reset":
+                self.logger.warning(f"{context}TOKEN_VERIFY_FAILED: Invalid token type for password reset - Got: {payload.get('type')}")
+                raise UnauthorizedError("Invalid password reset token")
+
+            if not payload.get("sub") or not payload.get("emp_id"):
+                self.logger.warning(f"{context}TOKEN_VERIFY_FAILED: Missing required fields in password reset token")
+                raise UnauthorizedError("Invalid password reset token")
+
+            self.logger.debug(f"{context}TOKEN_VERIFY_SUCCESS: Password reset token verified - Employee ID: {payload.get('emp_id')}")
+            return payload
+
+        except jwt.ExpiredSignatureError:
+            self.logger.warning(f"{context}TOKEN_VERIFY_FAILED: Password reset token expired")
+            raise UnauthorizedError("Password reset token expired")
+        except InvalidTokenError as e:
+            self.logger.warning(f"{context}TOKEN_VERIFY_FAILED: Invalid password reset token - Error: {str(e)}")
+            raise UnauthorizedError("Invalid password reset token")
+        except Exception as e:
+            self.logger.error(f"{context}TOKEN_VERIFY_ERROR: Unexpected error verifying password reset token - Error: {str(e)}")
+            raise UnauthorizedError("Invalid password reset token")
+
+    @log_execution_time()
+    async def reset_password(self, db: AsyncSession, *, token: str, new_password: str) -> None:
+        """Reset the employee password using a valid password-reset token."""
+        context = build_log_context()
+
+        try:
+            payload = self.verify_password_reset_token(token)
+            emp_id = payload.get("emp_id")
+
+            # Use employee service to set password (hashing handled there)
+            await self.employee_service.set_password(db, employee_id=emp_id, new_password=new_password)
+
+            self.logger.info(f"{context}PASSWORD_RESET_SUCCESS: Password reset completed - Employee ID: {emp_id}")
+            return
+
+        except UnauthorizedError:
+            raise
+        except Exception as e:
+            self.logger.error(f"{context}PASSWORD_RESET_ERROR: Failed to reset password - Error: {str(e)}")
+            raise
     
     @log_execution_time()
     async def get_current_user_from_token(

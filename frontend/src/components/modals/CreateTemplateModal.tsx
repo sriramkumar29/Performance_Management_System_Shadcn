@@ -298,7 +298,7 @@ const CreateTemplateModal = ({
               Categories
             </Label>
             <div className="space-y-3">
-              <div className="flex gap-2">
+              {/* <div className="flex gap-2">
                 <Input
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
@@ -321,7 +321,7 @@ const CreateTemplateModal = ({
                 >
                   Add
                 </Button>
-              </div>
+              </div> */}
 
               {categories.length > 0 && (
                 <div className="flex flex-wrap gap-2">
@@ -348,9 +348,9 @@ const CreateTemplateModal = ({
 
               {allCategories.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">
+                  {/* <p className="text-sm text-muted-foreground">
                     Or select from existing categories:
-                  </p>
+                  </p> */}
                   <div className="flex flex-wrap gap-2">
                     {allCategories
                       .filter((cat) => !categories.includes(cat.name))

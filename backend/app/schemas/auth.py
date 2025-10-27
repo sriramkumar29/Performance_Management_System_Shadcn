@@ -25,6 +25,17 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 
+class PasswordResetRequest(BaseModel):
+    """Request a password reset for the given email."""
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    """Confirm password reset with token and new password."""
+    token: str
+    new_password: str
+
+
 class UserInfo(BaseModel):
     """User information schema."""
     emp_id: int

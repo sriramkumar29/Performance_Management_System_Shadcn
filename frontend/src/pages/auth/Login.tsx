@@ -181,10 +181,20 @@ const Login = () => {
               </Button>
             </form>
 
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">
-                Secure employee portal • Contact IT for access issues
-              </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <a
+                  href="/forgot-password"
+                  className="text-sm text-primary hover:underline"
+                >
+                  Forgot password?
+                </a>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">
+                  Secure employee portal • Contact IT for access issues
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>

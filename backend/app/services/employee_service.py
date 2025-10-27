@@ -569,6 +569,42 @@ class EmployeeService(BaseService[Employee, EmployeeCreate, EmployeeUpdate]):
         except Exception as e:
             self.logger.error(f"{context}UNEXPECTED_ERROR: Failed to validate unique constraints - {str(e)}")
             raise BaseServiceException("Unexpected error during constraint validation")
+
+    @log_execution_time()
+    @log_exception()
+    async def set_password(
+        self,
+        db: AsyncSession,
+        *,
+        employee_id: int,
+        new_password: str
+    ) -> Employee:
+        """Set a new password for the employee (hashes before saving)."""
+        context = build_log_context()
+
+        self.logger.info(f"{context}SERVICE_REQUEST: Set password for Employee ID: {employee_id}")
+
+        try:
+            # Basic validation
+            if not new_password or len(new_password) < 8:
+                self.logger.warning(f"{context}SERVICE_VALIDATION_FAILED: Password too short for Employee ID: {employee_id}")
+                raise ValidationError("Password must be at least 8 characters long")
+
+            employee = await self.get_by_id_or_404(db, employee_id)
+
+            hashed = pwd_context.hash(new_password)
+            employee.emp_password = hashed
+
+            updated = await self.repository.update(db, employee)
+
+            self.logger.info(f"{context}SERVICE_SUCCESS: Password updated for Employee ID: {employee_id}")
+            return updated
+
+        except ValidationError:
+            raise
+        except Exception as e:
+            self.logger.error(f"{context}UNEXPECTED_ERROR: Failed to set password for Employee ID {employee_id} - {str(e)}")
+            raise BaseServiceException("Unexpected error setting password")
     
     def _build_search_filters(self, search: str, fields: List[str]) -> List:
         """Build search filters for the given fields."""

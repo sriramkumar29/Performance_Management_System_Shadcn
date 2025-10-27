@@ -9,11 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.services.auth_service import AuthService
 from app.dependencies.auth import get_auth_service, get_current_active_user
-from app.schemas.auth import TokenResponse, RefreshTokenRequest, UserInfo
+from app.schemas.auth import TokenResponse, RefreshTokenRequest, UserInfo, PasswordResetRequest, PasswordResetConfirm
 from app.exceptions import UnauthorizedError, EntityNotFoundError
 from app.exceptions.domain_exceptions import BaseDomainException, map_domain_exception_to_http_status
 from app.models.employee import Employee
 from app.utils.logger import get_logger, build_log_context, sanitize_log_data
+from app.utils.email import send_email_background
+from app.core.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
@@ -177,3 +179,76 @@ async def get_current_user_info(
                 "message": "An unexpected error occurred while retrieving user information"
             }
         )
+
+
+@router.post("/password/forgot")
+async def password_forgot(
+    request: PasswordResetRequest,
+    db: AsyncSession = Depends(get_db),
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    """Request a password reset link. If the email exists, a reset link will be sent."""
+    context = build_log_context()
+    sanitized_email = sanitize_log_data(request.email)
+
+    logger.info(f"{context}API_REQUEST: POST /password/forgot - Password reset requested - Email: {sanitized_email}")
+
+    try:
+        employee = await auth_service.employee_service.get_employee_by_email(db, email=request.email)
+
+        # Always return success message to avoid leaking user existence
+        if not employee:
+            logger.info(f"{context}API_INFO: Password reset requested for non-existent email - {sanitized_email}")
+            return {"message": "If an account with that email exists, a password reset link has been sent."}
+
+        # Create token and send email (background)
+        token = auth_service.create_password_reset_token(employee=employee)
+        reset_url = f"{settings.FRONTEND_URL.rstrip('/')}" + f"/reset-password?token={token}"
+
+        email_context = {
+            "appraisee_name": employee.emp_name,
+            "reset_url": reset_url
+        }
+
+        # fire-and-forget background send
+        await send_email_background(
+            subject="Password reset for Performance Management System",
+            template_name="password_reset.html",
+            context=email_context,
+            to=employee.emp_email
+        )
+
+        logger.info(f"{context}API_SUCCESS: Password reset email scheduled - Employee ID: {employee.emp_id}")
+        return {"message": "If an account with that email exists, a password reset link has been sent."}
+
+    except Exception as e:
+        logger.error(f"{context}UNEXPECTED_ERROR: Password forgot failed - Email: {sanitized_email}, Error: {str(e)}")
+        # Return generic message
+        return {"message": "If an account with that email exists, a password reset link has been sent."}
+
+
+@router.post("/password/reset")
+async def password_reset(
+    data: PasswordResetConfirm,
+    db: AsyncSession = Depends(get_db),
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    """Reset password using a token and a new password."""
+    context = build_log_context()
+
+    logger.info(f"{context}API_REQUEST: POST /password/reset - Attempting password reset")
+
+    try:
+        # This will raise UnauthorizedError if token invalid/expired
+        await auth_service.reset_password(db, token=data.token, new_password=data.new_password)
+
+        logger.info(f"{context}API_SUCCESS: Password reset completed")
+        return {"message": "Password has been reset successfully."}
+
+    except UnauthorizedError as e:
+        logger.warning(f"{context}API_WARNING: Password reset failed - {str(e)}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"error": "InvalidToken", "message": str(e)})
+
+    except Exception as e:
+        logger.error(f"{context}UNEXPECTED_ERROR: Password reset failed - Error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail={"error": "InternalServerError", "message": "Password reset failed"})
