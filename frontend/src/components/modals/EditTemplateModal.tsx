@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { useAuth } from "../../contexts/AuthContext";
 import { X } from "lucide-react";
 import { BUTTON_STYLES } from "../../constants/buttonStyles";
+import { isManagerOrAbove } from "../../utils/roleHelpers";
 
 interface CategoryDto {
   id: number;
@@ -62,14 +63,9 @@ const EditTemplateModal = ({
   const [tempWeightage, setTempWeightage] = useState<number | "">("");
   const [categories, setCategories] = useState<string[]>([]);
   const [allCategories, setAllCategories] = useState<CategoryDto[]>([]);
-  const [newCategory, setNewCategory] = useState("");
+  // const [newCategory, setNewCategory] = useState("");
 
-  const isManagerOrAbove = (roleId?: number, roleName?: string) => {
-    // Manager or above (role_id >= 3)
-    if (roleId && roleId >= 3) return true;
-    if (roleName && /manager|ceo|admin/i.test(roleName)) return true;
-    return false;
-  };
+  // Use centralized role helper for manager-or-above checks (excludes Admin)
 
   // Reset and load template data when modal opens/closes
   useEffect(() => {
@@ -114,19 +110,19 @@ const EditTemplateModal = ({
       setTempImportance("");
       setTempWeightage("");
       setCategories([]);
-      setNewCategory("");
+      // setNewCategory("");
       setSaving(false);
       setLoading(false);
     }
   }, [open, templateId, onOpenChange]);
 
-  const handleAddCategory = () => {
-    const trimmed = newCategory.trim();
-    if (trimmed && !categories.includes(trimmed)) {
-      setCategories([...categories, trimmed]);
-      setNewCategory("");
-    }
-  };
+  // const handleAddCategory = () => {
+  //   const trimmed = newCategory.trim();
+  //   if (trimmed && !categories.includes(trimmed)) {
+  //     setCategories([...categories, trimmed]);
+  //     setNewCategory("");
+  //   }
+  // };
 
   const handleRemoveCategory = (cat: string) => {
     setCategories(categories.filter((c) => c !== cat));

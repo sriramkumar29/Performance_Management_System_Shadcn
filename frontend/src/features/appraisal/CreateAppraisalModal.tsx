@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { GoalsSection } from "../../pages/appraisal-create/components/GoalsSection";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import { AppraisalDetailsForm } from "../../pages/appraisal-create/components/AppraisalDetailsForm";
+import { isReviewerEligible } from "../../utils/roleHelpers";
 import {
   Dialog,
   DialogContent,
@@ -200,14 +201,14 @@ const CreateAppraisalModal = ({
   // Eligible appraisees: employees with role_id <= appraiser's role_id
   const eligibleAppraisees = employees.filter(
     (emp) =>
-      (emp.role_id ?? 999) <= appraiserRoleId &&
-      emp.emp_id !== user?.emp_id
+      (emp.role_id ?? 999) <= appraiserRoleId && emp.emp_id !== user?.emp_id
   );
 
-  // Eligible reviewers: Manager or above (role_id >= 3)
+  // Eligible reviewers: Manager or above. Use centralized helper which
+  // explicitly excludes Admin from reviewer eligibility.
   const eligibleReviewers = employees.filter(
     (emp) =>
-      emp.role_id >= 3 &&
+      isReviewerEligible((emp as any).role_id, (emp as any).role?.role_name) &&
       emp.emp_id !== user?.emp_id
   );
 

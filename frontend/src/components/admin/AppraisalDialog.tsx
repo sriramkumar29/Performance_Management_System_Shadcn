@@ -12,6 +12,10 @@ import { Label } from "../ui/label";
 import { Badge } from "../ui/badge";
 import { getStatusBadgeVariant } from "../../utils/appraisalUtils";
 import {
+  isAppraiserEligible,
+  isReviewerEligible,
+} from "../../utils/roleHelpers";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -99,20 +103,13 @@ const AppraisalDialog = ({
     return employee ? employee.emp_name : `ID: ${empId}`;
   };
 
-  // Role helpers using new role system
-  // Appraiser: Lead or above (role_id >= 2)
-  const isAppraiserEligible = (roleId?: number) => {
-    return roleId && roleId >= 2; // Lead or above
-  };
-
-  // Reviewer: Manager or above (role_id >= 3)
-  const isReviewerEligible = (roleId?: number) => {
-    return roleId && roleId >= 3; // Manager or above
-  };
+  // Use centralized role helpers (these exclude Admin where appropriate)
 
   // Compute eligible lists for selects
   const eligibleAppraisers = employees
-    .filter((e) => isAppraiserEligible((e as any).role_id))
+    .filter((e) =>
+      isAppraiserEligible((e as any).role_id, (e as any).role?.role_name)
+    )
     // Exclude currently selected reviewer so the same person can't be both appraiser and reviewer
     .filter((e) => e.emp_id !== Number(formData.reviewer_id));
 
@@ -125,7 +122,9 @@ const AppraisalDialog = ({
   const selectedAppraiserRoleId = (selectedAppraiser as any)?.role_id ?? null;
 
   const eligibleReviewers = employees
-    .filter((e) => isReviewerEligible((e as any).role_id))
+    .filter((e) =>
+      isReviewerEligible((e as any).role_id, (e as any).role?.role_name)
+    )
     // Exclude currently selected appraiser so the same person can't be both reviewer and appraiser
     .filter((e) => e.emp_id !== selectedAppraiserId)
     .filter((e) => {

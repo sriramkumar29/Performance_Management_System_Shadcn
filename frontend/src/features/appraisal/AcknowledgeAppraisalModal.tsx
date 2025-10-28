@@ -72,9 +72,11 @@ const AcknowledgeAppraisalModal = ({
   const [employees, setEmployees] = useState<
     Array<{ emp_id: number; emp_name: string }>
   >([]);
+  console.log("Employees:", employees);
   const [appraisalTypes, setAppraisalTypes] = useState<
     Array<{ id: number; name: string }>
   >([]);
+  console.log("Appraisal Types:", appraisalTypes);
 
   useEffect(() => {
     if (open && appraisalId) {

@@ -52,9 +52,11 @@ export function isAdmin(roleId?: number, roleName?: string): boolean {
  * Check if user has manager role or higher
  */
 export function isManagerOrAbove(roleId?: number, roleName?: string): boolean {
-  if (roleId && getRoleLevel(roleId) >= ROLE_HIERARCHY[ROLE_ID_MANAGER])
-    return true;
-  if (roleName && /manager|ceo|admin/i.test(roleName)) return true;
+  // Exclude explicit Admin role from being treated as Manager-or-above for
+  // eligibility checks. Admin remains a separate privileged role.
+  if (roleId === ROLE_ID_ADMIN) return false;
+  if (roleId && getRoleLevel(roleId) >= ROLE_HIERARCHY[ROLE_ID_MANAGER]) return true;
+  if (roleName && /manager|ceo/i.test(roleName)) return true;
   return false;
 }
 
@@ -62,9 +64,11 @@ export function isManagerOrAbove(roleId?: number, roleName?: string): boolean {
  * Check if user has lead role or higher
  */
 export function isLeadOrAbove(roleId?: number, roleName?: string): boolean {
-  if (roleId && getRoleLevel(roleId) >= ROLE_HIERARCHY[ROLE_ID_LEAD])
-    return true;
-  if (roleName && /lead|manager|ceo|admin/i.test(roleName)) return true;
+  // Exclude explicit Admin role from being treated as Lead-or-above for
+  // eligibility checks. Admin remains a separate privileged role.
+  if (roleId === ROLE_ID_ADMIN) return false;
+  if (roleId && getRoleLevel(roleId) >= ROLE_HIERARCHY[ROLE_ID_LEAD]) return true;
+  if (roleName && /lead|manager|ceo/i.test(roleName)) return true;
   return false;
 }
 

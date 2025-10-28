@@ -3,19 +3,13 @@ import { useAuth } from "../../contexts/AuthContext";
 import { Button } from "../../components/ui/button";
 import { Plus, LayoutGrid } from "lucide-react";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
+import { isManagerOrAbove } from "../../utils/roleHelpers";
 
 const CreateAppraisalButton = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const isManagerOrAbove = (roleId?: number, roleName?: string) => {
-    // Manager or above (role_id >= 3)
-    if (roleId && roleId >= 3) return true;
-    if (roleName && /manager|ceo|admin/i.test(roleName)) return true;
-    return false;
-  };
-
-  // Only show button for managers or above
+  // Only show button for managers or above (roleHelpers excludes Admin)
   if (!isManagerOrAbove(user?.role_id, user?.role?.role_name)) {
     return null;
   }

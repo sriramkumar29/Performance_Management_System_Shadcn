@@ -56,7 +56,6 @@ export function AppraisalCard(props: Readonly<AppraisalCardProps>) {
     (endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
   );
   const isOverdue = daysRemaining < 0 && !isCompleted;
-  const plural = daysRemaining !== 1 ? "s" : "";
 
   // Determine badge display based on status
   let badgeContent: React.ReactNode;

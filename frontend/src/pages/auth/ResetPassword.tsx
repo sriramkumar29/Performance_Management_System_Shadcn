@@ -90,22 +90,6 @@ const ResetPassword = () => {
             <form noValidate onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-3">
                 <Label
-                  htmlFor="token"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Reset token
-                </Label>
-                <Input
-                  id="token"
-                  placeholder="Paste token or use link"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  className="h-12 text-base focus:ring-2 focus:ring-primary/20 border-border/50"
-                />
-              </div>
-
-              <div className="space-y-3">
-                <Label
                   htmlFor="password"
                   className="text-sm font-medium text-foreground"
                 >

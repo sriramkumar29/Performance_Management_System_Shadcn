@@ -24,6 +24,7 @@ import {
   Weight,
   RefreshCw,
 } from "lucide-react";
+import { isManagerOrAbove } from "../../utils/roleHelpers";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import {
   Select,
@@ -104,15 +105,7 @@ const PaginationControls = ({
 /**
  * Helper to check if user is a manager or above using new role system.
  */
-function isManagerOrAbove(
-  roleId: number | undefined,
-  roleName: string | undefined
-): boolean {
-  // Manager or above (role_id >= 3)
-  if (roleId && roleId >= 3) return true;
-  if (roleName && /manager|ceo|admin/i.test(roleName)) return true;
-  return false;
-}
+// Use centralized role helper for manager-or-above checks (excludes Admin)
 
 const GoalTemplates = () => {
   const navigate = useNavigate();
@@ -440,10 +433,7 @@ const GoalTemplates = () => {
                     </div>
 
                     {/* Action buttons - positioned absolutely */}
-                    {isManagerOrAbove(
-                      user?.role_id,
-                      user?.role?.role_name
-                    ) && (
+                    {isManagerOrAbove(user?.role_id, user?.role?.role_name) && (
                       <div className="flex gap-2 shrink-0">
                         <Button
                           size={BUTTON_STYLES.EDIT.size}

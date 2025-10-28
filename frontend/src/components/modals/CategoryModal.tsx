@@ -13,6 +13,7 @@ import { apiFetch } from "../../utils/api";
 import { toast } from "sonner";
 import { useAuth } from "../../contexts/AuthContext";
 import { Trash, Plus } from "lucide-react";
+import { isManagerOrAbove } from "../../utils/roleHelpers";
 
 interface CategoryModalProps {
   open: boolean;
@@ -33,12 +34,7 @@ const CategoryModal = ({
   >([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
 
-  const isManagerOrAbove = (roleId?: number, roleName?: string) => {
-    // Manager or above (role_id >= 3)
-    if (roleId && roleId >= 3) return true;
-    if (roleName && /manager|ceo|admin/i.test(roleName)) return true;
-    return false;
-  };
+  // Use centralized helper for manager-or-above checks (excludes Admin)
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();

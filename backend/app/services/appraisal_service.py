@@ -241,7 +241,8 @@ class AppraisalService(BaseService):
                         "start_date": db_appraisal.start_date,
                         "end_date": db_appraisal.end_date,
                         "appraisal_type": appraisal_type_name,
-                        "status": getattr(getattr(db_appraisal, "status", None), "value", getattr(db_appraisal, "status", None)),
+                        # Show as 'Submitted' in the created email (appraisal is created and actionable)
+                        "status": AppraisalStatus.SUBMITTED.value,
                         "appraiser_name": appraiser_name,
                         "reviewer_name": reviewer_name,
                         "goals_count": goals_count,
@@ -350,9 +351,6 @@ class AppraisalService(BaseService):
                         except Exception:
                             appraiser_name = None
 
-                        # use precomputed goals_count
-                        goals_count = goals_count
-
                         template_context = {
                             "appraisee_name": getattr(db_appraisal, "appraisee_name", None) or None,
                             "appraisal_id": db_appraisal.appraisal_id,
@@ -377,6 +375,8 @@ class AppraisalService(BaseService):
                 # Notify reviewer when appraisal moves to REVIEWER_EVALUATION
                 if new_status == AppraisalStatus.REVIEWER_EVALUATION and getattr(db_appraisal, "reviewer_id", None):
                     reviewer = await employee_service.get_by_id(db, db_appraisal.reviewer_id)
+                    # Prefer the employee record's name, but fall back to any stored scalar on the appraisal
+                    reviewer_name = (getattr(reviewer, "emp_name", None) if reviewer else None) or getattr(db_appraisal, "reviewer_name", None)
                     if reviewer and getattr(reviewer, "emp_email", None):
                         subject = f"Appraisal ready for review - ID {db_appraisal.appraisal_id}"
                         # Reviewer notification context
@@ -386,7 +386,7 @@ class AppraisalService(BaseService):
                         except Exception:
                             appraisal_type_name = None
 
-                        template_context = {
+                        reviewer_template_context = {
                             "appraisee_name": getattr(db_appraisal, "appraisee_name", None) or None,
                             "appraisal_id": db_appraisal.appraisal_id,
                             "start_date": db_appraisal.start_date,
@@ -394,55 +394,20 @@ class AppraisalService(BaseService):
                             "appraisal_type": appraisal_type_name,
                             "status": getattr(getattr(db_appraisal, "status", None), "value", getattr(db_appraisal, "status", None)),
                             "appraiser_name": getattr(db_appraisal, "appraiser_name", None) or None,
-                            "reviewer_name": getattr(reviewer, "emp_name", None),
+                            "reviewer_name": reviewer_name,
                             "goals_count": goals_count,
                             "updated_at": getattr(db_appraisal, "updated_at", None),
                             "appraisal_url": None
                         }
                         try:
                             self.logger.info(f"{context}EMAIL_SCHEDULE: Scheduling appraisal_status_changed email to reviewer {reviewer.emp_email} for appraisal {db_appraisal.appraisal_id} (status={new_status})")
-                            asyncio.create_task(send_email_background(subject=subject, template_name="appraisal_status_changed.html", context=template_context, to=reviewer.emp_email))
+                            asyncio.create_task(send_email_background(subject=subject, template_name="appraisal_status_changed.html", context=reviewer_template_context, to=reviewer.emp_email))
                         except RuntimeError:
                             self.logger.info(f"{context}EMAIL_SCHEDULE_FALLBACK: Running send_email_background synchronously for {reviewer.emp_email}")
                             loop = asyncio.new_event_loop()
-                            loop.run_until_complete(send_email_background(subject=subject, template_name="appraisal_status_changed.html", context=template_context, to=reviewer.emp_email))
-                    # Additionally notify appraisee and appraiser that the appraisal progressed to reviewer evaluation
-                    # (some workflows expect both parties to be aware when review starts)
-                    try:
-                        # Appraisee
-                        if getattr(db_appraisal, "appraisee_id", None):
-                            appraisee = await employee_service.get_by_id(db, db_appraisal.appraisee_id)
-                            if appraisee and getattr(appraisee, "emp_email", None):
-                                subj_a = f"Your appraisal moved to Reviewer Evaluation - ID {db_appraisal.appraisal_id}"
-                                tmpl_ctx_a = dict(template_context)
-                                tmpl_ctx_a.update({
-                                    "appraisee_name": getattr(appraisee, "emp_name", None) or None
-                                })
-                                try:
-                                    self.logger.info(f"{context}EMAIL_SCHEDULE: Scheduling appraisal_status_changed email to appraisee {appraisee.emp_email} for appraisal {db_appraisal.appraisal_id} (status={new_status})")
-                                    asyncio.create_task(send_email_background(subject=subj_a, template_name="appraisal_status_changed.html", context=tmpl_ctx_a, to=appraisee.emp_email))
-                                except RuntimeError:
-                                    loop = asyncio.new_event_loop()
-                                    loop.run_until_complete(send_email_background(subject=subj_a, template_name="appraisal_status_changed.html", context=tmpl_ctx_a, to=appraisee.emp_email))
-
-                        # Appraiser
-                        if getattr(db_appraisal, "appraiser_id", None):
-                            appraiser = await employee_service.get_by_id(db, db_appraisal.appraiser_id)
-                            if appraiser and getattr(appraiser, "emp_email", None):
-                                subj_b = f"Appraisal moved to Reviewer Evaluation - ID {db_appraisal.appraisal_id}"
-                                tmpl_ctx_b = dict(template_context)
-                                tmpl_ctx_b.update({
-                                    "appraiser_name": getattr(appraiser, "emp_name", None) or None
-                                })
-                                try:
-                                    self.logger.info(f"{context}EMAIL_SCHEDULE: Scheduling appraisal_status_changed email to appraiser {appraiser.emp_email} for appraisal {db_appraisal.appraisal_id} (status={new_status})")
-                                    asyncio.create_task(send_email_background(subject=subj_b, template_name="appraisal_status_changed.html", context=tmpl_ctx_b, to=appraiser.emp_email))
-                                except RuntimeError:
-                                    loop = asyncio.new_event_loop()
-                                    loop.run_until_complete(send_email_background(subject=subj_b, template_name="appraisal_status_changed.html", context=tmpl_ctx_b, to=appraiser.emp_email))
-                    except Exception as e:
-                        # Log but don't interrupt main flow
-                        self.logger.warning(f"{context}EMAIL_NOTIFY_PARTIES_FAILED: Failed scheduling additional notifications for reviewer-evaluation - {e}")
+                            loop.run_until_complete(send_email_background(subject=subject, template_name="appraisal_status_changed.html", context=reviewer_template_context, to=reviewer.emp_email))
+                    # Do not notify appraisee/appraiser for reviewer evaluation here;
+                    # reviewer receives the reviewer-specific email only.
 
                 # Notify both appraisee and appraiser when appraisal completes
                 if new_status == AppraisalStatus.COMPLETE:

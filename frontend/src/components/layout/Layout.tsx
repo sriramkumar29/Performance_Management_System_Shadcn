@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import Navbar from "../navbar/Navbar";
 import CreateAppraisalButton from "../../features/appraisal/CreateAppraisalButton";
 import { Toaster } from "../ui/toaster";
+import { isManagerOrAbove } from "../../utils/roleHelpers";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,13 +12,6 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   const { user } = useAuth();
   const location = useLocation();
-
-  const isManagerOrAbove = (roleId?: number, roleName?: string) => {
-    // Manager or above (role_id >= 3)
-    if (roleId && roleId >= 3) return true;
-    if (roleName && /manager|ceo|admin/i.test(roleName)) return true;
-    return false;
-  };
 
   const showTeamTab = isManagerOrAbove(user?.role_id, user?.role?.role_name);
 

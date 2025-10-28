@@ -39,6 +39,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import { GoalsSection } from "./components/GoalsSection";
 import { AppraisalDetailsForm } from "./components/AppraisalDetailsForm";
+import { isReviewerEligible } from "../../utils/roleHelpers";
 
 // Types (kept same as modal)
 
@@ -205,10 +206,11 @@ const CreateAppraisal = () => {
       (emp.role_id ?? 999) <= appraiserRoleId && emp.emp_id !== user?.emp_id
   );
 
-  // Reviewers must be manager or above (role_id >= 3)
+  // Reviewers must be manager or above. Use centralized helper which
+  // explicitly excludes Admin from appearing as a reviewer.
   const eligibleReviewers = employees.filter(
     (emp) =>
-      emp.role_id >= 3 && // Manager or above
+      isReviewerEligible((emp as any).role_id, (emp as any).role?.role_name) &&
       emp.emp_id !== user?.emp_id &&
       emp.emp_id !== formValues.appraisee_id // reviewer cannot be the appraisee
   );
