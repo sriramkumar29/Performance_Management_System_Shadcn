@@ -19,6 +19,7 @@ interface ImportFromTemplateModalProps {
   open: boolean;
   onClose: () => void;
   onGoalAdded: (goal: AppraisalGoal) => void;
+  onGoalsAdded?: (goals: AppraisalGoal[]) => void;
   appraisalId?: number;
   remainingWeightage?: number;
 }
@@ -59,6 +60,7 @@ const ImportFromTemplateModal = ({
   open,
   onClose,
   onGoalAdded,
+  onGoalsAdded,
   appraisalId: _appraisalId,
   remainingWeightage = 100,
 }: ImportFromTemplateModalProps) => {
@@ -161,6 +163,7 @@ const ImportFromTemplateModal = ({
 
     setLoading(true);
     try {
+      const pseudos: AppraisalGoal[] = [];
       for (const t of chosen) {
         const userWeightage = selected[t.temp_id]?.weightage || 0;
 
@@ -213,7 +216,15 @@ const ImportFromTemplateModal = ({
           categoriesForPseudo && categoriesForPseudo.length
             ? categoriesForPseudo.map((c) => ({ id: c.id, name: c.name }))
             : categoryIds.map((id) => ({ id, name: "" }));
-        onGoalAdded(pseudo);
+        pseudos.push(pseudo);
+      }
+
+      // If consumer supports batch add, call it once. Otherwise, fall back to
+      // calling the single-goal callback for backward compatibility.
+      if (onGoalsAdded) {
+        onGoalsAdded(pseudos);
+      } else {
+        for (const p of pseudos) onGoalAdded(p);
       }
 
       toast.success("Imported", {

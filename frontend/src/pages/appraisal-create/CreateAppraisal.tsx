@@ -244,6 +244,29 @@ const CreateAppraisal = () => {
     });
   };
 
+  // Batch handler for multiple imported template goals
+  const handleGoalsAdded = (appraisalGoals: AppraisalGoal[]) => {
+    // Merge into UI state (dedupe by template id or goal_id)
+    setGoals((prev) => {
+      const keyFor = (g: AppraisalGoal) =>
+        g.goal?.goal_template_id ?? g.goal?.goal_id;
+      const existing = new Set(prev.map(keyFor));
+      const filtered = appraisalGoals.filter((g) => !existing.has(keyFor(g)));
+      if (!filtered.length) return prev;
+      return [...prev, ...filtered];
+    });
+
+    // Stage added goals for sync (avoid duplicates)
+    setGoalChanges((prev) => {
+      const existingAdded = new Set(prev.added.map((g) => g.goal.goal_id));
+      const toAdd = appraisalGoals.filter(
+        (g) => !existingAdded.has(g.goal.goal_id)
+      );
+      if (!toAdd.length) return prev;
+      return { ...prev, added: [...prev.added, ...toAdd] };
+    });
+  };
+
   const handleGoalUpdated = (updatedGoal: AppraisalGoal) => {
     setGoals((prev) =>
       prev.map((g) =>
@@ -696,6 +719,7 @@ const CreateAppraisal = () => {
         open={importFromTemplateOpen}
         onClose={() => setImportFromTemplateOpen(false)}
         onGoalAdded={handleGoalAdded}
+        onGoalsAdded={handleGoalsAdded}
         appraisalId={createdAppraisalId ?? undefined}
         remainingWeightage={Math.max(0, 100 - totalWeightageUi)}
       />

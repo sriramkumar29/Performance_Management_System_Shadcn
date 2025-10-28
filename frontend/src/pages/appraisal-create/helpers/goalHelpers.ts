@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import type { Dispatch, SetStateAction } from "react";
 
 interface AppraisalGoal {
   id: number;
@@ -23,8 +24,8 @@ interface AppraisalGoal {
 // Helper function to handle goal addition
 export const handleAddGoal = (
   newGoal: AppraisalGoal,
-  goals: AppraisalGoal[],
-  setGoals: (goals: AppraisalGoal[]) => void,
+  _goals: AppraisalGoal[],
+  setGoals: Dispatch<SetStateAction<AppraisalGoal[]>>,
   setIsAddGoalModalOpen: (open: boolean) => void,
   setSelectedGoalForEdit?: (goal: AppraisalGoal | null) => void
 ) => {
@@ -50,23 +51,41 @@ export const handleAddGoal = (
     } as AppraisalGoal;
   })();
 
-  const existingGoal = goals.find(g => g.goal.goal_id === normalizedGoal.goal.goal_id);
-
-  if (existingGoal) {
-    // Update existing goal
-    const updatedGoals = goals.map(g =>
-      g.goal.goal_id === normalizedGoal.goal.goal_id ? normalizedGoal : g
+  // Use functional updater to avoid stale-state races when multiple imports happen quickly
+  setGoals((prev) => {
+    const exists = prev.some(
+      (g) => g.goal.goal_id === normalizedGoal.goal.goal_id
     );
-    setGoals(updatedGoals);
-    toast.success("Goal updated successfully");
-  } else {
-    // Add new goal
-    setGoals([...goals, normalizedGoal]);
+    if (exists) {
+      toast.success("Goal updated successfully");
+      return prev.map((g) =>
+        g.goal.goal_id === normalizedGoal.goal.goal_id ? normalizedGoal : g
+      );
+    }
     toast.success("Goal added successfully");
-  }
+    return [...prev, normalizedGoal];
+  });
 
   setIsAddGoalModalOpen(false);
   setSelectedGoalForEdit?.(null);
+};
+
+// Batch-add helper: add multiple goals safely using functional updates and dedupe by
+// goal_template_id (preferred) or goal_id as fallback.
+export const addGoalsBatch = (
+  newGoals: AppraisalGoal[],
+  setGoals: Dispatch<SetStateAction<AppraisalGoal[]>>
+) => {
+  setGoals((prev) => {
+    const keyFor = (g: AppraisalGoal) =>
+      g.goal?.goal_template_id ?? g.goal?.goal_id;
+
+    const existingKeys = new Set(prev.map((g) => keyFor(g)));
+
+    const filtered = newGoals.filter((g) => !existingKeys.has(keyFor(g)));
+    if (!filtered.length) return prev;
+    return [...prev, ...filtered];
+  });
 };
 
 // Helper function to handle goal editing
