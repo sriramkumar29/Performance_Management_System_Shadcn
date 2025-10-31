@@ -20,7 +20,7 @@ import {
 import { apiFetch } from "../../utils/api";
 import { toast } from "sonner";
 import { useAuth } from "../../contexts/AuthContext";
-import { X } from "lucide-react";
+import { X, Weight } from "lucide-react";
 import { BUTTON_STYLES } from "../../constants/buttonStyles";
 import { isManagerOrAbove } from "../../utils/roleHelpers";
 
@@ -32,13 +32,35 @@ interface CategoryDto {
 interface CreateTemplateModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  // onSuccess can accept optional created headerId and roleId so parent can refresh appropriately
+  onSuccess?: (
+    createdHeaderId?: number | null,
+    createdRoleId?: number | null
+  ) => void;
+  initialRoleId?: number | null;
+  initialHeaderId?: number | null;
+  // When true, the modal will not POST to the server but instead return the created template object
+  // via onLocalCreate. This is used by CreateHeaderWithTemplates to defer server saves until Save.
+  localMode?: boolean;
+  onLocalCreate?: (template: any) => void;
+  // When provided, the modal will operate in edit mode for a local template (no server calls)
+  editTemplate?: any;
+  onLocalUpdate?: (template: any) => void;
+  // Remaining weight allowed for this header (computed by parent). If provided, template weight must be <= remainingWeight.
+  remainingWeight?: number;
 }
 
 const CreateTemplateModal = ({
   open,
   onOpenChange,
   onSuccess,
+  initialRoleId = null,
+  initialHeaderId = null,
+  localMode = false,
+  onLocalCreate,
+  editTemplate,
+  onLocalUpdate,
+  remainingWeight,
 }: CreateTemplateModalProps) => {
   const { user } = useAuth();
 
@@ -50,6 +72,9 @@ const CreateTemplateModal = ({
   const [tempWeightage, setTempWeightage] = useState<number | "">("");
   const [categories, setCategories] = useState<string[]>([]);
   const [allCategories, setAllCategories] = useState<CategoryDto[]>([]);
+  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
+  const [selectedHeaderId, setSelectedHeaderId] = useState<number | null>(null);
+
   // const [newCategory, setNewCategory] = useState("");
 
   // Use centralized role helper for manager-or-above checks (excludes Admin)
@@ -57,16 +82,42 @@ const CreateTemplateModal = ({
   // Reset form when modal opens/closes
   useEffect(() => {
     if (open) {
+      // If initial ids were provided, pre-select them
+      if (initialRoleId) setSelectedRoleId(initialRoleId);
+      if (initialHeaderId) setSelectedHeaderId(initialHeaderId);
+
+      // If an editTemplate was provided (local edit), populate fields
+      if (editTemplate) {
+        setTempTitle(editTemplate.temp_title ?? editTemplate.title ?? "");
+        setTempDescription(
+          editTemplate.temp_description ?? editTemplate.description ?? ""
+        );
+        setTempPerformanceFactor(editTemplate.temp_performance_factor ?? "");
+        setTempImportance(editTemplate.temp_importance ?? "");
+        setTempWeightage(
+          editTemplate.temp_weightage ?? editTemplate.weightage ?? ""
+        );
+        setCategories(
+          (editTemplate.categories || []).map((c: any) =>
+            typeof c === "string" ? c : c.name
+          )
+        );
+        // try to preselect header/role if present
+        if (editTemplate.role_id) setSelectedRoleId(editTemplate.role_id);
+        if (editTemplate.header_id) setSelectedHeaderId(editTemplate.header_id);
+      }
+
       // Load categories when modal opens
-      const loadCategories = async () => {
+      const loadData = async () => {
         try {
           const catRes = await apiFetch<CategoryDto[]>("/api/goals/categories");
           if (catRes.ok && catRes.data) setAllCategories(catRes.data);
         } catch (error) {
-          console.error("Failed to load categories:", error);
+          console.error("Failed to load data:", error);
         }
       };
-      loadCategories();
+
+      loadData();
     } else {
       // Reset form when modal closes
       setTempTitle("");
@@ -75,7 +126,8 @@ const CreateTemplateModal = ({
       setTempImportance("");
       setTempWeightage("");
       setCategories([]);
-      // setNewCategory("");
+      setSelectedRoleId(null);
+      setSelectedHeaderId(null);
       setSaving(false);
     }
   }, [open]);
@@ -100,14 +152,37 @@ const CreateTemplateModal = ({
       return;
     }
 
+    // All fields are required for create when in localMode or server mode
     if (!tempTitle.trim()) {
       toast.error("Template title is required");
       return;
     }
-
+    if (!tempDescription.trim()) {
+      toast.error("Template description is required");
+      return;
+    }
+    if (!tempPerformanceFactor.trim()) {
+      toast.error("Performance factor is required");
+      return;
+    }
+    if (!tempImportance.trim()) {
+      toast.error("Importance is required");
+      return;
+    }
     const weight = typeof tempWeightage === "number" ? tempWeightage : 0;
     if (weight <= 0 || weight > 100) {
       toast.error("Weightage must be between 1 and 100");
+      return;
+    }
+    // If parent provided a remainingWeight, ensure weight does not exceed it
+    if (typeof remainingWeight === "number") {
+      if (weight > remainingWeight) {
+        toast.error(`Weightage cannot exceed remaining ${remainingWeight}%`);
+        return;
+      }
+    }
+    if (!categories || categories.length === 0) {
+      toast.error("Select at least one category");
       return;
     }
 
@@ -122,15 +197,60 @@ const CreateTemplateModal = ({
 
     try {
       setSaving(true);
+
+      // If localMode is enabled, do not call the API — return the template to the parent
+      if (localMode) {
+        // If editing an existing local template, call onLocalUpdate
+        if (editTemplate && onLocalUpdate) {
+          const updated = {
+            ...editTemplate,
+            temp_title: tempTitle.trim(),
+            temp_description: tempDescription.trim(),
+            temp_performance_factor: tempPerformanceFactor.trim(),
+            temp_importance: tempImportance.trim(),
+            temp_weightage: weight,
+            categories: categories,
+            header_id: selectedHeaderId ?? editTemplate.header_id ?? null,
+            role_id: selectedRoleId ?? editTemplate.role_id ?? null,
+          };
+          onLocalUpdate(updated);
+          toast.success("Template updated");
+          onOpenChange(false);
+          return;
+        }
+
+        if (onLocalCreate) {
+          const tempObj = {
+            // create a unique temporary id (negative timestamp to avoid collisions)
+            temp_id: -Date.now(),
+            ...payload,
+            header_id: selectedHeaderId ?? null,
+            role_id: selectedRoleId ?? null,
+          };
+          onLocalCreate(tempObj);
+          toast.success("Goal Added");
+          onOpenChange(false);
+          return;
+        }
+      }
+
+      // If user selected an existing header from the UI, include it in the payload
+      const payloadWithHeader = selectedHeaderId
+        ? { ...payload, header_id: selectedHeaderId }
+        : payload;
+
       const res = await apiFetch(`/api/goals/templates`, {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payloadWithHeader),
       });
+
       if (!res.ok)
         throw new Error(res.error || "Failed to create goal template");
 
       toast.success("Template created successfully");
-      onSuccess(); // Refresh the templates list
+      // No header creation occurs here (header text inputs removed).
+      // Pass null for createdHeaderId, and the selected role for context.
+      onSuccess?.(null, selectedRoleId ?? null);
       onOpenChange(false); // Close the modal
     } catch (e: any) {
       toast.error(e?.message || "Save failed");
@@ -149,7 +269,9 @@ const CreateTemplateModal = ({
             </div>
             <div className="flex-1">
               <DialogTitle className="text-lg sm:text-xl font-semibold text-foreground">
-                Create New Goal Template
+                {editTemplate
+                  ? "Edit Goal Template"
+                  : "Create New Goal Template"}
               </DialogTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 Create a reusable template for goals. Weightage will be assigned
@@ -166,7 +288,7 @@ const CreateTemplateModal = ({
                 htmlFor="title"
                 className="text-sm font-medium text-foreground"
               >
-                Template Title *
+                Template Title
               </Label>
               <Input
                 id="title"
@@ -199,14 +321,15 @@ const CreateTemplateModal = ({
                 rows={3}
                 placeholder="Describe what this template is used for..."
                 className="resize-none focus:ring-2 focus:ring-primary/20 border-border/50"
+                required
                 aria-describedby="description-help"
               />
               <p
                 id="description-help"
                 className="text-xs text-muted-foreground"
               >
-                Optional: add context so users understand the template's
-                purpose.
+                use this description to add context so users understand the
+                template's purpose.
               </p>
             </div>
 
@@ -225,6 +348,7 @@ const CreateTemplateModal = ({
                 rows={2}
                 placeholder="Describe how performance will be measured..."
                 className="resize-none focus:ring-2 focus:ring-primary/20 border-border/50"
+                required
                 aria-describedby="perf-help"
               />
               <p id="perf-help" className="text-xs text-muted-foreground">
@@ -234,12 +358,44 @@ const CreateTemplateModal = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label
-                  htmlFor="weight"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Weightage (%) *
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label
+                    htmlFor="weight"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Weightage (%)
+                  </Label>
+                  {typeof remainingWeight === "number" &&
+                    (() => {
+                      const entered =
+                        typeof tempWeightage === "number" ? tempWeightage : 0;
+                      const remainingAfter = Math.max(
+                        0,
+                        remainingWeight - entered
+                      );
+                      const exceeds = entered > remainingWeight;
+                      const pillClass = exceeds
+                        ? "bg-rose-50 text-rose-700 border-rose-200"
+                        : "bg-blue-50 text-blue-700 border-blue-200";
+                      return (
+                        <div
+                          className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border ${pillClass}`}
+                          title={`Remaining allowed: ${remainingWeight}%`}
+                        >
+                          <Weight className="h-3 w-3" />
+                          <span className="leading-none">
+                            {exceeds
+                              ? `Exceeds by ${entered - remainingWeight}%`
+                              : `${remainingAfter}%`}
+                          </span>
+                          <span className="text-xs text-muted-foreground ml-1">
+                            / {remainingWeight}%
+                          </span>
+                        </div>
+                      );
+                    })()}
+                </div>
+
                 <Input
                   id="weight"
                   type="number"
@@ -287,37 +443,11 @@ const CreateTemplateModal = ({
                 </p>
               </div>
             </div>
-          </div>
 
-          <div className="space-y-3">
-            <Label className="text-sm font-medium text-foreground">
-              Categories
-            </Label>
             <div className="space-y-3">
-              {/* <div className="flex gap-2">
-                <Input
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  placeholder="Add a category..."
-                  disabled={saving}
-                  className="flex-1 h-11 focus:ring-2 focus:ring-primary/20 border-border/50"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddCategory();
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  onClick={handleAddCategory}
-                  disabled={!newCategory.trim() || saving}
-                  variant="outline"
-                  className="h-11"
-                >
-                  Add
-                </Button>
-              </div> */}
+              <Label className="text-sm font-medium text-foreground">
+                Categories
+              </Label>
 
               {categories.length > 0 && (
                 <div className="flex flex-wrap gap-2">

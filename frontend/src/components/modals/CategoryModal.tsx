@@ -13,7 +13,7 @@ import { apiFetch } from "../../utils/api";
 import { toast } from "sonner";
 import { useAuth } from "../../contexts/AuthContext";
 import { Trash, Plus } from "lucide-react";
-import { isManagerOrAbove } from "../../utils/roleHelpers";
+import { isManagerOrAbove, isAdmin } from "../../utils/roleHelpers";
 
 interface CategoryModalProps {
   open: boolean;
@@ -39,7 +39,11 @@ const CategoryModal = ({
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
 
-    if (!isManagerOrAbove(user?.role_id, user?.role?.role_name)) {
+    // Managers and Admins are allowed to create categories
+    if (
+      !isManagerOrAbove(user?.role_id, user?.role?.role_name) &&
+      !isAdmin(user?.role_id, user?.role?.role_name)
+    ) {
       toast.error("You are not authorized to create categories");
       return;
     }

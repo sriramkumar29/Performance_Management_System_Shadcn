@@ -423,6 +423,53 @@ async def read_goal_template(
         )
 
 
+@router.get("/templates/role/{role_id}", response_model=List[GoalTemplateResponse])
+@log_execution_time()
+async def get_templates_by_role(
+    role_id: int,
+    db: AsyncSession = Depends(get_db),
+    template_service: GoalTemplateService = Depends(get_goal_template_service),
+    current_user: Employee = Depends(get_current_active_user)
+) -> List[GoalTemplateResponse]:
+    """
+    Get all goal templates for a specific role (via headers).
+    """
+    user_id = current_user.emp_id
+    context = build_log_context(user_id=str(user_id))
+
+    logger.info(f"{context}API_REQUEST: GET /templates/role/{role_id}")
+
+    try:
+        templates = await template_service.get_templates_by_role(db, role_id)
+
+        logger.info(f"{context}API_SUCCESS: Retrieved {len(templates)} templates for role {role_id}")
+        return [GoalTemplateResponse.model_validate(t) for t in templates]
+
+    except BaseDomainException as e:
+        status_code = map_domain_exception_to_http_status(e)
+        logger.warning(f"{context}DOMAIN_ERROR: {e.__class__.__name__} - {e.message}")
+
+        raise HTTPException(
+            status_code=status_code,
+            detail={
+                "error": e.__class__.__name__,
+                "message": e.message,
+                "details": e.details
+            }
+        )
+
+    except Exception as e:
+        # Handle unexpected errors
+        logger.error(f"{context}UNEXPECTED_ERROR: Failed to retrieve templates for role {role_id} - {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "InternalServerError",
+                "message": f"An unexpected error occurred while retrieving templates for role {role_id}"
+            }
+        )
+
+
 @router.put("/templates/{template_id}", response_model=GoalTemplateResponse)
 async def update_goal_template(
     template_id: int,

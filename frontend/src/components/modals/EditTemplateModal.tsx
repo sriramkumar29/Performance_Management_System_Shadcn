@@ -20,7 +20,7 @@ import {
 import { apiFetch } from "../../utils/api";
 import { toast } from "sonner";
 import { useAuth } from "../../contexts/AuthContext";
-import { X } from "lucide-react";
+import { X, Weight } from "lucide-react";
 import { BUTTON_STYLES } from "../../constants/buttonStyles";
 import { isManagerOrAbove } from "../../utils/roleHelpers";
 
@@ -44,6 +44,8 @@ interface EditTemplateModalProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   templateId: number | null;
+  // Remaining weight allowed for this header. If provided, template weight must be <= remainingWeight.
+  remainingWeight?: number;
 }
 
 const EditTemplateModal = ({
@@ -51,6 +53,7 @@ const EditTemplateModal = ({
   onOpenChange,
   onSuccess,
   templateId,
+  remainingWeight,
 }: EditTemplateModalProps) => {
   const { user } = useAuth();
 
@@ -63,7 +66,6 @@ const EditTemplateModal = ({
   const [tempWeightage, setTempWeightage] = useState<number | "">("");
   const [categories, setCategories] = useState<string[]>([]);
   const [allCategories, setAllCategories] = useState<CategoryDto[]>([]);
-  // const [newCategory, setNewCategory] = useState("");
 
   // Use centralized role helper for manager-or-above checks (excludes Admin)
 
@@ -110,19 +112,10 @@ const EditTemplateModal = ({
       setTempImportance("");
       setTempWeightage("");
       setCategories([]);
-      // setNewCategory("");
       setSaving(false);
       setLoading(false);
     }
   }, [open, templateId, onOpenChange]);
-
-  // const handleAddCategory = () => {
-  //   const trimmed = newCategory.trim();
-  //   if (trimmed && !categories.includes(trimmed)) {
-  //     setCategories([...categories, trimmed]);
-  //     setNewCategory("");
-  //   }
-  // };
 
   const handleRemoveCategory = (cat: string) => {
     setCategories(categories.filter((c) => c !== cat));
@@ -146,10 +139,36 @@ const EditTemplateModal = ({
       return;
     }
 
+    if (!tempDescription.trim()) {
+      toast.error("Template description is required");
+      return;
+    }
+
+    if (!tempPerformanceFactor.trim()) {
+      toast.error("Performance factor is required");
+      return;
+    }
+
+    if (!tempImportance.trim()) {
+      toast.error("Importance is required");
+      return;
+    }
+
+    if (!categories || categories.length === 0) {
+      toast.error("Select at least one category");
+      return;
+    }
+
     const weight = typeof tempWeightage === "number" ? tempWeightage : 0;
     if (weight <= 0 || weight > 100) {
       toast.error("Weightage must be between 1 and 100");
       return;
+    }
+    if (typeof remainingWeight === "number") {
+      if (weight > remainingWeight) {
+        toast.error(`Weightage cannot exceed remaining ${remainingWeight}%`);
+        return;
+      }
     }
 
     const payload = {
@@ -215,7 +234,7 @@ const EditTemplateModal = ({
                   htmlFor="edit-title"
                   className="text-sm font-medium text-foreground"
                 >
-                  Template Title *
+                  Template Title
                 </Label>
                 <Input
                   id="edit-title"
@@ -250,14 +269,15 @@ const EditTemplateModal = ({
                   rows={3}
                   placeholder="Describe what this template is used for..."
                   className="resize-none focus:ring-2 focus:ring-primary/20 border-border/50"
+                  required
                   aria-describedby="edit-description-help"
                 />
                 <p
                   id="edit-description-help"
                   className="text-xs text-muted-foreground"
                 >
-                  Optional: add context so users understand the template's
-                  purpose.
+                  Use this description to add context so users understand the
+                  template's purpose.
                 </p>
               </div>
 
@@ -276,6 +296,7 @@ const EditTemplateModal = ({
                   rows={2}
                   placeholder="Describe how performance will be measured..."
                   className="resize-none focus:ring-2 focus:ring-primary/20 border-border/50"
+                  required
                   aria-describedby="edit-perf-help"
                 />
                 <p
@@ -288,12 +309,47 @@ const EditTemplateModal = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label
-                    htmlFor="edit-weight"
-                    className="text-sm font-medium text-foreground"
-                  >
-                    Weightage (%) *
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor="edit-weight"
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Weightage (%) *
+                    </Label>
+                    {typeof remainingWeight === "number"
+                      ? (() => {
+                          const entered =
+                            typeof tempWeightage === "number"
+                              ? tempWeightage
+                              : 0;
+                          const remainingAfter = Math.max(
+                            0,
+                            remainingWeight - entered
+                          );
+                          const exceeds = entered > remainingWeight;
+                          const pillClass = exceeds
+                            ? "bg-rose-50 text-rose-700 border-rose-200"
+                            : "bg-blue-50 text-blue-700 border-blue-200";
+                          return (
+                            <div
+                              className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border ${pillClass}`}
+                              title={`Remaining allowed: ${remainingWeight}%`}
+                            >
+                              <Weight className="h-3 w-3" />
+                              <span className="leading-none">
+                                {exceeds
+                                  ? `Exceeds by ${entered - remainingWeight}%`
+                                  : `${remainingAfter}%`}
+                              </span>
+                              <span className="text-xs text-muted-foreground ml-1">
+                                / {remainingWeight}%
+                              </span>
+                            </div>
+                          );
+                        })()
+                      : null}
+                  </div>
+
                   <Input
                     id="edit-weight"
                     type="number"
@@ -351,31 +407,6 @@ const EditTemplateModal = ({
                 Categories
               </Label>
               <div className="space-y-3">
-                {/* <div className="flex gap-2">
-                  <Input
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    placeholder="Add a category..."
-                    disabled={saving}
-                    className="flex-1 h-11 focus:ring-2 focus:ring-primary/20 border-border/50"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddCategory();
-                      }
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    onClick={handleAddCategory}
-                    disabled={!newCategory.trim() || saving}
-                    variant="outline"
-                    className="h-11"
-                  >
-                    Add
-                  </Button>
-                </div> */}
-
                 {categories.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {categories.map((cat) => (

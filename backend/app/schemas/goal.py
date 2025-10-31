@@ -1,8 +1,72 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
+from datetime import datetime
+from enum import Enum
 
 from app.constants import IMPORTANCE_MUST_BE_VALID, WEIGHTAGE_MUST_BE_VALID, VALID_IMPORTANCE_LEVELS
 
+
+# ===== Goal Template Header Schemas =====
+
+class GoalTemplateTypeEnum(str, Enum):
+    """Enum for goal template types."""
+    ORGANIZATION = "Organization"
+    SELF = "Self"
+
+
+class GoalTemplateHeaderBase(BaseModel):
+    """Base schema for GoalTemplateHeader."""
+
+    role_id: int
+    title: str
+    description: Optional[str] = None
+
+
+class GoalTemplateHeaderCreate(GoalTemplateHeaderBase):
+    """Schema for creating a GoalTemplateHeader."""
+    goal_template_type: GoalTemplateTypeEnum = GoalTemplateTypeEnum.ORGANIZATION
+    is_shared: bool = False
+    shared_users_id: Optional[List[int]] = None
+
+    @field_validator('shared_users_id')
+    def validate_shared_users(cls, v, info):
+        """Validate shared_users_id based on goal_template_type."""
+        data = info.data
+        goal_type = data.get('goal_template_type')
+
+        # If type is Self and shared_users_id is provided, mark as shared
+        if goal_type == GoalTemplateTypeEnum.SELF and v and len(v) > 0:
+            data['is_shared'] = True
+
+        return v
+
+
+class GoalTemplateHeaderUpdate(BaseModel):
+    """Schema for updating a GoalTemplateHeader."""
+
+    title: Optional[str] = None
+    description: Optional[str] = None
+    goal_template_type: Optional[GoalTemplateTypeEnum] = None
+    is_shared: Optional[bool] = None
+    shared_users_id: Optional[List[int]] = None
+
+
+class GoalTemplateHeaderResponse(GoalTemplateHeaderBase):
+    """Schema for GoalTemplateHeader response."""
+
+    header_id: int
+    creator_id: Optional[int] = None
+    goal_template_type: GoalTemplateTypeEnum
+    is_shared: bool
+    shared_users_id: Optional[List[int]] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ===== Category Schemas =====
 
 class CategoryBase(BaseModel):
     """Base schema for Category."""
@@ -35,9 +99,20 @@ class GoalTemplateBase(BaseModel):
     
     @field_validator('temp_importance')
     def validate_importance(cls, v):
-        if v not in VALID_IMPORTANCE_LEVELS:
+        # Normalize common variants (e.g. 'HIGH', 'high') to the canonical form
+        if isinstance(v, str):
+            v_str = v.strip()
+            # map 'HIGH'/'high' -> 'High'
+            if v_str.lower() in ('high', 'medium', 'low'):
+                v_norm = v_str.capitalize()
+            else:
+                v_norm = v_str
+        else:
+            v_norm = v
+
+        if v_norm not in VALID_IMPORTANCE_LEVELS:
             raise ValueError(IMPORTANCE_MUST_BE_VALID)
-        return v
+        return v_norm
     
     @field_validator('temp_weightage')
     def validate_weightage(cls, v):
@@ -50,7 +125,8 @@ class GoalTemplateCreate(GoalTemplateBase):
     """Schema for creating a GoalTemplate."""
     # Accept category names to match router behavior
     categories: List[str] = []
-    
+    header_id: Optional[int] = None
+
     @field_validator('categories')
     def validate_categories(cls, v):
         if not isinstance(v, list):
@@ -61,20 +137,32 @@ class GoalTemplateCreate(GoalTemplateBase):
 
 class GoalTemplateUpdate(BaseModel):
     """Schema for updating a GoalTemplate."""
-    
+
     temp_title: Optional[str] = None
     temp_description: Optional[str] = None
     temp_performance_factor: Optional[str] = None
     temp_importance: Optional[str] = None
     temp_weightage: Optional[int] = None
     categories: Optional[List[str]] = None
-    
+    header_id: Optional[int] = None
+
     @field_validator('temp_importance')
     def validate_importance(cls, v):
-        if v is not None and v not in VALID_IMPORTANCE_LEVELS:
+        if v is None:
+            return v
+        if isinstance(v, str):
+            v_str = v.strip()
+            if v_str.lower() in ('high', 'medium', 'low'):
+                v_norm = v_str.capitalize()
+            else:
+                v_norm = v_str
+        else:
+            v_norm = v
+
+        if v_norm not in VALID_IMPORTANCE_LEVELS:
             raise ValueError(IMPORTANCE_MUST_BE_VALID)
-        return v
-    
+        return v_norm
+
     @field_validator('temp_weightage')
     def validate_weightage(cls, v):
         if v is not None and not 0 <= v <= 100:
@@ -84,12 +172,29 @@ class GoalTemplateUpdate(BaseModel):
 
 class GoalTemplateResponse(GoalTemplateBase):
     """Schema for GoalTemplate response."""
-    
+
     temp_id: int
+    header_id: Optional[int] = None
     categories: List[CategoryResponse] = []
-    
+
     class Config:
         from_attributes = True
+
+
+# Combined schema for header with templates
+class GoalTemplateHeaderWithTemplates(GoalTemplateHeaderResponse):
+    """Schema for header with all its templates."""
+
+    goal_templates: List[GoalTemplateResponse] = []
+    total_default_weightage: Optional[int] = 0
+
+    @field_validator('total_default_weightage', mode='before')
+    def calculate_total_weightage(cls, v, info):
+        # Calculate from goal_templates if not provided
+        templates = info.data.get('goal_templates', [])
+        if templates:
+            return sum(t.temp_weightage if isinstance(t, GoalTemplateResponse) else t.get('temp_weightage', 0) for t in templates)
+        return v or 0
 
 
 class GoalBase(BaseModel):
@@ -103,9 +208,18 @@ class GoalBase(BaseModel):
     
     @field_validator('goal_importance')
     def validate_importance(cls, v):
-        if v not in VALID_IMPORTANCE_LEVELS:
+        if isinstance(v, str):
+            v_str = v.strip()
+            if v_str.lower() in ('high', 'medium', 'low'):
+                v_norm = v_str.capitalize()
+            else:
+                v_norm = v_str
+        else:
+            v_norm = v
+
+        if v_norm not in VALID_IMPORTANCE_LEVELS:
             raise ValueError(IMPORTANCE_MUST_BE_VALID)
-        return v
+        return v_norm
     
     @field_validator('goal_weightage')
     def validate_weightage(cls, v):
@@ -139,9 +253,20 @@ class GoalUpdate(BaseModel):
     
     @field_validator('goal_importance')
     def validate_importance(cls, v):
-        if v is not None and v not in VALID_IMPORTANCE_LEVELS:
+        if v is None:
+            return v
+        if isinstance(v, str):
+            v_str = v.strip()
+            if v_str.lower() in ('high', 'medium', 'low'):
+                v_norm = v_str.capitalize()
+            else:
+                v_norm = v_str
+        else:
+            v_norm = v
+
+        if v_norm not in VALID_IMPORTANCE_LEVELS:
             raise ValueError(IMPORTANCE_MUST_BE_VALID)
-        return v
+        return v_norm
     
     @field_validator('goal_weightage')
     def validate_weightage(cls, v):

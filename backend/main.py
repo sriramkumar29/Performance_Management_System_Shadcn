@@ -27,7 +27,7 @@ load_dotenv(env_file, override=True)
 from app.core.logging_config import setup_logging, get_logger
 from app.utils.logger import log_exception
 from app.db.database import engine, Base
-from app.routers import employees, appraisals, goals, appraisal_types, appraisal_goals, frontend_serve, roles, auth_router
+from app.routers import employees, appraisals, goals, appraisal_types, appraisal_goals, frontend_serve, roles, auth_router, goal_template_headers
 from app.core.config import settings
 from app.core.exception_handlers import setup_exception_handlers
 from app.db.database import init_db, close_db
@@ -92,11 +92,13 @@ app = FastAPI(
 # Set up global exception handlers
 setup_exception_handlers(app)
 
-# Request logging middleware for debugging
-app.middleware("http")(log_requests_middleware)
-
 # Configure CORS middleware
 setup_cors(app)
+
+# Request logging middleware for debugging
+# Place request logging AFTER CORS middleware so that CORS headers are
+# always added to responses even if logging middleware raises an error.
+app.middleware("http")(log_requests_middleware)
 
 # Include API routers with proper versioning and organization
 api_prefix = "/api"
@@ -161,6 +163,17 @@ app.include_router(
     roles.router,
     prefix=f"{api_prefix}/roles",
     tags=["Roles"],
+    responses={
+        401: {"description": UNAUTHORIZED_HTTP},
+        404: {"description": NOT_FOUND},
+        422: {"description": VALIDATION_ERROR}
+    }
+)
+
+app.include_router(
+    goal_template_headers.router,
+    prefix=f"{api_prefix}/goal-template-headers",
+    tags=["Goal Template Headers"],
     responses={
         401: {"description": UNAUTHORIZED_HTTP},
         404: {"description": NOT_FOUND},

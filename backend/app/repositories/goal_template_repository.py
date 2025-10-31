@@ -111,6 +111,9 @@ class GoalTemplateRepository(BaseRepository[GoalTemplate]):
                 temp_performance_factor=template_data.get("temp_performance_factor"),
                 temp_importance=template_data.get("temp_importance"),
                 temp_weightage=template_data.get("temp_weightage"),
+                # Respect header_id passed from service layer so templates can be
+                # associated with a GoalTemplateHeader when created from the UI.
+                header_id=template_data.get("header_id"),
                 categories=categories
             )
             
@@ -174,31 +177,90 @@ class GoalTemplateRepository(BaseRepository[GoalTemplate]):
     ) -> Category:
         """Get an existing category or create a new one with comprehensive logging."""
         context = build_log_context()
-        
+
         self.logger.debug(f"{context}REPO_GET_OR_CREATE_CATEGORY: Getting or creating category - Name: {category_name}")
-        
+
         try:
             result = await db.execute(
                 select(Category).where(Category.name == category_name)
             )
             category = result.scalars().first()
-            
+
             if not category:
                 self.logger.debug(f"{context}REPO_GET_OR_CREATE_CATEGORY_CREATING: Creating new category - Name: {category_name}")
-                
+
                 category = Category(name=category_name)
                 db.add(category)
                 await db.flush()
                 await db.refresh(category)
-                
+
                 self.logger.info(f"{context}REPO_GET_OR_CREATE_CATEGORY_CREATED: Created new category - ID: {category.id}, Name: {category_name}")
             else:
                 self.logger.debug(f"{context}REPO_GET_OR_CREATE_CATEGORY_FOUND: Found existing category - ID: {category.id}, Name: {category_name}")
-            
+
             return category
-            
+
         except Exception as e:
             await db.rollback()
             error_msg = f"Error getting or creating category"
             self.logger.error(f"{context}REPO_GET_OR_CREATE_CATEGORY_ERROR: {error_msg} - Name: {category_name}, Error: {str(e)}")
             raise RepositoryException(error_msg, details={"category_name": category_name, "original_error": str(e)})
+
+    @log_execution_time()
+    async def get_by_header_id(
+        self,
+        db: AsyncSession,
+        header_id: int
+    ) -> List[GoalTemplate]:
+        """Get all templates for a specific header."""
+        context = build_log_context()
+
+        self.logger.debug(f"{context}REPO_GET_BY_HEADER_ID: Getting templates for header - Header ID: {header_id}")
+
+        try:
+            query = (
+                select(GoalTemplate)
+                .where(GoalTemplate.header_id == header_id)
+                .options(selectinload(GoalTemplate.categories))
+            )
+            result = await db.execute(query)
+            templates = list(result.scalars().all())
+
+            self.logger.debug(f"{context}REPO_GET_BY_HEADER_ID_SUCCESS: Retrieved {len(templates)} templates for header {header_id}")
+            return templates
+
+        except Exception as e:
+            error_msg = f"Error getting templates by header_id {header_id}"
+            self.logger.error(f"{context}REPO_GET_BY_HEADER_ID_ERROR: {error_msg}, Error: {str(e)}")
+            raise RepositoryException(error_msg, details={"header_id": header_id, "original_error": str(e)})
+
+    @log_execution_time()
+    async def get_by_role_id(
+        self,
+        db: AsyncSession,
+        role_id: int
+    ) -> List[GoalTemplate]:
+        """Get all templates for a specific role (via headers)."""
+        context = build_log_context()
+
+        self.logger.debug(f"{context}REPO_GET_BY_ROLE_ID: Getting templates for role - Role ID: {role_id}")
+
+        try:
+            from app.models.goal import GoalTemplateHeader
+
+            query = (
+                select(GoalTemplate)
+                .join(GoalTemplateHeader, GoalTemplate.header_id == GoalTemplateHeader.header_id)
+                .where(GoalTemplateHeader.role_id == role_id)
+                .options(selectinload(GoalTemplate.categories))
+            )
+            result = await db.execute(query)
+            templates = list(result.scalars().all())
+
+            self.logger.debug(f"{context}REPO_GET_BY_ROLE_ID_SUCCESS: Retrieved {len(templates)} templates for role {role_id}")
+            return templates
+
+        except Exception as e:
+            error_msg = f"Error getting templates by role_id {role_id}"
+            self.logger.error(f"{context}REPO_GET_BY_ROLE_ID_ERROR: {error_msg}, Error: {str(e)}")
+            raise RepositoryException(error_msg, details={"role_id": role_id, "original_error": str(e)})

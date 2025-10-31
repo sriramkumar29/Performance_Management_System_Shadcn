@@ -353,6 +353,26 @@ class GoalTemplateService(BaseService[GoalTemplate, GoalTemplateCreate, GoalTemp
         except Exception as e:
             self.logger.error(f"{context}UNEXPECTED_ERROR: Failed to get {self.entity_name} with categories by ID {template_id} - {str(e)}")
             raise GoalServiceError(f"Unexpected error retrieving {self.entity_name} with categories")
+
+    @log_execution_time()
+    async def get_templates_by_role(
+        self,
+        db: AsyncSession,
+        role_id: int
+    ) -> List[GoalTemplate]:
+        """Get all goal templates for a specific role (via headers)."""
+        context = build_log_context()
+
+        self.logger.info(f"{context}SERVICE_REQUEST: Get {self.entity_name} templates by role - Role ID: {role_id}")
+
+        try:
+            templates = await self.repository.get_by_role_id(db, role_id)
+            self.logger.info(f"{context}SERVICE_SUCCESS: Retrieved {len(templates)} templates for role {role_id}")
+            return templates
+
+        except Exception as e:
+            self.logger.error(f"{context}UNEXPECTED_ERROR: Failed to get templates for role {role_id} - {str(e)}")
+            raise GoalServiceError(f"Unexpected error retrieving templates for role {role_id}")
     
     async def create_template_with_categories(
         self,

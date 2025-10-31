@@ -722,6 +722,11 @@ const CreateAppraisal = () => {
         onGoalsAdded={handleGoalsAdded}
         appraisalId={createdAppraisalId ?? undefined}
         remainingWeightage={Math.max(0, 100 - totalWeightageUi)}
+        defaultRoleId={
+          formValues.appraisee_id
+            ? employees.find((e) => e.emp_id === formValues.appraisee_id)?.role_id
+            : undefined
+        }
       />
       <EditGoalModal
         open={editGoalModalOpen}

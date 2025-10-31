@@ -21,6 +21,8 @@ import ReviewerEvaluation from "./pages/reviewer-evaluation/ReviewerEvaluationNe
 import AppraisalView from "./pages/appraisal-view/AppraisalViewNew";
 import CreateAppraisal from "./pages/appraisal-create/CreateAppraisal";
 import GoalTemplates from "./pages/goal-templates/GoalTemplates";
+import GoalTemplatesByRole from "./pages/goal-templates-by-role/GoalTemplatesByRole";
+import CreateHeaderWithTemplates from "./pages/goal-templates/CreateHeaderWithTemplates";
 import CreateAppraisalModal from "./features/appraisal/CreateAppraisalModal";
 
 // Route wrapper that provides the modal's required props.
@@ -57,6 +59,14 @@ const AppRouter = () => (
           <Route path="/appraisal/create" element={<CreateAppraisal />} />
           <Route path="/appraisal/edit/:id" element={<CreateAppraisal />} />
           <Route path="/goal-templates" element={<GoalTemplates />} />
+          <Route
+            path="/goal-templates/new-header"
+            element={<CreateHeaderWithTemplates />}
+          />
+          <Route
+            path="/goal-templates-by-role"
+            element={<GoalTemplatesByRole />}
+          />
           <Route
             path="/appraisal/createmodal"
             element={<CreateAppraisalModalRoute />}

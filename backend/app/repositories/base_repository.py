@@ -272,13 +272,24 @@ class BaseRepository(ABC, Generic[ModelType]):
             db.add(db_obj)
             await db.flush()
             await db.refresh(db_obj)
-            
+
             entity_id = getattr(db_obj, self.id_field, "unknown")
             self.logger.info(f"Database record created - {self.entity_name} with ID: {entity_id}")
-            
+
             return db_obj
-            
+
         except Exception as e:
+            # When a DB-level exception occurs (eg IntegrityError) SQLAlchemy may
+            # put the session/transaction into a rollback state. Explicitly roll
+            # back here to ensure the session is usable for subsequent operations
+            # and to avoid the confusing "Session's transaction has been rolled back"
+            # follow-up errors logged elsewhere.
+            try:
+                await db.rollback()
+            except Exception:
+                # ignore rollback failures to not mask original exception
+                pass
+
             self.logger.error(f"Failed to create {self.entity_name}: {str(e)}")
             # Convert SQLAlchemy exceptions to domain exceptions
             domain_exception = convert_sqlalchemy_error(e, self.entity_name)
@@ -324,6 +335,12 @@ class BaseRepository(ABC, Generic[ModelType]):
             return db_obj
             
         except Exception as e:
+            # Ensure a rollback to clear session if flush failed
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+
             self.logger.error(f"Failed to update {self.entity_name} with ID {entity_id}: {str(e)}")
             domain_exception = convert_sqlalchemy_error(e, self.entity_name)
             raise domain_exception
@@ -352,10 +369,16 @@ class BaseRepository(ABC, Generic[ModelType]):
         try:
             await db.delete(db_obj)
             await db.flush()
-            
+
             self.logger.info(f"Database record deleted - {self.entity_name} with ID: {entity_id}")
-            
+
         except Exception as e:
+            # Rollback if delete/flush failed to clear session state
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+
             self.logger.error(f"Database error deleting {self.entity_name} with ID {entity_id}: {str(e)}")
             domain_exception = convert_sqlalchemy_error(e, self.entity_name)
             raise domain_exception
@@ -437,6 +460,12 @@ class BaseRepository(ABC, Generic[ModelType]):
                 raise AttributeError(error_msg)
 
         except Exception as e:
+            # Ensure rollback so session is reusable by callers
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+
             self.logger.error(f"Database error soft deleting {self.entity_name} with ID {entity_id}: {str(e)}")
             domain_exception = convert_sqlalchemy_error(e, self.entity_name)
             raise domain_exception
