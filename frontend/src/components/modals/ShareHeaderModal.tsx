@@ -39,7 +39,8 @@ const ShareHeaderModal = ({ open, onOpenChange, header, onSuccess }: Props) => {
 
   useEffect(() => {
     if (open && header) {
-      setSelected(header.shared_users_id || []);
+      // Coerce IDs to numbers (some backends may return strings)
+      setSelected((header.shared_users_id || []).map(Number));
       void loadEmployees();
     }
   }, [open, header]);
@@ -48,14 +49,27 @@ const ShareHeaderModal = ({ open, onOpenChange, header, onSuccess }: Props) => {
     try {
       const result = await apiFetch<Employee[]>("/api/employees/");
       if (result.ok && result.data) {
+        // Include employees that are lead-or-above OR are already in the header.shared_users_id
+        const sharedIds = header?.shared_users_id || [];
         const filtered = result.data.filter((e) => {
           if (user && e.emp_id === user.emp_id) return false;
+          // If this employee is already a shared user for this header, include them regardless of role
+          if (sharedIds?.includes(e.emp_id)) return true;
           const roleObj = (e as any).role || (e as any).role_info || null;
           const roleId = roleObj?.id ?? roleObj?.role_id ?? (e as any).role_id;
           const roleName = roleObj?.role_name ?? (e as any).role_name ?? "";
           if (roleId) return isLeadOrAbove(Number(roleId), roleName);
           return isLeadOrAbove(undefined, roleName);
         });
+
+        // Sort so already-shared users appear first (helps UX)
+        filtered.sort((a, b) => {
+          const aShared = sharedIds.includes(a.emp_id) ? 0 : 1;
+          const bShared = sharedIds.includes(b.emp_id) ? 0 : 1;
+          if (aShared !== bShared) return aShared - bShared;
+          return (a.emp_name || "").localeCompare(b.emp_name || "");
+        });
+
         setEmployees(filtered);
       }
     } catch (err) {
@@ -89,12 +103,16 @@ const ShareHeaderModal = ({ open, onOpenChange, header, onSuccess }: Props) => {
       if (res.ok) {
         const userCount = selected.length;
         if (userCount > 0) {
-          toast.success(`Shared with ${userCount} user${userCount > 1 ? 's' : ''}. Each will receive their own editable copy.`);
+          toast.success(
+            `Shared with ${userCount} user${
+              userCount > 1 ? "s" : ""
+            }. Each will receive their own editable copy.`
+          );
         } else {
           toast.success("Sharing removed");
         }
         onOpenChange(false);
-        onSuccess && onSuccess();
+        onSuccess?.();
       } else {
         toast.error(res.error || "Failed to update sharing");
       }

@@ -235,9 +235,11 @@ const GoalTemplates = () => {
   // create header now handled on separate page
 
   const loadTemplates = async (
-    filterTypeParam?: "organization" | "self" | "shared" | null
+    filterTypeParam?: "organization" | "self" | "shared" | null,
+    options?: { suppressLoading?: boolean }
   ): Promise<GoalTemplateHeaderWithTemplates[] | null> => {
-    setLoading(true);
+    const suppressLoading = options?.suppressLoading ?? false;
+    if (!suppressLoading) setLoading(true);
     try {
       // Load headers with optional filtering
       // Pass the component search state as the 'search' parameter so backend will
@@ -267,7 +269,7 @@ const GoalTemplates = () => {
     } catch (e: any) {
       toast.error(e?.message || "Failed to load templates");
     } finally {
-      setLoading(false);
+      if (!suppressLoading) setLoading(false);
     }
     return null;
   };
@@ -962,7 +964,10 @@ const GoalTemplates = () => {
 
                 // Self templates are user-specific, so fetch from server
                 // The backend will filter by the current user's ID (excludes shared copies)
-                const data = await loadTemplates(newFilter);
+                // Suppress skeleton loading when switching filter buttons
+                const data = await loadTemplates(newFilter, {
+                  suppressLoading: true,
+                });
 
                 // If a role is selected, apply role filter to the server response
                 if (selectedRoleId && data) {
@@ -997,7 +1002,10 @@ const GoalTemplates = () => {
                 setFilterType(newFilter);
 
                 // Shared templates are editable copies created when someone shared with you
-                const data = await loadTemplates(newFilter);
+                // Suppress skeleton loading when switching filter buttons
+                const data = await loadTemplates(newFilter, {
+                  suppressLoading: true,
+                });
 
                 // If a role is selected, apply role filter to the server response
                 if (selectedRoleId && data) {
@@ -1095,9 +1103,6 @@ const GoalTemplates = () => {
 
                   // Previously we skipped headers with no matching templates —
                   // show the header even when it has zero templates so users can
-                  // add templates to an empty header. The content area will show
-                  // a helpful message when the headerTemplates array is empty.
-
                   const totalWeight = headerTemplates.reduce(
                     (s, t) => s + (t?.temp_weightage || 0),
                     0

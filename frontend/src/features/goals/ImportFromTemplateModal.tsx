@@ -126,7 +126,12 @@ const ImportFromTemplateModal = ({
     try {
       const res = await apiFetch<Role[]>("/api/roles/");
       if (res.ok && res.data) {
-        setRoles(res.data);
+        // Filter out Admin and CEO roles so they don't appear in the role selector
+        const filtered = (res.data as Role[]).filter((r) => {
+          const name = (r.role_name || "").toLowerCase();
+          return !name.includes("admin") && !name.includes("ceo");
+        });
+        setRoles(filtered);
       }
     } catch (e: unknown) {
       const errorMessage =
@@ -140,7 +145,11 @@ const ImportFromTemplateModal = ({
     try {
       const result = await getHeadersByRole(roleId);
       if (result.ok && result.data) {
-        setHeaders(result.data);
+        // Ensure server response only contains headers for the requested role.
+        // Some backend responses may be noisy; guard client-side to avoid
+        // showing headers that don't belong to the selected role.
+        const filteredByRole = result.data.filter((h) => h.role_id === roleId);
+        setHeaders(filteredByRole);
       } else {
         toast.error("Failed to load templates", {
           description: result.error || "Please try again",
@@ -208,22 +217,10 @@ const ImportFromTemplateModal = ({
       return;
     }
 
-    // Calculate total selected weightage as sum of templates' own weights
-    const totalSelectedWeightage = selectedHeaderIds.reduce((sum, id) => {
-      const header = headers.find((h) => h.header_id === id);
-      if (!header) return sum;
-      return (
-        sum +
-        header.goal_templates.reduce((s, t) => s + (t.temp_weightage || 0), 0)
-      );
-    }, 0);
+    // totalSelectedWeightage is computed outside for UI display; no per-import validation required.
 
-    if (totalSelectedWeightage > remainingWeightage) {
-      toast.error("Total weightage exceeds remaining", {
-        description: `Total selected: ${totalSelectedWeightage}%, Remaining: ${remainingWeightage}%`,
-      });
-      return;
-    }
+    // Allow importing even if totalSelectedWeightage exceeds remainingWeightage.
+    // Business rule: user explicitly asked to permit imports > 100% (do not block).
 
     // Create goals using each template's own weightage
     const allGoals: AppraisalGoal[] = [];
@@ -316,7 +313,18 @@ const ImportFromTemplateModal = ({
     // Goal type filter: All | Organization | Self | Shared
     if (goalTypeFilter === "All") return true;
     if (goalTypeFilter === "Shared") return Boolean(h.is_shared);
-    return h.goal_template_type === goalTypeFilter;
+    if (goalTypeFilter === "Self") {
+      // For the Import modal, treat 'Self' as headers that are owned by the
+      // user (goal_template_type === 'Self') and NOT shared copies. Shared
+      // copies should appear only under 'Shared'. Use case-insensitive
+      // comparison to be robust against backend casing.
+      return (
+        String(h.goal_template_type || "").toLowerCase() === "self" &&
+        !Boolean(h.is_shared)
+      );
+    }
+    // Organization
+    return String(h.goal_template_type || "").toLowerCase() === "organization";
   });
 
   const totalSelectedWeightage = Object.keys(selectedHeaders)
@@ -357,8 +365,25 @@ const ImportFromTemplateModal = ({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
-          {/* Role Filter, Search & Goal Type Filter */}
+          {/* Search, Role Filter & Goal Type Filter (search moved first) */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-2">
+              <Label
+                htmlFor="search"
+                className="text-xs sm:text-sm font-medium"
+              >
+                Search Templates
+              </Label>
+              <Input
+                id="search"
+                placeholder="Filter by title or description..."
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="h-10"
+                disabled={!selectedRoleId}
+              />
+            </div>
+
             <div className="space-y-2">
               <Label
                 htmlFor="role-filter"
@@ -388,23 +413,6 @@ const ImportFromTemplateModal = ({
 
             <div className="space-y-2">
               <Label
-                htmlFor="search"
-                className="text-xs sm:text-sm font-medium"
-              >
-                Search Templates
-              </Label>
-              <Input
-                id="search"
-                placeholder="Filter by title or description..."
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                className="h-10"
-                disabled={!selectedRoleId}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label
                 htmlFor="goal-type-filter"
                 className="text-xs sm:text-sm font-medium"
               >
@@ -427,29 +435,30 @@ const ImportFromTemplateModal = ({
             </div>
           </div>
 
-          {/* Weightage Summary */}
-          <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20">
-            <div className="flex items-center gap-2">
-              <Weight className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">
-                Total Selected Weightage:
-              </span>
+          {/* Weightage Summary: only show when user has selected at least one header */}
+          {totalSelectedWeightage > 0 ? (
+            <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="flex items-center gap-2">
+                <Weight className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Selected</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span
+                  className={`text-lg font-bold ${
+                    totalSelectedWeightage > remainingWeightage
+                      ? "text-red-600"
+                      : "text-primary"
+                  }`}
+                >
+                  {totalSelectedWeightage}%
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span
-                className={`text-lg font-bold ${
-                  totalSelectedWeightage > remainingWeightage
-                    ? "text-red-600"
-                    : "text-primary"
-                }`}
-              >
-                {totalSelectedWeightage}%
-              </span>
-              <span className="text-sm text-muted-foreground">
-                / {remainingWeightage}% available
-              </span>
+          ) : (
+            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-sm text-muted-foreground">
+              Select one or more template headers to see remaining weightage
             </div>
-          </div>
+          )}
 
           {/* Headers List */}
           <div className="space-y-3">
@@ -573,7 +582,12 @@ const ImportFromTemplateModal = ({
                                 className="bg-purple-50 text-purple-700 border-purple-200 text-xs"
                               >
                                 <Weight className="h-3 w-3 mr-1" />
-                                Default: {header.total_default_weightage}%
+                                Weightage:{" "}
+                                {header.goal_templates.reduce(
+                                  (s, t) => s + (t.temp_weightage || 0),
+                                  0
+                                )}
+                                %
                               </Badge>
                             </div>
 

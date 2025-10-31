@@ -160,16 +160,14 @@ const CreateAppraisalModal = ({
   const reviewerSelected = !!formValues.reviewer_id;
   const typeSelected = !!formValues.appraisal_type_id;
   const periodSelected = !!formValues.period && formValues.period.length === 2;
+  // Allow adding goals even if total weightage is already 100% or more.
   const canAddGoals =
     (createdAppraisalId === null &&
       appraiseeSelected &&
       reviewerSelected &&
       typeSelected &&
-      periodSelected &&
-      totalWeightageUi < 100) ||
-    (createdAppraisalId !== null &&
-      createdAppraisalStatus === "Draft" &&
-      totalWeightageUi < 100);
+      periodSelected) ||
+    (createdAppraisalId !== null && createdAppraisalStatus === "Draft");
 
   const canSaveDraft =
     !isLocked &&
@@ -195,7 +193,6 @@ const CreateAppraisalModal = ({
     reviewerSelected,
     typeSelected,
     periodSelected,
-    totalWeightageUi,
   });
 
   // Eligible appraisees: employees with role_id <= appraiser's role_id

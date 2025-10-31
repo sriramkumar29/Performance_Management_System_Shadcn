@@ -165,16 +165,15 @@ const CreateAppraisal = () => {
   const reviewerSelected = !!formValues.reviewer_id;
   const typeSelected = !!formValues.appraisal_type_id;
   const periodSelected = !!formValues.period && formValues.period.length === 2;
+  // Allow adding goals regardless of current total weightage; only require
+  // required fields and that an existing appraisal is a Draft.
   const canAddGoals =
     (createdAppraisalId === null &&
       appraiseeSelected &&
       reviewerSelected &&
       typeSelected &&
-      periodSelected &&
-      totalWeightageUi < 100) ||
-    (createdAppraisalId !== null &&
-      createdAppraisalStatus === "Draft" &&
-      totalWeightageUi < 100);
+      periodSelected) ||
+    (createdAppraisalId !== null && createdAppraisalStatus === "Draft");
 
   const canSaveDraft =
     !isLocked &&
@@ -197,7 +196,6 @@ const CreateAppraisal = () => {
     reviewerSelected,
     typeSelected,
     periodSelected,
-    totalWeightageUi,
   });
 
   // Eligible appraisees: employees with role level <= appraiser's role level
@@ -257,14 +255,40 @@ const CreateAppraisal = () => {
     });
 
     // Stage added goals for sync (avoid duplicates)
-    setGoalChanges((prev) => {
-      const existingAdded = new Set(prev.added.map((g) => g.goal.goal_id));
-      const toAdd = appraisalGoals.filter(
-        (g) => !existingAdded.has(g.goal.goal_id)
-      );
-      if (!toAdd.length) return prev;
-      return { ...prev, added: [...prev.added, ...toAdd] };
-    });
+    // Also, if appraisal already exists on the server, persist immediately.
+    const existingAdded = new Set(goalChanges.added.map((g) => g.goal.goal_id));
+    const toAdd = appraisalGoals.filter(
+      (g) => !existingAdded.has(g.goal.goal_id)
+    );
+    if (!toAdd.length) return;
+
+    setGoalChanges((prev) => ({ ...prev, added: [...prev.added, ...toAdd] }));
+
+    // If appraisal is already created, attempt to sync these new goals immediately
+    // so imported goals appear on the server without requiring an explicit Save.
+    (async () => {
+      if (!createdAppraisalId) return;
+      try {
+        // Use the helper to sync only the newly added goals
+        await syncGoalChangesHelper(
+          createdAppraisalId,
+          { added: toAdd, removed: [], updated: [] },
+          originalGoals
+        );
+        // Refresh local state from server to pick up real IDs and any server-side normalization
+        await loadAppraisal(createdAppraisalId);
+        // Clear staged changes (they've been persisted)
+        setGoalChanges({ added: [], removed: [], updated: [] });
+        toast.success("Imported and saved to appraisal", {
+          description: `Imported ${toAdd.length} goal${
+            toAdd.length > 1 ? "s" : ""
+          }`,
+        });
+      } catch (e: any) {
+        console.error("Failed to persist imported goals immediately:", e);
+        toast.error("Failed to save imported goals. They are staged locally.");
+      }
+    })();
   };
 
   const handleGoalUpdated = (updatedGoal: AppraisalGoal) => {
@@ -454,13 +478,9 @@ const CreateAppraisal = () => {
       return;
     }
 
-    const currentTotalWeightage = calculateTotalWeightage(goals);
-    if (currentTotalWeightage > 100) {
-      toast.error("Invalid weightage", {
-        description: `Total is ${currentTotalWeightage}% (> 100%).`,
-      });
-      return;
-    }
+    // Allow saving even when total weightage exceeds 100% per user request.
+    // The UI still indicates totals and prevents submission for acknowledgement
+    // unless the total equals exactly 100%.
 
     try {
       setLoading(true);
@@ -724,7 +744,8 @@ const CreateAppraisal = () => {
         remainingWeightage={Math.max(0, 100 - totalWeightageUi)}
         defaultRoleId={
           formValues.appraisee_id
-            ? employees.find((e) => e.emp_id === formValues.appraisee_id)?.role_id
+            ? employees.find((e) => e.emp_id === formValues.appraisee_id)
+                ?.role_id
             : undefined
         }
       />

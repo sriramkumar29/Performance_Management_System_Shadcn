@@ -155,13 +155,8 @@ const EditGoalModal = ({
       toast.error("Weightage must be between 1 and 100");
       return;
     }
-
-    // remainingWeightage already includes the current goal's weight allowance
-    const availableWeightage = remainingWeightage;
-    if (values.goal_weightage > availableWeightage) {
-      toast.error(`Must be <= available ${availableWeightage}%`);
-      return;
-    }
+    // Note: we allow setting a goal weight that exceeds the remaining weightage
+    // so users can create totals >100%. We still enforce 1-100% per goal.
 
     setLoading(true);
     try {
@@ -398,8 +393,8 @@ const EditGoalModal = ({
                   id="goal_weightage"
                   type="number"
                   min="1"
-                  max={maxWeightage}
-                  placeholder="Enter weightage percentage"
+                  max={100}
+                  placeholder="Enter weightage percentage (1-100)"
                   value={formValues.goal_weightage || ""}
                   onChange={(e) =>
                     setFormValues((v) => ({
@@ -418,8 +413,9 @@ const EditGoalModal = ({
                     </span>
                   </span>
                   {maxWeightage <= 0 && (
-                    <span className="text-red-600 font-medium">
-                      No weightage remaining
+                    <span className="text-amber-600 font-medium">
+                      You can still set this goal's weight; total may exceed
+                      100%.
                     </span>
                   )}
                 </div>

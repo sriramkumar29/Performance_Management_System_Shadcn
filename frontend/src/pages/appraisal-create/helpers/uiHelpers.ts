@@ -6,7 +6,6 @@ export const getAddGoalDisabledReason = ({
   reviewerSelected,
   typeSelected,
   periodSelected,
-  totalWeightageUi
 }: {
   canAddGoals: boolean;
   isLocked: boolean;
@@ -14,7 +13,6 @@ export const getAddGoalDisabledReason = ({
   reviewerSelected: boolean;
   typeSelected: boolean;
   periodSelected: boolean;
-  totalWeightageUi: number;
 }): string => {
   if (canAddGoals) return "";
 
@@ -22,8 +20,8 @@ export const getAddGoalDisabledReason = ({
   if (!appraiseeSelected) return "Select an employee first";
   if (!reviewerSelected) return "Select a reviewer first";
   if (!typeSelected || !periodSelected) return "Select appraisal type (and range) to set period";
-  if (totalWeightageUi >= 100) return "Total weightage reached";
-  
+
+  // Allow adding goals even when total weightage is >= 100
   return "";
 };
 

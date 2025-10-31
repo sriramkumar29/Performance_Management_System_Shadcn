@@ -105,9 +105,13 @@ const AddGoalModal = ({
     const values = formValues;
     setLoading(true);
     try {
-      // Enforce remaining weightage locally
-      if (values.goal_weightage > remainingWeightage) {
-        throw new Error(`Weightage exceeds remaining ${remainingWeightage}%.`);
+      // Validate weight is within 1-100
+      if (
+        !values.goal_weightage ||
+        values.goal_weightage < 1 ||
+        values.goal_weightage > 100
+      ) {
+        throw new Error("Weightage must be between 1 and 100");
       }
 
       // Basic required checks
@@ -366,8 +370,8 @@ const AddGoalModal = ({
                   id="goal_weightage"
                   type="number"
                   min="1"
-                  max={remainingWeightage}
-                  placeholder="Enter weightage percentage"
+                  max={100}
+                  placeholder="Enter weightage percentage (1-100)"
                   value={formValues.goal_weightage || ""}
                   onChange={(e) =>
                     setFormValues((v) => ({
@@ -386,8 +390,8 @@ const AddGoalModal = ({
                     </span>
                   </span>
                   {remainingWeightage <= 0 && (
-                    <span className="text-red-600 font-medium">
-                      No weightage remaining
+                    <span className="text-amber-600 font-medium">
+                      You can still add goals, but total will exceed 100%.
                     </span>
                   )}
                 </div>
@@ -411,7 +415,7 @@ const AddGoalModal = ({
             <Button
               type="submit"
               variant={BUTTON_STYLES.SUBMIT.variant}
-              disabled={loading || remainingWeightage <= 0}
+              disabled={loading}
               className={`w-full sm:w-auto ${BUTTON_STYLES.SUBMIT.className}`}
               title="Add goal"
               aria-label="Add goal"
