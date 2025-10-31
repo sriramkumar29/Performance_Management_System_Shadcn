@@ -39,7 +39,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import { GoalsSection } from "./components/GoalsSection";
 import { AppraisalDetailsForm } from "./components/AppraisalDetailsForm";
-import { isReviewerEligible } from "../../utils/roleHelpers";
+import { isReviewerEligible, compareRoleLevels } from "../../utils/roleHelpers";
 
 // Types (kept same as modal)
 
@@ -209,6 +209,8 @@ const CreateAppraisal = () => {
   const eligibleReviewers = employees.filter(
     (emp) =>
       isReviewerEligible((emp as any).role_id, (emp as any).role?.role_name) &&
+      // Reviewer should be equal or higher level than the current user
+      compareRoleLevels((emp as any).role_id ?? 0, appraiserRoleId ?? 0) >= 0 &&
       emp.emp_id !== user?.emp_id &&
       emp.emp_id !== formValues.appraisee_id // reviewer cannot be the appraisee
   );

@@ -30,7 +30,7 @@ import { toast } from "sonner";
 import { GoalsSection } from "../../pages/appraisal-create/components/GoalsSection";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import { AppraisalDetailsForm } from "../../pages/appraisal-create/components/AppraisalDetailsForm";
-import { isReviewerEligible } from "../../utils/roleHelpers";
+import { isReviewerEligible, compareRoleLevels } from "../../utils/roleHelpers";
 import {
   Dialog,
   DialogContent,
@@ -206,6 +206,8 @@ const CreateAppraisalModal = ({
   const eligibleReviewers = employees.filter(
     (emp) =>
       isReviewerEligible((emp as any).role_id, (emp as any).role?.role_name) &&
+      // Require reviewer to be equal or higher in role level than the current user
+      compareRoleLevels((emp as any).role_id ?? 0, appraiserRoleId ?? 0) >= 0 &&
       emp.emp_id !== user?.emp_id
   );
 
