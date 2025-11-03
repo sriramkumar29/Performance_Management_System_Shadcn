@@ -355,7 +355,7 @@ const ImportFromTemplateModal = ({
     toast.success("Imported successfully", {
       description: `Imported ${allGoals.length} goal${
         allGoals.length > 1 ? "s" : ""
-      } from ${selectedHeaderIds.length} template header${
+      } from ${selectedHeaderIds.length} template${
         selectedHeaderIds.length > 1 ? "s" : ""
       }`,
     });

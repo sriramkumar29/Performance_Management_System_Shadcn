@@ -56,7 +56,7 @@ const Layout = ({ children }: LayoutProps) => {
   return (
     <>
       <Navbar showTeamTab={showTeamTab} />
-      <main className="px-3 sm:px-6 py-4 sm:py-6 flex-1 transition-opacity duration-150">
+      <main className="px-3 sm:px-6 py-4 sm:py-6 flex-1 transition-all duration-200">
         {showMainHeader && (
           <div className="flex justify-between items-center mb-6 animate-fade-in-up container">
             <h1
@@ -70,7 +70,9 @@ const Layout = ({ children }: LayoutProps) => {
         )}
 
         {/* Let child pages control their own container width so they can match MyAppraisal */}
-        <div className="animate-fade-in">{children}</div>
+        <div className="animate-fade-in-up" style={{ animationDelay: "50ms" }}>
+          {children}
+        </div>
       </main>
       <Toaster />
     </>

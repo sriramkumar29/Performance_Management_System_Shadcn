@@ -325,6 +325,7 @@ export const AppraisalDetailsForm = ({
                                     }
                                   }}
                                   disabled={isLocked}
+                                  readOnly
                                   aria-label="Start date"
                                   placeholder="Start date"
                                 />
@@ -356,6 +357,7 @@ export const AppraisalDetailsForm = ({
                                     }
                                   }}
                                   disabled={isLocked}
+                                  readOnly
                                   aria-label="End date"
                                   placeholder="End date"
                                 />
@@ -402,6 +404,7 @@ export const AppraisalDetailsForm = ({
                               }
                             }}
                             disabled={isLocked}
+                            readOnly
                             aria-label="Start date"
                             placeholder="Start date"
                           />
@@ -430,6 +433,7 @@ export const AppraisalDetailsForm = ({
                               }
                             }}
                             disabled={isLocked}
+                            readOnly
                             aria-label="End date"
                             placeholder="End date"
                           />

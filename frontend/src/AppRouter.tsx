@@ -35,56 +35,58 @@ const CreateAppraisalModalRoute = () => {
 
 const AppRouter = () => (
   <BrowserRouter>
-    <Routes>
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/auth/callback" element={<MicrosoftCallback />} />
+    <div className="min-h-screen bg-background transition-colors duration-200">
+      <Routes>
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/auth/callback" element={<MicrosoftCallback />} />
 
-      <Route element={<ProtectedRoute />}>
-        <Route path="/" element={<Navigate to="/my-appraisal" replace />} />
-        <Route path="/my-appraisal" element={<MyAppraisal />} />
-        <Route path="/self-assessment/:id" element={<SelfAssessment />} />
-        <Route
-          path="/appraiser-evaluation/:id"
-          element={<AppraiserEvaluation />}
-        />
-        <Route
-          path="/reviewer-evaluation/:id"
-          element={<ReviewerEvaluation />}
-        />
-        <Route path="/appraisal/:id" element={<AppraisalView />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/" element={<Navigate to="/my-appraisal" replace />} />
+          <Route path="/my-appraisal" element={<MyAppraisal />} />
+          <Route path="/self-assessment/:id" element={<SelfAssessment />} />
+          <Route
+            path="/appraiser-evaluation/:id"
+            element={<AppraiserEvaluation />}
+          />
+          <Route
+            path="/reviewer-evaluation/:id"
+            element={<ReviewerEvaluation />}
+          />
+          <Route path="/appraisal/:id" element={<AppraisalView />} />
 
-        {/* Manager-only routes */}
-        <Route element={<ManagerRoute />}>
-          <Route path="/team-appraisal" element={<TeamAppraisal />} />
-          <Route path="/appraisal/create" element={<CreateAppraisal />} />
-          <Route path="/appraisal/edit/:id" element={<CreateAppraisal />} />
-          <Route path="/goal-templates" element={<GoalTemplates />} />
-          <Route
-            path="/goal-templates/new-header"
-            element={<CreateHeaderWithTemplates />}
-          />
-          <Route
-            path="/goal-templates-by-role"
-            element={<GoalTemplatesByRole />}
-          />
-          <Route
-            path="/appraisal/createmodal"
-            element={<CreateAppraisalModalRoute />}
-          />
+          {/* Manager-only routes */}
+          <Route element={<ManagerRoute />}>
+            <Route path="/team-appraisal" element={<TeamAppraisal />} />
+            <Route path="/appraisal/create" element={<CreateAppraisal />} />
+            <Route path="/appraisal/edit/:id" element={<CreateAppraisal />} />
+            <Route path="/goal-templates" element={<GoalTemplates />} />
+            <Route
+              path="/goal-templates/new-header"
+              element={<CreateHeaderWithTemplates />}
+            />
+            <Route
+              path="/goal-templates-by-role"
+              element={<GoalTemplatesByRole />}
+            />
+            <Route
+              path="/appraisal/createmodal"
+              element={<CreateAppraisalModalRoute />}
+            />
+          </Route>
+
+          {/* Admin-only routes */}
+          <Route element={<AdminRoute />}>
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/appraisals" element={<AdminAppraisals />} />
+          </Route>
+
+          {/* Fallback to My Appraisal */}
+          <Route path="*" element={<Navigate to="/my-appraisal" replace />} />
         </Route>
-
-        {/* Admin-only routes */}
-        <Route element={<AdminRoute />}>
-          <Route path="/admin/users" element={<AdminUsers />} />
-          <Route path="/admin/appraisals" element={<AdminAppraisals />} />
-        </Route>
-
-        {/* Fallback to My Appraisal */}
-        <Route path="*" element={<Navigate to="/my-appraisal" replace />} />
-      </Route>
-    </Routes>
+      </Routes>
+    </div>
   </BrowserRouter>
 );
 

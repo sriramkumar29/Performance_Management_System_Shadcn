@@ -10,14 +10,13 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
-import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Employee } from "../../contexts/AuthContext";
 
 const MicrosoftCallback = () => {
   const navigate = useNavigate();
   const { setUser, setStatus } = useAuth();
-  const [showModal, setShowModal] = useState(true);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   useEffect(() => {
     const processCallback = async () => {
@@ -62,12 +61,15 @@ const MicrosoftCallback = () => {
 
         console.log("[Microsoft Callback] Login successful, redirecting");
 
-        // Hide modal and show success toast
-        setShowModal(false);
+        // Show success toast
         toast.success("Welcome back!", {
           description: "Successfully signed in with Microsoft",
           duration: 2000,
         });
+
+        // Small delay to ensure React state updates propagate before navigation
+        setIsNavigating(true);
+        await new Promise((resolve) => setTimeout(resolve, 150));
 
         // Redirect to home or intended destination
         const intended = sessionStorage.getItem("intended_destination");
@@ -80,8 +82,7 @@ const MicrosoftCallback = () => {
 
         console.error("[Microsoft Callback] Error:", errorMessage);
 
-        // Hide modal and show error toast
-        setShowModal(false);
+        // Show error toast
         toast.error("Sign-in failed", {
           description: errorMessage,
           duration: 4000,
@@ -95,37 +96,8 @@ const MicrosoftCallback = () => {
     processCallback();
   }, [navigate, setUser, setStatus]);
 
-  // Loading modal popup
-  if (!showModal) return null;
-
-  return (
-    <>
-      {/* Modal Backdrop */}
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 animate-in fade-in duration-200" />
-
-      {/* Modal Content */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-background rounded-lg shadow-lg p-8 max-w-sm w-full animate-in zoom-in-95 duration-200">
-          <div className="text-center space-y-6">
-            {/* Spinner */}
-            <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-
-            {/* Text */}
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-foreground">
-                Signing you in
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Please wait while we complete your Microsoft authentication
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
+  // No UI - authentication happens in background
+  return null;
 };
 
 export default MicrosoftCallback;

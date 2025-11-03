@@ -17,20 +17,29 @@ import { toast } from "sonner";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { loginWithCredentials, checkSilentSSO, status, user, setUser, setStatus } = useAuth();
+  const {
+    loginWithCredentials,
+    checkSilentSSO,
+    status,
+    user,
+    setUser,
+    setStatus,
+  } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>(
     {}
   );
-  const [isProcessingCallback, setIsProcessingCallback] = useState(false);
   const [isMicrosoftLoading, setIsMicrosoftLoading] = useState(false);
+  const [isFadingOut, setIsFadingOut] = useState(false);
 
   // If already authenticated (session persisted), redirect away from login
   useEffect(() => {
     if (user) {
-      navigate("/");
-      return;
+      // Add fade out before navigation
+      setIsFadingOut(true);
+      const timer = setTimeout(() => navigate("/"), 150);
+      return () => clearTimeout(timer);
     }
 
     // Check for tokens in URL hash (Microsoft callback)
@@ -41,9 +50,8 @@ const Login = () => {
       const refreshToken = params.get("refresh_token");
 
       if (accessToken && refreshToken) {
-        // Process callback on login page
-        console.log("[Login] Tokens detected in hash, showing modal");
-        setIsProcessingCallback(true);
+        // Process callback on login page silently
+        console.log("[Login] Tokens detected in hash, processing silently");
         processCallback(accessToken, refreshToken);
         return;
       }
@@ -61,7 +69,8 @@ const Login = () => {
       if (error === "user_not_found") {
         errorMessage = "User not found. Please contact your administrator.";
       } else if (error === "unauthorized") {
-        errorMessage = errorDescription || "Unauthorized. Please check your email domain.";
+        errorMessage =
+          errorDescription || "Unauthorized. Please check your email domain.";
       } else if (errorDescription) {
         errorMessage = errorDescription;
       }
@@ -76,12 +85,15 @@ const Login = () => {
     // Only attempt silent SSO if there's a hint that user came from SharePoint/Microsoft 365
     // This prevents the iframe warning when user doesn't have an active Microsoft session
     const ssoEnabled = import.meta.env.VITE_ENABLE_SSO === "true";
-    const fromSharePoint = urlParams.get("sso") === "true" ||
-                          document.referrer.includes("sharepoint.com") ||
-                          document.referrer.includes("office.com");
+    const fromSharePoint =
+      urlParams.get("sso") === "true" ||
+      document.referrer.includes("sharepoint.com") ||
+      document.referrer.includes("office.com");
 
     if (ssoEnabled && fromSharePoint) {
-      console.log("[Login] Detected SharePoint/M365 context, attempting silent SSO");
+      console.log(
+        "[Login] Detected SharePoint/M365 context, attempting silent SSO"
+      );
       checkSilentSSO()
         .then((success) => {
           if (success) {
@@ -148,6 +160,9 @@ const Login = () => {
       }
 
       // default redirect
+      // Small delay to ensure React state updates propagate and add fade out
+      setIsFadingOut(true);
+      await new Promise((resolve) => setTimeout(resolve, 150));
       navigate("/");
     } catch (err: unknown) {
       const errorMessage =
@@ -184,22 +199,18 @@ const Login = () => {
 
       console.log("[Login] Microsoft login successful");
 
-      // Show success toast
-      toast.success("Welcome back!", {
-        description: "Successfully signed in with Microsoft",
-        duration: 2000,
-      });
-
       // Clean up URL hash
       window.history.replaceState({}, document.title, window.location.pathname);
 
-      // Hide modal
-      setIsProcessingCallback(false);
+      // Small delay to ensure React state updates propagate and add fade out
+      setIsFadingOut(true);
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
-      // Redirect to dashboard
+      // Redirect to dashboard (toast will be shown by MicrosoftCallback or auto-login)
       navigate("/", { replace: true });
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Authentication failed";
+      const errorMessage =
+        err instanceof Error ? err.message : "Authentication failed";
       console.error("[Login] Microsoft callback error:", errorMessage);
 
       // Show error toast
@@ -210,9 +221,6 @@ const Login = () => {
 
       // Clean up URL hash
       window.history.replaceState({}, document.title, window.location.pathname);
-
-      // Hide modal
-      setIsProcessingCallback(false);
     }
   };
 
@@ -228,16 +236,19 @@ const Login = () => {
 
       // Generate state for CSRF protection
       const state = Math.random().toString(36).substring(7);
-      sessionStorage.setItem('oauth_state', state);
+      sessionStorage.setItem("oauth_state", state);
 
       // Build authorization URL
       // Using Microsoft Graph User.Read scope instead of reserved OIDC scopes
-      const authUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?` +
+      const authUrl =
+        `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?` +
         `client_id=${encodeURIComponent(clientId)}` +
         `&response_type=code` +
         `&redirect_uri=${encodeURIComponent(redirectUri)}` +
         `&response_mode=query` +
-        `&scope=${encodeURIComponent('https://graph.microsoft.com/User.Read')}` +
+        `&scope=${encodeURIComponent(
+          "https://graph.microsoft.com/User.Read"
+        )}` +
         `&state=${encodeURIComponent(state)}`;
 
       // Redirect to Microsoft login
@@ -254,182 +265,155 @@ const Login = () => {
 
   return (
     <>
-      {/* Microsoft Sign-in Loading Modal */}
-      {isProcessingCallback && (
-        <>
-          {/* Modal Backdrop */}
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] animate-in fade-in duration-200" />
-
-          {/* Modal Content */}
-          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-            <div className="bg-background rounded-lg shadow-lg p-8 max-w-sm w-full animate-in zoom-in-95 duration-200">
-              <div className="text-center space-y-6">
-                {/* Spinner */}
-                <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-
-                {/* Text */}
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    Signing you in
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Please wait while we complete your Microsoft authentication
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      <div className="min-h-screen flex items-center justify-center bg-background p-4 animate-fade-in">
+      <div
+        className={`min-h-screen flex items-center justify-center bg-background p-4 transition-opacity duration-200 ${
+          isFadingOut ? "opacity-0" : "opacity-100 animate-fade-in"
+        }`}
+      >
         <div className="w-full max-w-md">
-        {/* Login Card */}
-        <Card className="shadow-soft hover-lift border-0 glass-effect animate-slide-up">
-          <CardHeader className="text-center space-y-4 pb-6">
-            <div className="mx-auto w-16 h-16 bg-primary text-primary-foreground rounded-2xl flex items-center justify-center shadow-glow">
-              <LogIn className="h-8 w-8" />
-            </div>
-            <div className="space-y-2">
-              <CardTitle className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-slate-700 to-slate-900 bg-clip-text ">
-                Performance Management
-              </CardTitle>
-              <p className="text-muted-foreground">
-                Welcome back! Please sign in to continue
-              </p>
-            </div>
-          </CardHeader>
+          {/* Login Card */}
+          <Card className="shadow-soft hover-lift border-0 glass-effect animate-slide-up">
+            <CardHeader className="text-center space-y-4 pb-6">
+              <div className="mx-auto w-16 h-16 bg-primary text-primary-foreground rounded-2xl flex items-center justify-center shadow-glow">
+                <LogIn className="h-8 w-8" />
+              </div>
+              <div className="space-y-2">
+                <CardTitle className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-slate-700 to-slate-900 bg-clip-text ">
+                  Performance Management
+                </CardTitle>
+                <p className="text-muted-foreground">
+                  Welcome back! Please sign in to continue
+                </p>
+              </div>
+            </CardHeader>
 
-          <CardContent className="space-y-6">
-            {/* Microsoft SSO Button */}
-            {import.meta.env.VITE_ENABLE_SSO === "true" && (
-              <>
+            <CardContent className="space-y-6">
+              {/* Microsoft SSO Button */}
+              {import.meta.env.VITE_ENABLE_SSO === "true" && (
+                <>
+                  <Button
+                    type="button"
+                    onClick={handleMicrosoftLogin}
+                    disabled={status === "loading" || isMicrosoftLoading}
+                    className="w-full h-12 bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 shadow-soft"
+                  >
+                    {isMicrosoftLoading ? (
+                      <>
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                        Connecting to Microsoft...
+                      </>
+                    ) : (
+                      <>
+                        <Building2 className="h-5 w-5 mr-2" />
+                        Sign in with Microsoft
+                      </>
+                    )}
+                  </Button>
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">
+                        Or continue with email
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <form noValidate onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-3">
+                  <Label
+                    htmlFor="email"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Work Email Address
+                  </Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your work email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-10 h-12 text-base focus:ring-2 focus:ring-primary/20 border-border/50"
+                      required
+                    />
+                  </div>
+                  {errors.email && (
+                    <div className="flex items-center gap-2 text-sm text-destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      {errors.email}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <Label
+                    htmlFor="password"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="h-12 text-base focus:ring-2 focus:ring-primary/20 border-border/50"
+                      required
+                    />
+                  </div>
+                  {errors.password && (
+                    <div className="flex items-center gap-2 text-sm text-destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      {errors.password}
+                    </div>
+                  )}
+                </div>
                 <Button
-                  type="button"
-                  onClick={handleMicrosoftLogin}
-                  disabled={status === "loading" || isMicrosoftLoading}
-                  className="w-full h-12 bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 shadow-soft"
+                  type="submit"
+                  disabled={status === "loading"}
+                  className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-all duration-200 transform hover:scale-[1.02] shadow-soft hover:shadow-glow"
                 >
-                  {isMicrosoftLoading ? (
+                  {status === "loading" ? (
                     <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      Connecting to Microsoft...
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Signing in...
                     </>
                   ) : (
                     <>
-                      <Building2 className="h-5 w-5 mr-2" />
-                      Sign in with Microsoft
+                      <LogIn className="h-4 w-4 mr-2" />
+                      Sign In
                     </>
                   )}
                 </Button>
+              </form>
 
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      Or continue with email
-                    </span>
-                  </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <a
+                    href="/forgot-password"
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </a>
                 </div>
-              </>
-            )}
-
-            <form noValidate onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-3">
-                <Label
-                  htmlFor="email"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Work Email Address
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your work email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 h-12 text-base focus:ring-2 focus:ring-primary/20 border-border/50"
-                    required
-                  />
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">
+                    Secure employee portal • Contact IT for access issues
+                  </p>
                 </div>
-                {errors.email && (
-                  <div className="flex items-center gap-2 text-sm text-destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    {errors.email}
-                  </div>
-                )}
               </div>
-
-              <div className="space-y-3">
-                <Label
-                  htmlFor="password"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Password
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="h-12 text-base focus:ring-2 focus:ring-primary/20 border-border/50"
-                    required
-                  />
-                </div>
-                {errors.password && (
-                  <div className="flex items-center gap-2 text-sm text-destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    {errors.password}
-                  </div>
-                )}
-              </div>
-              <Button
-                type="submit"
-                disabled={status === "loading"}
-                className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-all duration-200 transform hover:scale-[1.02] shadow-soft hover:shadow-glow"
-              >
-                {status === "loading" ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="h-4 w-4 mr-2" />
-                    Sign In
-                  </>
-                )}
-              </Button>
-            </form>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <a
-                  href="/forgot-password"
-                  className="text-sm text-primary hover:underline"
-                >
-                  Forgot password?
-                </a>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">
-                  Secure employee portal • Contact IT for access issues
-                </p>
-              </div>
-            </div>
-
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
     </>
   );
 };

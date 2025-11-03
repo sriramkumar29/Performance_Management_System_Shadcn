@@ -1,4 +1,3 @@
-import { toast } from "sonner";
 import type { Dispatch, SetStateAction } from "react";
 
 interface AppraisalGoal {
@@ -57,12 +56,10 @@ export const handleAddGoal = (
       (g) => g.goal.goal_id === normalizedGoal.goal.goal_id
     );
     if (exists) {
-      toast.success("Goal updated successfully");
       return prev.map((g) =>
         g.goal.goal_id === normalizedGoal.goal.goal_id ? normalizedGoal : g
       );
     }
-    toast.success("Goal added successfully");
     return [...prev, normalizedGoal];
   });
 
@@ -106,7 +103,6 @@ export const handleDeleteGoal = (
 ) => {
   const updatedGoals = goals.filter(g => g.goal.goal_id !== goalId);
   setGoals(updatedGoals);
-  toast.success("Goal removed successfully");
 };
 
 // Helper function to calculate total weightage
