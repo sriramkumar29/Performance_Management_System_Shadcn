@@ -415,15 +415,24 @@ const EditGoalModal = ({
                 />
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">
-                    Remaining weightage:{" "}
-                    <span className="font-medium text-foreground">
-                      {maxWeightage}%
+                    Remaining weightage after this change:{" "}
+                    <span
+                      className={`font-medium ${
+                        maxWeightage - (formValues.goal_weightage || 0) < 0
+                          ? "text-amber-600"
+                          : "text-foreground"
+                      }`}
+                    >
+                      {Math.max(
+                        0,
+                        maxWeightage - (formValues.goal_weightage || 0)
+                      )}
+                      %
                     </span>
                   </span>
-                  {maxWeightage <= 0 && (
+                  {maxWeightage - (formValues.goal_weightage || 0) < 0 && (
                     <span className="text-amber-600 font-medium">
-                      You can still set this goal's weight; total may exceed
-                      100%.
+                      Total will exceed 100%
                     </span>
                   )}
                 </div>

@@ -113,44 +113,44 @@ html {
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    --background: 220 13% 18%;
+    --foreground: 0 0% 95%;
     /* Slightly lighter than background for clearer separation */
-    --card: 240 8% 6.5%;
-    --card-foreground: 0 0% 98%;
+    --card: 215 13.5% 22%;
+    --card-foreground: 0 0% 95%;
     /* Keep popovers close to card but distinct */
-    --popover: 240 8% 6%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 215 13.5% 22%;
+    --popover-foreground: 0 0% 95%;
     --primary: 239 84% 67%;
-    --primary-foreground: 240 10% 3.9%;
+    --primary-foreground: 220 13% 18%;
     /* Subtle elevated surfaces */
-    --secondary: 240 4% 12%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 215 13.5% 24%;
+    --secondary-foreground: 0 0% 95%;
     /* Muted surfaces for toolbars/stripes */
-    --muted: 240 4% 14%;
-    --muted-foreground: 240 5% 64.9%;
+    --muted: 215 13.5% 26%;
+    --muted-foreground: 215 10% 60%;
     /* Accent surfaces slightly brighter than muted */
-    --accent: 240 5% 16%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+    --accent: 215 13.5% 28%;
+    --accent-foreground: 0 0% 95%;
+    --destructive: 0 62.8% 35%;
+    --destructive-foreground: 0 0% 95%;
     /* Stronger border/input for clearer outlines */
-    --border: 240 5% 20%;
-    --input: 240 5% 20%;
+    --border: 215 12% 32%;
+    --input: 215 12% 32%;
     --ring: 239 84% 67%;
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 98%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 98%;
-    --info: 199 89% 48%;
-    --info-foreground: 0 0% 98%;
+    --success: 142 71% 50%;
+    --success-foreground: 0 0% 95%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 10%;
+    --info: 199 89% 53%;
+    --info-foreground: 0 0% 10%;
     /* Icon tokens: brighter for dark mode */
-    --icon: 240 5% 70%;
-    --icon-strong: 0 0% 98%;
+    --icon: 215 10% 65%;
+    --icon-strong: 0 0% 95%;
     /* Enhanced gradients */
     --gradient-start: 239 84% 67%;
     --gradient-end: 260 84% 75%;
-    --gradient-accent: 199 89% 48%;
+    --gradient-accent: 199 89% 53%;
   }
 }
 

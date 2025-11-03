@@ -92,7 +92,14 @@ const CreateHeaderWithTemplates = () => {
       try {
         const res = await apiFetch("/api/roles/");
         if (res.ok && Array.isArray(res.data)) {
-          setRoles(res.data as { id: number; role_name: string }[]);
+          // Exclude CEO and Admin from role selection
+          const filteredRoles = (
+            res.data as { id: number; role_name: string }[]
+          ).filter((role) => {
+            const roleName = role.role_name.toLowerCase();
+            return roleName !== "ceo" && roleName !== "admin";
+          });
+          setRoles(filteredRoles);
         } else {
           setRoles([]);
         }

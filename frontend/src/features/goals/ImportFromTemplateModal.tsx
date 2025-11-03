@@ -468,7 +468,7 @@ const ImportFromTemplateModal = ({
             <div className="space-y-2">
               <Label
                 htmlFor="role-filter"
-                className="text-xs sm:text-sm font-medium flex items-center gap-1"
+                className="text-xs sm:text-sm font-medium flex items-center gap-1 h-4"
               >
                 <Filter className="h-3 w-3" />
                 Filter by Role
@@ -581,7 +581,8 @@ const ImportFromTemplateModal = ({
                         isSelected
                           ? "border-primary/50 bg-primary/5"
                           : "border-border/50 bg-card/50"
-                      } transition-all`}
+                      } transition-all cursor-pointer hover:border-primary/30`}
+                      onClick={() => toggleHeaderSelection(header.header_id)}
                     >
                       {/* Header Card */}
                       <div className="p-4">
@@ -591,6 +592,7 @@ const ImportFromTemplateModal = ({
                             onCheckedChange={() =>
                               toggleHeaderSelection(header.header_id)
                             }
+                            onClick={(e) => e.stopPropagation()}
                             className="mt-1 flex-shrink-0"
                           />
 

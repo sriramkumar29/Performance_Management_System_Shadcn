@@ -384,14 +384,26 @@ const AddGoalModal = ({
                 />
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">
-                    Remaining weightage:{" "}
-                    <span className="font-medium text-foreground">
-                      {remainingWeightage}%
+                    Remaining weightage after adding this goal:{" "}
+                    <span
+                      className={`font-medium ${
+                        remainingWeightage - (formValues.goal_weightage || 0) <
+                        0
+                          ? "text-amber-600"
+                          : "text-foreground"
+                      }`}
+                    >
+                      {Math.max(
+                        0,
+                        remainingWeightage - (formValues.goal_weightage || 0)
+                      )}
+                      %
                     </span>
                   </span>
-                  {remainingWeightage <= 0 && (
+                  {remainingWeightage - (formValues.goal_weightage || 0) <
+                    0 && (
                     <span className="text-amber-600 font-medium">
-                      You can still add goals, but total will exceed 100%.
+                      Total will exceed 100%
                     </span>
                   )}
                 </div>

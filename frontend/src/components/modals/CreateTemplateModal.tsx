@@ -379,23 +379,22 @@ const CreateTemplateModal = ({
                         : "bg-blue-50 text-blue-700 border-blue-200";
                       return (
                         <div
-                          className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border ${pillClass}`}
+                          className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium border ${pillClass}`}
                           title={`Remaining allowed: ${remainingWeight}%`}
                         >
-                          <Weight className="h-3 w-3" />
+                          <Weight className="h-2.5 w-2.5" />
                           <span className="leading-none">
                             {exceeds
-                              ? `Exceeds by ${entered - remainingWeight}%`
+                              ? `+${entered - remainingWeight}%`
                               : `${remainingAfter}%`}
                           </span>
-                          <span className="text-xs text-muted-foreground ml-1">
+                          <span className="text-[9px] text-muted-foreground">
                             / {remainingWeight}%
                           </span>
                         </div>
                       );
                     })()}
                 </div>
-
                 <Input
                   id="weight"
                   type="number"
@@ -420,7 +419,7 @@ const CreateTemplateModal = ({
               <div className="space-y-2">
                 <Label
                   htmlFor="importance"
-                  className="text-sm font-medium text-foreground"
+                  className="text-sm font-medium text-foreground block h-5"
                 >
                   Importance Level
                 </Label>
