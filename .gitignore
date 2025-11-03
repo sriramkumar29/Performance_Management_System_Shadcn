@@ -182,3 +182,5 @@ cython_debug/
 backend/.env.development
 backend/.env.development
 backend/app/core/config.py
+
+*.md

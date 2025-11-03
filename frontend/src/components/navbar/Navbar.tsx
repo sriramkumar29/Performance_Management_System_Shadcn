@@ -54,11 +54,11 @@ const Navbar = ({ showTeamTab = false }: NavbarProps) => {
 
   return (
     <header className="w-full sticky top-0 z-50 glass-effect border-t-4 border-t-primary shadow-medium backdrop-blur-xl">
-      <div className="container h-16 sm:h-18 flex items-center justify-between">
-        <div className="flex items-center gap-4 sm:gap-6">
+      <div className="container h-16 sm:h-18 flex items-center justify-between px-3 sm:px-4 md:px-6">
+        <div className="flex items-center gap-2 sm:gap-4 md:gap-6 min-w-0 flex-1 overflow-hidden">
           <Link
             to="/"
-            className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-all duration-300 group"
+            className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-all duration-300 group flex-shrink-0"
           >
             <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-medium group-hover:shadow-glow transition-all duration-300 group-hover:scale-110">
               <span className="text-primary-foreground font-bold text-base">
@@ -75,12 +75,12 @@ const Navbar = ({ showTeamTab = false }: NavbarProps) => {
 
           {/* Navigation tabs */}
           {showNavTabs && (
-            <nav className="flex items-center gap-1 sm:gap-2">
+            <nav className="flex items-center gap-0.5 sm:gap-1 md:gap-2 overflow-x-auto scrollbar-hide">
               {!isAdminUser && (
                 <Link
                   to="/my-appraisal"
                   className={cn(
-                    "px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300",
+                    "px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-300 whitespace-nowrap flex-shrink-0",
                     location.pathname === "/my-appraisal" ||
                       location.pathname === "/"
                       ? "bg-primary text-primary-foreground shadow-medium hover:shadow-glow"
@@ -95,7 +95,7 @@ const Navbar = ({ showTeamTab = false }: NavbarProps) => {
                 <Link
                   to="/team-appraisal"
                   className={cn(
-                    "px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300",
+                    "px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-300 whitespace-nowrap flex-shrink-0",
                     location.pathname === "/team-appraisal"
                       ? "bg-primary text-primary-foreground shadow-medium hover:shadow-glow"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:shadow-soft"
@@ -111,7 +111,7 @@ const Navbar = ({ showTeamTab = false }: NavbarProps) => {
                   <Link
                     to="/admin/users"
                     className={cn(
-                      "px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300",
+                      "px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-300 whitespace-nowrap flex-shrink-0",
                       location.pathname === "/admin/users"
                         ? "bg-primary text-primary-foreground shadow-medium hover:shadow-glow"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:shadow-soft"
@@ -123,7 +123,7 @@ const Navbar = ({ showTeamTab = false }: NavbarProps) => {
                   <Link
                     to="/admin/appraisals"
                     className={cn(
-                      "px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300",
+                      "px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-300 whitespace-nowrap flex-shrink-0",
                       location.pathname === "/admin/appraisals"
                         ? "bg-primary text-primary-foreground shadow-medium hover:shadow-glow"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:shadow-soft"
@@ -137,7 +137,7 @@ const Navbar = ({ showTeamTab = false }: NavbarProps) => {
           )}
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-1.5 sm:gap-3 md:gap-4 flex-shrink-0">
           {/* Theme toggle */}
           <Button
             variant="ghost"
@@ -147,53 +147,53 @@ const Navbar = ({ showTeamTab = false }: NavbarProps) => {
             }
             title={isDarkMode ? "Light mode" : "Dark mode"}
             onClick={toggleTheme}
-            className="rounded-xl hover:bg-primary/10 hover:shadow-soft transition-all duration-300"
+            className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl hover:bg-primary/10 hover:shadow-soft transition-all duration-300 flex-shrink-0"
           >
             {isDarkMode ? (
-              <Sun className="h-5 w-5 text-icon transition-transform duration-300 hover:rotate-180" />
+              <Sun className="h-4 w-4 sm:h-5 sm:w-5 text-icon transition-transform duration-300 hover:rotate-180" />
             ) : (
-              <Moon className="h-5 w-5 text-icon transition-transform duration-300 hover:-rotate-12" />
+              <Moon className="h-4 w-4 sm:h-5 sm:w-5 text-icon transition-transform duration-300 hover:-rotate-12" />
             )}
           </Button>
 
           {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 rounded-xl ring-2 ring-border hover:ring-primary/50 hover:bg-primary/5 px-2 py-1.5 transition-all duration-300 hover:shadow-soft">
-                <Avatar className="h-9 w-9 ring-2 ring-primary/20">
-                  <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-sm font-semibold">
+              <button className="flex items-center gap-1.5 sm:gap-2 rounded-xl ring-2 ring-border hover:ring-primary/50 hover:bg-primary/5 px-1.5 sm:px-2 py-1 sm:py-1.5 transition-all duration-300 hover:shadow-soft flex-shrink-0">
+                <Avatar className="h-8 w-8 sm:h-9 sm:w-9 ring-2 ring-primary/20 flex-shrink-0">
+                  <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-xs sm:text-sm font-semibold">
                     {avatarInitials}
                   </AvatarFallback>
                 </Avatar>
-                <div className="hidden sm:block text-left">
-                  <p className="text-sm font-semibold text-foreground leading-tight">
+                <div className="hidden md:block text-left min-w-0">
+                  <p className="text-sm font-semibold text-foreground leading-tight truncate max-w-[120px] lg:max-w-[150px]">
                     {firstName}
                   </p>
-                  <p className="text-xs text-muted-foreground leading-tight">
+                  <p className="text-xs text-muted-foreground leading-tight truncate max-w-[120px] lg:max-w-[150px]">
                     {authUser?.role?.role_name || "Employee"}
                   </p>
                 </div>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="w-72 shadow-large border-0 glass-card animate-slide-up"
+              className="w-[280px] sm:w-72 shadow-large border-0 glass-card animate-slide-up"
               align="end"
             >
-              <DropdownMenuLabel>
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12 ring-2 ring-primary/30">
-                    <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground font-semibold text-base">
+              <DropdownMenuLabel className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <Avatar className="h-10 w-10 sm:h-12 sm:w-12 ring-2 ring-primary/30 flex-shrink-0">
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground font-semibold text-sm sm:text-base">
                       {avatarInitials}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-semibold leading-none text-foreground">
+                  <div className="flex flex-col space-y-1 min-w-0 flex-1">
+                    <p className="text-sm font-semibold leading-none text-foreground truncate">
                       {authUser?.emp_name || "Employee"}
                     </p>
-                    <p className="text-xs leading-none text-muted-foreground">
+                    <p className="text-xs leading-none text-muted-foreground truncate">
                       {authUser?.emp_email || "employee@company.com"}
                     </p>
-                    <p className="text-xs leading-none text-primary font-semibold">
+                    <p className="text-xs leading-none text-primary font-semibold truncate">
                       {authUser?.role?.role_name || "Employee"}
                     </p>
                   </div>
@@ -202,9 +202,9 @@ const Navbar = ({ showTeamTab = false }: NavbarProps) => {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={handleSignOut}
-                className="text-destructive hover:bg-destructive/10 focus:bg-destructive/10 cursor-pointer transition-colors duration-200"
+                className="text-destructive hover:bg-destructive/10 focus:bg-destructive/10 cursor-pointer transition-colors duration-200 mx-2 my-1 rounded-lg"
               >
-                <LogOut className="mr-2 h-4 w-4" />
+                <LogOut className="mr-2 h-4 w-4 flex-shrink-0" />
                 <span>Sign out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>

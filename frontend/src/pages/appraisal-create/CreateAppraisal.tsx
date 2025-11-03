@@ -3,6 +3,7 @@ import { ArrowLeft, Save, Send } from "lucide-react";
 import AddGoalModal from "../../features/goals/AddGoalModal";
 import EditGoalModal from "../../features/goals/EditGoalModal";
 import ImportFromTemplateModal from "../../features/goals/ImportFromTemplateModal";
+import LoadDraftDialog from "../../features/appraisal/LoadDraftDialog";
 import { useAuth } from "../../contexts/AuthContext";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 
@@ -19,6 +20,8 @@ import {
   syncGoalChanges as syncGoalChangesHelper,
   saveAppraisal,
   submitAppraisal,
+  checkForDraftAppraisal,
+  type DraftAppraisal,
 } from "./helpers/appraisalHelpers";
 import {
   handleAddGoal,
@@ -148,6 +151,12 @@ const CreateAppraisal = () => {
       appraisal_type_range_id: undefined,
       period: undefined,
     });
+  // Draft detection state
+  const [showDraftDialog, setShowDraftDialog] = useState(false);
+  const [foundDraft, setFoundDraft] = useState<DraftAppraisal | null>(null);
+  const [draftCheckInProgress, setDraftCheckInProgress] = useState(false);
+  const [draftDismissed, setDraftDismissed] = useState(false); // Track if user dismissed the draft
+
   // Track goal changes for Draft editing
   const [originalGoals, setOriginalGoals] = useState<AppraisalGoal[]>([]);
   const [goalChanges, setGoalChanges] = useState<{
@@ -462,8 +471,109 @@ const CreateAppraisal = () => {
     window.scrollTo(0, 0);
   }, []);
 
+  // Check for existing draft appraisals when form criteria are complete
+  useEffect(() => {
+    const checkForDraft = async () => {
+      // Only check when:
+      // 1. We're creating a NEW appraisal (not editing an existing one)
+      // 2. All required fields are filled
+      // 3. Not already checking
+      // 4. Dialog not already shown
+      if (
+        routeAppraisalId ||
+        createdAppraisalId ||
+        !formValues.appraisee_id ||
+        !formValues.reviewer_id ||
+        !formValues.appraisal_type_id ||
+        draftCheckInProgress ||
+        showDraftDialog ||
+        draftDismissed // Don't check again if user dismissed it
+      ) {
+        return;
+      }
+
+      setDraftCheckInProgress(true);
+      try {
+        const draft = await checkForDraftAppraisal(
+          formValues.appraisee_id,
+          formValues.reviewer_id,
+          formValues.appraisal_type_id,
+          formValues.appraisal_type_range_id
+        );
+
+        if (draft) {
+          // Populate employee names from the employees list
+          const appraisee = employees.find(
+            (e) => e.emp_id === formValues.appraisee_id
+          );
+          const reviewer = employees.find(
+            (e) => e.emp_id === formValues.reviewer_id
+          );
+
+          const enrichedDraft = {
+            ...draft,
+            appraisee_name: appraisee?.emp_name || "Unknown",
+            reviewer_name: reviewer?.emp_name || "Unknown",
+          };
+
+          setFoundDraft(enrichedDraft);
+          setShowDraftDialog(true);
+        }
+      } catch (error) {
+        console.error("Error checking for draft:", error);
+      } finally {
+        setDraftCheckInProgress(false);
+      }
+    };
+
+    // Debounce the check to avoid multiple calls
+    const timer = setTimeout(() => {
+      void checkForDraft();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [
+    formValues.appraisee_id,
+    formValues.reviewer_id,
+    formValues.appraisal_type_id,
+    formValues.appraisal_type_range_id,
+    routeAppraisalId,
+    createdAppraisalId,
+    draftCheckInProgress,
+    showDraftDialog,
+    draftDismissed,
+    employees,
+  ]);
+
   const syncGoalChanges = async (appraisalId: number) => {
     await syncGoalChangesHelper(appraisalId, goalChanges, originalGoals);
+  };
+
+  const handleLoadDraft = async () => {
+    if (!foundDraft) return;
+
+    setShowDraftDialog(false);
+    try {
+      // Load the draft appraisal
+      await loadAppraisal(foundDraft.appraisal_id);
+      toast.success("Draft loaded", {
+        description: "Continue working on your draft appraisal.",
+      });
+    } catch (error: any) {
+      toast.error("Failed to load draft", {
+        description: error.message || "Please try again.",
+      });
+    }
+    setFoundDraft(null);
+  };
+
+  const handleStartFresh = () => {
+    setShowDraftDialog(false);
+    setFoundDraft(null);
+    setDraftDismissed(true); // Mark as dismissed so dialog won't appear again
+    toast.info("Starting fresh", {
+      description: "Creating a new appraisal. The draft remains unchanged.",
+    });
   };
 
   const handleSubmit = async () => {
@@ -767,6 +877,14 @@ const CreateAppraisal = () => {
               )
             : Math.max(0, 100 - totalWeightageUi)
         }
+      />
+
+      {/* Load Draft Dialog */}
+      <LoadDraftDialog
+        open={showDraftDialog}
+        draftAppraisal={foundDraft}
+        onLoadDraft={handleLoadDraft}
+        onStartFresh={handleStartFresh}
       />
 
       {/* Unsaved Changes Dialog */}

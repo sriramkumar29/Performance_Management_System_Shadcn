@@ -9,6 +9,13 @@ import React, {
 import { apiFetch } from "../utils/api";
 import { onUnauthorized } from "../utils/auth-events";
 import { toast } from "../hooks/use-toast";
+import {
+  attemptSilentSSO,
+  loginWithMicrosoftPopup,
+  getMicrosoftAccount,
+  logoutFromMicrosoft,
+} from "../utils/microsoft-auth";
+import type { AccountInfo } from "@azure/msal-browser";
 
 export interface Role {
   id: number;
@@ -30,7 +37,12 @@ export interface AuthContextValue {
   user: Employee | null;
   status: "idle" | "loading" | "succeeded" | "failed";
   loginWithCredentials: (email: string, password: string) => Promise<void>;
+  loginWithMicrosoft: () => Promise<void>;
+  checkSilentSSO: () => Promise<boolean>;
   logout: () => void;
+  microsoftAccount: AccountInfo | null;
+  setUser: (user: Employee | null) => void;
+  setStatus: (status: "idle" | "loading" | "succeeded" | "failed") => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | undefined>(
@@ -51,6 +63,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   });
   const [status, setStatus] = useState<AuthContextValue["status"]>(() =>
     sessionStorage.getItem("auth_user") ? "succeeded" : "idle"
+  );
+
+  const [microsoftAccount, setMicrosoftAccount] = useState<AccountInfo | null>(
+    () => getMicrosoftAccount()
   );
 
   const logoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -186,12 +202,130 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const loginWithMicrosoft = async () => {
+    setStatus("loading");
+    try {
+      console.log("[Auth] Starting Microsoft login");
+
+      // Popup login
+      const msalResponse = await loginWithMicrosoftPopup();
+
+      if (!msalResponse.idToken) {
+        throw new Error("No ID token received from Microsoft");
+      }
+
+      // Exchange Microsoft ID token for backend JWT
+      const backendTokensRes = await apiFetch<{
+        access_token: string;
+        refresh_token: string;
+      }>("/auth/microsoft/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_token: msalResponse.idToken }),
+      });
+
+      if (
+        !backendTokensRes.ok ||
+        !backendTokensRes.data?.access_token ||
+        !backendTokensRes.data?.refresh_token
+      ) {
+        throw new Error(backendTokensRes.error || "Failed to exchange Microsoft token");
+      }
+
+      // Store tokens
+      sessionStorage.setItem("auth_token", backendTokensRes.data.access_token);
+      sessionStorage.setItem("refresh_token", backendTokensRes.data.refresh_token);
+
+      // Fetch user profile
+      const userRes = await apiFetch<Employee>("/employees/profile", {
+        headers: { Authorization: `Bearer ${backendTokensRes.data.access_token}` },
+      });
+
+      if (!userRes.ok || !userRes.data) {
+        throw new Error(userRes.error || "Could not fetch user");
+      }
+
+      setUser(userRes.data);
+      setMicrosoftAccount(msalResponse.account);
+      setStatus("succeeded");
+      scheduleAutoLogout();
+
+      console.log("[Auth] Microsoft login successful");
+    } catch (e) {
+      setStatus("failed");
+      console.error("[Auth] Microsoft login failed:", e);
+      throw e;
+    }
+  };
+
+  const checkSilentSSO = async (): Promise<boolean> => {
+    try {
+      console.log("[Auth] Checking for silent SSO");
+
+      const msalResponse = await attemptSilentSSO();
+
+      if (msalResponse && msalResponse.idToken) {
+        setStatus("loading");
+
+        // Exchange for backend JWT
+        const backendTokensRes = await apiFetch<{
+          access_token: string;
+          refresh_token: string;
+        }>("/auth/microsoft/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id_token: msalResponse.idToken }),
+        });
+
+        if (
+          !backendTokensRes.ok ||
+          !backendTokensRes.data?.access_token ||
+          !backendTokensRes.data?.refresh_token
+        ) {
+          console.log("[Auth] Silent SSO: Failed to exchange token");
+          return false;
+        }
+
+        sessionStorage.setItem("auth_token", backendTokensRes.data.access_token);
+        sessionStorage.setItem("refresh_token", backendTokensRes.data.refresh_token);
+
+        // Fetch user profile
+        const userRes = await apiFetch<Employee>("/employees/profile", {
+          headers: { Authorization: `Bearer ${backendTokensRes.data.access_token}` },
+        });
+
+        if (userRes.ok && userRes.data) {
+          setUser(userRes.data);
+          setMicrosoftAccount(msalResponse.account);
+          setStatus("succeeded");
+          scheduleAutoLogout();
+
+          console.log("[Auth] Silent SSO successful");
+          return true;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.error("[Auth] Silent SSO check failed:", error);
+      return false;
+    }
+  };
+
   const logout = () => {
     clearLogoutTimer();
     setUser(null);
     setStatus("idle");
     sessionStorage.removeItem("auth_token");
     sessionStorage.removeItem("refresh_token");
+
+    // Logout from Microsoft if authenticated
+    if (microsoftAccount) {
+      logoutFromMicrosoft().catch((err) =>
+        console.error("[Auth] Microsoft logout failed:", err)
+      );
+      setMicrosoftAccount(null);
+    }
   };
 
   // Persist user to sessionStorage on changes
@@ -222,8 +356,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const value = useMemo(
-    () => ({ user, status, loginWithCredentials, logout }),
-    [user, status]
+    () => ({
+      user,
+      status,
+      loginWithCredentials,
+      loginWithMicrosoft,
+      checkSilentSSO,
+      logout,
+      microsoftAccount,
+      setUser,
+      setStatus,
+    }),
+    [user, status, microsoftAccount]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

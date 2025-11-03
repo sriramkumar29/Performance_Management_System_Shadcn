@@ -11,6 +11,7 @@ import AdminRoute from "./routes/AdminRoute";
 import Login from "./pages/auth/Login";
 import ResetPassword from "./pages/auth/ResetPassword";
 import ForgotPassword from "./pages/auth/ForgotPassword";
+import MicrosoftCallback from "./pages/auth/MicrosoftCallback";
 import MyAppraisal from "./pages/my-appraisal/MyAppraisal";
 import TeamAppraisal from "./pages/team-appraisal/TeamAppraisal";
 import AdminUsers from "./pages/admin/AdminUsers";
@@ -38,6 +39,7 @@ const AppRouter = () => (
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/auth/callback" element={<MicrosoftCallback />} />
 
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<Navigate to="/my-appraisal" replace />} />

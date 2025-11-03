@@ -23,7 +23,8 @@ from app.exceptions.domain_exceptions import (
     EntityNotFoundError as DomainEntityNotFoundError,
     ValidationError as DomainValidationError,
     BusinessRuleViolationError,
-    DuplicateEntryError
+    DuplicateEntryError,
+    BaseServiceException
 )
 from app.utils.logger import get_logger, log_execution_time, build_log_context
 
@@ -195,21 +196,21 @@ class GoalTemplateHeaderService(BaseService[GoalTemplateHeader, GoalTemplateHead
                 self.logger.warning(f"{context}SERVICE_UPDATE_HEADER_NOT_FOUND: Header not found - Header ID: {header_id}")
                 raise DomainEntityNotFoundError(f"Goal template header {header_id} not found")
 
-            # Check for duplicate title if title is being updated
-            if obj_in.title and obj_in.title != header.title:
+            # Determine the role_id to use for duplicate checking
+            # Use the new role_id if provided, otherwise use the existing one
+            check_role_id = obj_in.role_id if obj_in.role_id is not None else header.role_id
+            check_title = obj_in.title if obj_in.title is not None else header.title
+
+            # Check for duplicate (role_id, title) combination if either is being updated
+            if (obj_in.title and obj_in.title != header.title) or (obj_in.role_id and obj_in.role_id != header.role_id):
                 duplicate_exists = await self.repository.check_duplicate_title(
-                    db, header.role_id, obj_in.title, exclude_header_id=header_id
+                    db, check_role_id, check_title, exclude_header_id=header_id
                 )
 
                 if duplicate_exists:
-                    error_msg = f"A header with title '{obj_in.title}' already exists for this role"
+                    error_msg = f"A header with title '{check_title}' already exists for role ID {check_role_id}"
                     self.logger.warning(f"{context}SERVICE_UPDATE_HEADER_DUPLICATE: {error_msg}")
                     raise BusinessRuleViolationError(error_msg)
-
-            # Check if shared_users_id is being updated
-            old_shared_users = set(header.shared_users_id or [])
-            new_shared_users = set(obj_in.shared_users_id or []) if obj_in.shared_users_id is not None else old_shared_users
-            newly_shared_users = new_shared_users - old_shared_users
 
             # Update the header
             update_data = obj_in.model_dump(exclude_unset=True)
@@ -226,100 +227,6 @@ class GoalTemplateHeaderService(BaseService[GoalTemplateHeader, GoalTemplateHead
                 self.logger.debug(f"{context}SERVICE_UPDATE_HEADER_UPDATED_FIELDS: is_shared={getattr(updated_header,'is_shared',None)}, shared_users_id={getattr(updated_header,'shared_users_id',None)}")
             except Exception:
                 pass
-
-            # Create individual cloned headers for newly shared users
-            if newly_shared_users:
-                self.logger.info(f"{context}SERVICE_UPDATE_HEADER_SHARING: Creating cloned headers for {len(newly_shared_users)} new users")
-
-                # Load the full header with templates
-                source_header = await self.repository.get_with_templates(db, header_id)
-
-                from app.services.goal_service import GoalTemplateService
-                template_service = GoalTemplateService()
-
-                successfully_shared_users = []
-
-                for user_id in newly_shared_users:
-                    try:
-                        # Create a new Self header for this user with auto-incrementing title
-                        base_title = source_header.title or "Untitled"
-                        new_title = base_title
-                        attempt = 0
-                        max_attempts = 100
-                        new_user_header = None
-
-                        while attempt < max_attempts:
-                            attempt += 1
-                            try:
-                                # Get user's role_id (we need to fetch the employee)
-                                from app.repositories.employee_repository import EmployeeRepository
-                                emp_repo = EmployeeRepository()
-                                employee = await emp_repo.get_by_id(db, user_id)
-                                user_role_id = employee.role_id if employee else source_header.role_id
-
-                                header_payload = {
-                                    'role_id': user_role_id,
-                                    'title': new_title,
-                                    'description': source_header.description,
-                                    'goal_template_type': 'Self',
-                                    'is_shared': True,  # Mark as shared so it appears in "Shared" filter
-                                    'shared_users_id': None,  # Not sharing onwards (just a marker for the recipient)
-                                    'creator_id': user_id  # Set the recipient as creator so they own it
-                                }
-
-                                new_user_header = await self.repository.create(db, obj_data=header_payload)
-                                self.logger.info(f"{context}SERVICE_UPDATE_HEADER_SHARED_COPY_CREATED: Created header '{new_title}' for user {user_id}")
-                                break
-
-                            except DuplicateEntryError:
-                                # Title exists, try with suffix
-                                if attempt == 1:
-                                    new_title = f"{base_title} (Copy)"
-                                else:
-                                    new_title = f"{base_title} (Copy {attempt})"
-                                continue
-
-                        if new_user_header is None:
-                            self.logger.error(f"{context}SERVICE_UPDATE_HEADER_SHARED_COPY_FAILED: Could not create header for user {user_id} after {max_attempts} attempts")
-                            continue
-
-                        # Clone all templates to the new header
-                        for tpl in getattr(source_header, 'goal_templates', []) or []:
-                            try:
-                                categories = [c.name for c in (tpl.categories or [])]
-                                template_payload = {
-                                    'temp_title': tpl.temp_title,
-                                    'temp_description': tpl.temp_description,
-                                    'temp_performance_factor': tpl.temp_performance_factor,
-                                    'temp_importance': tpl.temp_importance,
-                                    'temp_weightage': tpl.temp_weightage,
-                                    'categories': categories,
-                                    'header_id': getattr(new_user_header, 'header_id')
-                                }
-
-                                from app.schemas.goal import GoalTemplateCreate
-                                tpl_model = GoalTemplateCreate.model_validate(template_payload)
-                                await template_service.create_template_with_categories(db, template_data=tpl_model)
-                            except Exception as e:
-                                self.logger.error(f"{context}SERVICE_UPDATE_HEADER_SHARED_TEMPLATE_ERROR: Failed to clone template for user {user_id} - {str(e)}")
-
-                        successfully_shared_users.append(user_id)
-
-                    except Exception as e:
-                        self.logger.error(f"{context}SERVICE_UPDATE_HEADER_SHARED_USER_ERROR: Failed to create header for user {user_id} - {str(e)}")
-
-                # After creating individual copies, clear the shared_users_id and is_shared flag
-                # on the original header so it's no longer returned in "shared" queries
-                # The individual copies (with creator_id = recipient) will be shown in "Self" filter
-                if successfully_shared_users:
-                    self.logger.info(f"{context}SERVICE_UPDATE_HEADER_CLEARING_SHARED: Clearing shared status on original header after creating {len(successfully_shared_users)} copies")
-
-                    # Update the header to remove sharing info (copies are now independent)
-                    clear_sharing_data = {
-                        'is_shared': False,
-                        'shared_users_id': None
-                    }
-                    updated_header = await self.repository.update(db, db_obj=updated_header, obj_data=clear_sharing_data)
 
             return updated_header
 
@@ -459,18 +366,20 @@ class GoalTemplateHeaderService(BaseService[GoalTemplateHeader, GoalTemplateHead
         self,
         db: AsyncSession,
         user_id: int,
+        user_role_id: int,
         include_templates: bool = False,
         skip: int = 0,
         limit: int = 100,
         search: Optional[str] = None
     ) -> List[GoalTemplateHeader]:
-        """Get all Self type headers created by a specific user."""
+        """Get all Self type headers created by a specific user (all roles they've created)."""
         context = build_log_context()
 
         self.logger.debug(f"{context}SERVICE_GET_SELF_HEADERS_FOR_USER: Getting self headers for user - User ID: {user_id}, Include Templates: {include_templates}")
 
         try:
-            headers = await self.repository.get_by_creator(db, user_id, include_templates, skip, limit, search)
+            # Don't filter by role - users should see all self templates they created regardless of role
+            headers = await self.repository.get_by_creator(db, user_id, None, include_templates, skip, limit, search)
 
             self.logger.info(f"{context}SERVICE_GET_SELF_HEADERS_FOR_USER_SUCCESS: Retrieved {len(headers)} self headers for user {user_id}")
             return headers
@@ -484,18 +393,19 @@ class GoalTemplateHeaderService(BaseService[GoalTemplateHeader, GoalTemplateHead
         self,
         db: AsyncSession,
         user_id: int,
+        user_role_id: int,
         include_templates: bool = False,
         skip: int = 0,
         limit: int = 100,
         search: Optional[str] = None
     ) -> List[GoalTemplateHeader]:
-        """Get all headers shared with a specific user."""
+        """Get all headers shared with a specific user (regardless of role). Note: user_role_id kept for compatibility but not used in filtering."""
         context = build_log_context()
 
         self.logger.debug(f"{context}SERVICE_GET_SHARED_WITH_USER: Getting shared headers for user - User ID: {user_id}, Include Templates: {include_templates}")
 
         try:
-            headers = await self.repository.get_shared_with_user(db, user_id, include_templates, skip, limit, search)
+            headers = await self.repository.get_shared_with_user(db, user_id, user_role_id, include_templates, skip, limit, search)
 
             self.logger.info(f"{context}SERVICE_GET_SHARED_WITH_USER_SUCCESS: Retrieved {len(headers)} shared headers for user {user_id}")
             return headers
@@ -518,8 +428,7 @@ class GoalTemplateHeaderService(BaseService[GoalTemplateHeader, GoalTemplateHead
         If a title conflict occurs, a " (Copy)" suffix will be appended (incremented if needed).
         """
         context = build_log_context(user_id=getattr(current_user, 'emp_id', None) if current_user else None)
-
-        self.logger.debug(f"{context}SERVICE_CLONE_HEADER: Cloning header {source_header_id} to self for user {getattr(current_user, 'emp_id', None)}")
+        self.logger.debug(f"{context}SERVICE_CLONE_HEADER: Cloning header {source_header_id} to self")
 
         # Load source header with templates
         source = await self.repository.get_with_templates(db, source_header_id)
@@ -527,86 +436,109 @@ class GoalTemplateHeaderService(BaseService[GoalTemplateHeader, GoalTemplateHead
             self.logger.warning(f"{context}SERVICE_CLONE_HEADER_NOT_FOUND: Source header {source_header_id} not found")
             raise DomainEntityNotFoundError(f"Goal template header {source_header_id} not found")
 
-        # Only allow cloning Organization headers (Self headers are already individually owned)
+        # Only allow cloning Organization headers
         if source.goal_template_type != GoalTemplateType.ORGANIZATION:
             raise BusinessRuleViolationError("Only Organization headers can be cloned to Self")
 
-        # Prepare new header data
-        new_role_id = getattr(current_user, 'role_id', None) or source.role_id
-        base_title = source.title or "Untitled"
-        new_title = base_title
+        # Extract all data from source to plain Python types (avoid ORM objects)
+        source_data = {
+            'role_id': source.role_id,
+            'title': source.title or "Untitled",
+            'description': source.description,
+            'templates': []
+        }
+        
+        # Extract template data
+        for tpl in (source.goal_templates or []):
+            source_data['templates'].append({
+                'temp_title': tpl.temp_title,
+                'temp_description': tpl.temp_description,
+                'temp_performance_factor': tpl.temp_performance_factor,
+                'temp_importance': tpl.temp_importance,
+                'temp_weightage': tpl.temp_weightage,
+                'categories': [c.name for c in (tpl.categories or [])]
+            })
 
-        # Attempt to create header, if duplicate title exists for role, append Counter suffix
-        attempt = 0
-        new_header = None
-        max_attempts = 100  # Prevent infinite loop
+        # Prepare new header
+        user_role_id = getattr(current_user, 'role_id', None)
+        user_emp_id = getattr(current_user, 'emp_id', None)
+        
+        # Use the source template's role_id, NOT the user's role_id
+        # This allows users to clone templates for any role and keep the original role context
+        new_role_id = source_data['role_id']
+        base_title = source_data['title']
 
-        while attempt < max_attempts:
-            attempt += 1
+        self.logger.info(f"{context}SERVICE_CLONE_HEADER_ROLE: User role_id={user_role_id}, Source role_id={source_data['role_id']}, Using role_id={new_role_id} (keeping source role)")
+
+        # Try to create header with automatic suffix on duplicate
+        new_header_id = None
+        for attempt in range(1, 101):  # Max 100 attempts
+            if attempt == 1:
+                title_to_try = base_title
+            elif attempt == 2:
+                title_to_try = f"{base_title} (Copy)"
+            else:
+                title_to_try = f"{base_title} (Copy {attempt - 1})"
+            
             try:
-                header_payload = {
-                    'role_id': int(new_role_id) if new_role_id is not None else int(source.role_id),
-                    'title': new_title,
-                    'description': source.description,
+                # Create header
+                header_dict = {
+                    'role_id': int(new_role_id),
+                    'title': title_to_try,
+                    'description': source_data['description'],
                     'goal_template_type': 'Self',
                     'is_shared': False,
                     'shared_users_id': None,
-                    'creator_id': getattr(current_user, 'emp_id', None)
+                    'creator_id': user_emp_id
                 }
-
-                new_header = await self.repository.create(db, obj_data=header_payload)
-                self.logger.info(f"{context}SERVICE_CLONE_HEADER_CREATED: Created new header with title '{new_title}'")
+                
+                new_header = await self.repository.create(db, obj_data=header_dict)
+                new_header_id = new_header.header_id
+                
+                self.logger.info(f"{context}SERVICE_CLONE_HEADER_CREATED: Created header '{title_to_try}' with ID {new_header_id}")
                 break
-
-            except DuplicateEntryError as e:
-                # Duplicate title detected - try with a suffix
-                self.logger.debug(f"{context}SERVICE_CLONE_HEADER_DUPLICATE: Title '{new_title}' already exists, retrying with suffix (attempt {attempt})")
-
-                # append suffix and retry
-                if attempt == 1:
-                    new_title = f"{base_title} (Copy)"
-                else:
-                    new_title = f"{base_title} (Copy {attempt})"
-                # loop and retry
+                
+            except DuplicateEntryError:
+                # Title exists, try next suffix
+                self.logger.debug(f"{context}SERVICE_CLONE_HEADER_DUPLICATE: Title '{title_to_try}' exists, trying next")
                 continue
-
+                
             except Exception as e:
-                # For any other error, log and re-raise
-                self.logger.error(f"{context}SERVICE_CLONE_HEADER_CREATE_FAILED: Failed to create header - {str(e)}")
-                raise
+                # Unexpected error
+                error_type = type(e).__name__
+                self.logger.error(f"{context}SERVICE_CLONE_HEADER_ERROR: Unexpected error ({error_type}) creating header")
+                raise BaseServiceException(f"Failed to create cloned header: {error_type}") from None
 
-        if new_header is None:
-            raise BusinessRuleViolationError(f"Failed to clone header after {max_attempts} attempts. Too many existing copies.")
+        if new_header_id is None:
+            raise BusinessRuleViolationError("Failed to clone header after 100 attempts. Too many existing copies.")
 
-        # Duplicate templates under the new header using GoalTemplateService
+        # Clone templates
         from app.services.goal_service import GoalTemplateService
-
+        from app.schemas.goal import GoalTemplateCreate
+        
         template_service = GoalTemplateService()
-
-        for tpl in getattr(source, 'goal_templates', []) or []:
+        
+        for tpl_data in source_data['templates']:
             try:
-                # Build GoalTemplateCreate payload
-                categories = [c.name for c in (tpl.categories or [])]
-                template_payload = {
-                    'temp_title': tpl.temp_title,
-                    'temp_description': tpl.temp_description,
-                    'temp_performance_factor': tpl.temp_performance_factor,
-                    'temp_importance': tpl.temp_importance,
-                    'temp_weightage': tpl.temp_weightage,
-                    'categories': categories,
-                    'header_id': getattr(new_header, 'header_id')
-                }
-
-                # Use service helper to create template with categories
-                # Build a Pydantic GoalTemplateCreate model for validation
-                from app.schemas.goal import GoalTemplateCreate
-                tpl_model = GoalTemplateCreate.model_validate(template_payload)
-                await template_service.create_template_with_categories(db, template_data=tpl_model)
+                # Create template payload
+                tpl_payload = GoalTemplateCreate(
+                    temp_title=tpl_data['temp_title'],
+                    temp_description=tpl_data['temp_description'],
+                    temp_performance_factor=tpl_data['temp_performance_factor'],
+                    temp_importance=tpl_data['temp_importance'],
+                    temp_weightage=tpl_data['temp_weightage'],
+                    categories=tpl_data['categories'],
+                    header_id=new_header_id
+                )
+                
+                await template_service.create_template_with_categories(db, template_data=tpl_payload)
+                
             except Exception as e:
-                # Log and continue with next template (do not abort cloning of previously created items)
-                self.logger.error(f"{context}SERVICE_CLONE_HEADER_TEMPLATE_ERROR: Failed to clone template '{getattr(tpl,'temp_title',None)}' - {str(e)}")
+                # Log but continue with other templates
+                error_type = type(e).__name__
+                self.logger.error(f"{context}SERVICE_CLONE_TEMPLATE_ERROR: Failed to clone template '{tpl_data.get('temp_title', 'Unknown')}' ({error_type})")
 
-        # Reload the new header with templates and return
-        new = await self.repository.get_with_templates(db, getattr(new_header, 'header_id'))
-        self.logger.info(f"{context}SERVICE_CLONE_HEADER_SUCCESS: Cloned header {source_header_id} to new header {getattr(new,'header_id',None)}")
-        return new
+        # Return the cloned header with templates
+        result = await self.repository.get_with_templates(db, new_header_id)
+        self.logger.info(f"{context}SERVICE_CLONE_HEADER_SUCCESS: Cloned header {source_header_id} to {new_header_id}")
+        return result

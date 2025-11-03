@@ -161,6 +161,10 @@ const EditGoalModal = ({
     setLoading(true);
     try {
       const primaryCategoryId = values.category_ids?.[0];
+      const selectedCategories = categories.filter((c) =>
+        values.category_ids?.includes(c.id)
+      );
+
       const updatedGoal: AppraisalGoal = {
         ...goalData,
         goal: {
@@ -177,6 +181,10 @@ const EditGoalModal = ({
           category:
             categories.find((c) => c.id === primaryCategoryId) ||
             goalData.goal.category,
+          // Add categories array for proper display
+          ...(selectedCategories.length > 0
+            ? { categories: selectedCategories }
+            : {}),
         },
       };
 

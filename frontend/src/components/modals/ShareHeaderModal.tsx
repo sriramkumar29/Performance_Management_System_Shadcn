@@ -106,7 +106,7 @@ const ShareHeaderModal = ({ open, onOpenChange, header, onSuccess }: Props) => {
           toast.success(
             `Shared with ${userCount} user${
               userCount > 1 ? "s" : ""
-            }. Each will receive their own editable copy.`
+            }.`
           );
         } else {
           toast.success("Sharing removed");

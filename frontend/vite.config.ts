@@ -8,7 +8,7 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig(({ mode }) => {
   // For test mode, use test backend on port 7001
   // For development mode, use dev backend on port 7000
-  const apiTarget = mode === 'test' ? 'http://localhost:7001' : 'http://localhost:7000';
+  const apiTarget = mode === 'test' ? 'http://localhost:7001' : 'http://localhost:5000';
 
   return {
     plugins: [react(), tailwindcss()],

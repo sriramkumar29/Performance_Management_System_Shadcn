@@ -16,7 +16,8 @@ class Employee(Base):
     role_id = Column(Integer, ForeignKey("roles.id", ondelete="RESTRICT"), nullable=False, index=True)
     emp_reporting_manager_id = Column(Integer, ForeignKey(EMPLOYEES_EMP_ID, ondelete=ON_DELETE_SET_NULL), nullable=True)
     emp_status = Column(Boolean, default=True)
-    emp_password = Column(String, nullable=False)  # Store hashed password
+    emp_password = Column(String, nullable=True)  # Store hashed password (nullable for SSO users)
+    auth_provider = Column(String, nullable=True)  # Authentication provider: 'microsoft', 'password', or None
 
     # Relationships
     role = relationship("Role", backref="employees")

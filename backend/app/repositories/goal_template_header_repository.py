@@ -5,9 +5,10 @@ This module handles all direct database interactions
 for the GoalTemplateHeader entity.
 """
 
+import json
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, and_, cast
+from sqlalchemy import select, or_, and_, cast, func, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import selectinload
 
@@ -223,25 +224,27 @@ class GoalTemplateHeaderRepository(BaseRepository[GoalTemplateHeader]):
         self,
         db: AsyncSession,
         creator_id: int,
+        role_id: Optional[int],
         load_templates: bool = False,
         skip: int = 0,
         limit: int = 100,
         search: Optional[str] = None
     ) -> List[GoalTemplateHeader]:
-        """Get all headers created by a specific user with type Self."""
+        """Get all headers created by a specific user with type Self. If role_id is None, returns all roles."""
         context = build_log_context()
 
-        self.logger.debug(f"{context}REPO_GET_BY_CREATOR: Getting headers by creator - Creator ID: {creator_id}, Load Templates: {load_templates}")
+        self.logger.debug(f"{context}REPO_GET_BY_CREATOR: Getting headers by creator - Creator ID: {creator_id}, Role ID: {role_id}, Load Templates: {load_templates}")
 
         try:
+            # Get all Self headers created by this user
             query = select(GoalTemplateHeader).where(
                 GoalTemplateHeader.creator_id == creator_id,
-                GoalTemplateHeader.goal_template_type == GoalTemplateType.SELF,
-                or_(
-                    GoalTemplateHeader.is_shared == False,
-                    GoalTemplateHeader.is_shared.is_(None)
-                )
+                GoalTemplateHeader.goal_template_type == GoalTemplateType.SELF
             )
+            
+            # Optionally filter by role if role_id is provided
+            if role_id is not None:
+                query = query.where(GoalTemplateHeader.role_id == role_id)
 
             if search:
                 like_term = f"%{search}%"
@@ -262,37 +265,41 @@ class GoalTemplateHeaderRepository(BaseRepository[GoalTemplateHeader]):
             result = await db.execute(query)
             headers = list(result.scalars().all())
 
-            self.logger.debug(f"{context}REPO_GET_BY_CREATOR_SUCCESS: Retrieved {len(headers)} headers for creator {creator_id}")
+            role_info = f"with role {role_id}" if role_id is not None else "for all roles"
+            self.logger.debug(f"{context}REPO_GET_BY_CREATOR_SUCCESS: Retrieved {len(headers)} headers for creator {creator_id} {role_info}")
             return headers
 
         except Exception as e:
             error_msg = f"Error getting headers by creator {creator_id}"
             self.logger.error(f"{context}REPO_GET_BY_CREATOR_ERROR: {error_msg}, Error: {str(e)}")
-            raise RepositoryException(error_msg, details={"creator_id": creator_id, "original_error": str(e)})
+            raise RepositoryException(error_msg, details={"creator_id": creator_id, "role_id": role_id, "original_error": str(e)})
 
     @log_execution_time()
     async def get_shared_with_user(
         self,
         db: AsyncSession,
         user_id: int,
+        role_id: int,
         load_templates: bool = False,
         skip: int = 0,
         limit: int = 100,
         search: Optional[str] = None
     ) -> List[GoalTemplateHeader]:
-        """Get all headers shared with a specific user (headers they own that are marked as shared)."""
+        """Get all headers shared with a specific user. Note: role_id parameter kept for compatibility but not used."""
         context = build_log_context()
 
         self.logger.debug(f"{context}REPO_GET_SHARED_WITH_USER: Getting headers shared with user - User ID: {user_id}, Load Templates: {load_templates}")
 
         try:
             # Query headers where:
-            # - is_shared is True (marked as a shared copy)
-            # - creator_id equals user_id (user owns this copy)
-            # This returns the editable copies that were created when someone shared with them
+            # - shared_users_id array contains the user_id (read-only shared headers)
+            # This returns headers that other users have shared with this user
+            # Use JSONB containment operator @> to check if user_id is in the JSON array
+            # NOTE: We do NOT filter by role_id because templates of any role can be shared with any user
             query = select(GoalTemplateHeader).where(
-                GoalTemplateHeader.is_shared == True,
-                GoalTemplateHeader.creator_id == user_id
+                func.cast(GoalTemplateHeader.shared_users_id, JSONB).op('@>')(
+                    cast([user_id], JSONB)
+                )
             )
 
             if search:

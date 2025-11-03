@@ -35,6 +35,7 @@ export interface GoalTemplateHeaderCreate {
 export interface GoalTemplateHeaderUpdate {
   title?: string;
   description?: string;
+  role_id?: number;
   goal_template_type?: GoalTemplateType;
   is_shared?: boolean;
   shared_users_id?: number[];

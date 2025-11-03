@@ -131,6 +131,9 @@ const GoalTemplatesByRole = () => {
   };
 
   const handleDeleteHeader = async (headerId: number) => {
+    // Close dialog immediately before async operation
+    setDeleteConfirmId(null);
+
     try {
       const result = await deleteTemplateHeader(headerId);
       if (result.ok) {
@@ -148,7 +151,6 @@ const GoalTemplatesByRole = () => {
       console.error("Failed to delete header:", error);
       toast.error("Failed to delete header");
     }
-    setDeleteConfirmId(null);
   };
 
   const toggleHeaderExpanded = (headerId: number) => {

@@ -10,10 +10,25 @@ import {
   DialogTitle,
   DialogDescription,
 } from "../ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { toast } from "sonner";
 import { X, Save, Edit } from "lucide-react";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import { updateTemplateHeader } from "../../api/goalTemplateHeaders";
+import {
+  ROLE_ID_EMPLOYEE,
+  ROLE_ID_LEAD,
+  ROLE_ID_MANAGER,
+  ROLE_NAME_EMPLOYEE,
+  ROLE_NAME_LEAD,
+  ROLE_NAME_MANAGER,
+} from "../../utils/roleHelpers";
 import type {
   GoalTemplateHeader,
   GoalTemplateType,
@@ -36,24 +51,31 @@ const EditHeaderModal = ({
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    role_id: 0,
     goal_template_type: "Organization" as GoalTemplateType,
     shared_users_id: [] as number[],
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Define available roles (excluding CEO)
+  const availableRoles = [
+    { id: ROLE_ID_EMPLOYEE, name: ROLE_NAME_EMPLOYEE },
+    { id: ROLE_ID_LEAD, name: ROLE_NAME_LEAD },
+    { id: ROLE_ID_MANAGER, name: ROLE_NAME_MANAGER },
+  ];
 
   useEffect(() => {
     if (open && header) {
       setFormData({
         title: header.title,
         description: header.description || "",
+        role_id: header.role_id,
         goal_template_type: header.goal_template_type || "Organization",
         shared_users_id: header.shared_users_id || [],
       });
       setErrors({});
-      return;
     }
   }, [open, header]);
-
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -64,6 +86,10 @@ const EditHeaderModal = ({
       newErrors.title = "Title must be at least 3 characters";
     } else if (formData.title.trim().length > 255) {
       newErrors.title = "Title must be less than 255 characters";
+    }
+
+    if (!formData.role_id || formData.role_id === 0) {
+      newErrors.role_id = "Role is required";
     }
 
     setErrors(newErrors);
@@ -82,6 +108,7 @@ const EditHeaderModal = ({
       const payload: any = {
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
+        role_id: formData.role_id,
         goal_template_type: formData.goal_template_type,
       };
 
@@ -184,6 +211,40 @@ const EditHeaderModal = ({
             </p>
           </div>
 
+          {/* Role Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="role" className="text-sm font-medium">
+              Role <span className="text-destructive">*</span>
+            </Label>
+            <Select
+              value={formData.role_id.toString()}
+              onValueChange={(value) =>
+                setFormData({ ...formData, role_id: Number.parseInt(value) })
+              }
+              disabled={loading}
+            >
+              <SelectTrigger
+                id="role"
+                className={errors.role_id ? "border-destructive" : ""}
+              >
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableRoles.map((role) => (
+                  <SelectItem key={role.id} value={role.id.toString()}>
+                    {role.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.role_id && (
+              <p className="text-xs text-destructive">{errors.role_id}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Select the role this template header is designed for
+            </p>
+          </div>
+
           {/* Description */}
           <div className="space-y-2">
             <Label htmlFor="description" className="text-sm font-medium">
@@ -205,7 +266,6 @@ const EditHeaderModal = ({
             </p>
           </div>
 
-         
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-4 border-t">
             <Button

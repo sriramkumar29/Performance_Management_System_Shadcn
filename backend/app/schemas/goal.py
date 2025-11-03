@@ -46,6 +46,7 @@ class GoalTemplateHeaderUpdate(BaseModel):
 
     title: Optional[str] = None
     description: Optional[str] = None
+    role_id: Optional[int] = None
     goal_template_type: Optional[GoalTemplateTypeEnum] = None
     is_shared: Optional[bool] = None
     shared_users_id: Optional[List[int]] = None

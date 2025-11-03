@@ -192,25 +192,48 @@ class ValidationError(BaseServiceException):
 def convert_sqlalchemy_error(error: Exception, entity_type: str = "Entity") -> BaseRepositoryException:
     """
     Convert SQLAlchemy exceptions to domain exceptions.
-    
+
     Args:
         error: SQLAlchemy exception
         entity_type: Type of entity being operated on
-        
+
     Returns:
         BaseRepositoryException: Appropriate domain exception
     """
-    if isinstance(error, IntegrityError):
-        if "UNIQUE constraint failed" in str(error) or "duplicate key" in str(error).lower():
+    # Get exception type name without accessing exception attributes
+    exc_type_name = type(error).__name__
+
+    # Extract error string safely - avoid ANY call that might trigger lazy loading
+    error_str = None
+    try:
+        # Try to get a simple string representation
+        error_str = str(error)
+    except:
+        # Completely suppress any error from str() including greenlet errors
+        pass
+
+    # If str() failed, try to extract just the args
+    if error_str is None:
+        try:
+            if hasattr(error, 'args') and error.args:
+                error_str = str(error.args[0]) if error.args else f"{exc_type_name} occurred"
+            else:
+                error_str = f"{exc_type_name} occurred"
+        except:
+            error_str = f"{exc_type_name} occurred"
+
+    # Use type name comparison instead of isinstance to avoid triggering lazy loads
+    if "IntegrityError" in exc_type_name:
+        if "UNIQUE constraint failed" in error_str or "duplicate key" in error_str.lower():
             return DuplicateEntryError(entity_type, "field", "value")
         else:
-            return ConstraintViolationError("integrity_constraint", str(error))
-    
-    elif isinstance(error, NoResultFound):
+            return ConstraintViolationError("integrity_constraint", error_str)
+
+    elif "NoResultFound" in exc_type_name:
         return EntityNotFoundError(entity_type, "unknown")
-    
+
     else:
-        return DatabaseError(f"Database operation failed: {str(error)}")
+        return DatabaseError(f"Database operation failed: {error_str}")
 
 
 def map_domain_exception_to_http_status(exception: BaseDomainException) -> int:

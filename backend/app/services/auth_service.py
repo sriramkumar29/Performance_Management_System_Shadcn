@@ -67,7 +67,12 @@ class AuthService:
             if not employee.emp_status:
                 self.logger.warning(f"{context}AUTH_FAILED: Account disabled - Employee ID: {employee.emp_id}, Email: {sanitize_log_data(email)}")
                 raise UnauthorizedError(ACCOUNT_DISABLED)
-            
+
+            # Handle SSO users who don't have passwords
+            if employee.emp_password is None:
+                self.logger.warning(f"{context}AUTH_FAILED: SSO user attempted password login - Employee ID: {employee.emp_id}")
+                raise UnauthorizedError("This account uses Microsoft SSO. Please sign in with Microsoft.")
+
             if not await self.employee_service.verify_password(password, employee.emp_password):
                 self.logger.warning(f"{context}AUTH_FAILED: Invalid password - Employee ID: {employee.emp_id}, Email: {sanitize_log_data(email)}")
                 raise UnauthorizedError(INVALID_EMAIL_OR_PASSWORD)
@@ -466,3 +471,146 @@ class AuthService:
         except Exception as e:
             self.logger.error(f"{context}LOGIN_ERROR: Unexpected error during login - Email: {sanitize_log_data(email)}, Error: {str(e)}")
             raise UnauthorizedError("Login failed")
+
+    @log_execution_time()
+    async def authenticate_with_microsoft(
+        self,
+        db: AsyncSession,
+        *,
+        id_token_claims: Dict[str, Any]
+    ) -> Employee:
+        """
+        Authenticate user with Microsoft ID token claims.
+
+        Args:
+            db: Database session
+            id_token_claims: Decoded claims from Microsoft ID token
+
+        Returns:
+            Employee object
+
+        Raises:
+            UnauthorizedError: If authentication fails
+            EntityNotFoundError: If user not found and auto-provision disabled
+        """
+        context = build_log_context()
+
+        try:
+            # Extract email from claims (try multiple claim names)
+            email = (
+                id_token_claims.get("email") or
+                id_token_claims.get("preferred_username") or
+                id_token_claims.get("upn")
+            )
+
+            if not email:
+                self.logger.error(f"{context}MS_AUTH_FAILED: No email found in Microsoft token claims")
+                raise UnauthorizedError("No email found in Microsoft token")
+
+            email = email.lower()
+            self.logger.info(f"{context}MS_AUTH_ATTEMPT: Microsoft authentication started - Email: {sanitize_log_data(email)}")
+
+            # Look up employee by email
+            employee = await self.employee_service.get_employee_by_email(db, email=email)
+
+            # Handle user not found
+            if not employee:
+                if not settings.AUTO_PROVISION_USERS:
+                    self.logger.warning(f"{context}MS_AUTH_FAILED: Employee not found and auto-provision disabled - Email: {sanitize_log_data(email)}")
+                    raise EntityNotFoundError("Employee not found. Please contact your administrator.")
+
+                # Auto-provision user
+                self.logger.info(f"{context}MS_AUTH_PROVISION: Auto-provisioning user - Email: {sanitize_log_data(email)}")
+
+                # Extract name from claims
+                full_name = id_token_claims.get("name", email.split("@")[0])
+
+                # Create employee directly using the model
+                from app.models.employee import Employee
+
+                employee = Employee(
+                    emp_name=full_name,
+                    emp_email=email,
+                    emp_department="Default",  # Can be updated later by admin
+                    role_id=1,  # Default role ID (Employee role - adjust if needed)
+                    emp_password=None,  # No password for SSO users
+                    auth_provider="microsoft",
+                    emp_status=True,
+                    emp_reporting_manager_id=None
+                )
+
+                db.add(employee)
+                await db.flush()  # Flush to get the emp_id
+                await db.commit()
+                await db.refresh(employee)
+
+                self.logger.info(f"{context}MS_AUTH_PROVISION_SUCCESS: User auto-provisioned - Employee ID: {employee.emp_id}, Email: {sanitize_log_data(email)}")
+
+            # Check if account is active
+            if not employee.emp_status:
+                self.logger.warning(f"{context}MS_AUTH_FAILED: Account disabled - Employee ID: {employee.emp_id}, Email: {sanitize_log_data(email)}")
+                raise UnauthorizedError(ACCOUNT_DISABLED)
+
+            self.logger.info(f"{context}MS_AUTH_SUCCESS: Microsoft authentication successful - Employee ID: {employee.emp_id}, Email: {sanitize_log_data(email)}")
+            return employee
+
+        except (UnauthorizedError, EntityNotFoundError):
+            # Re-raise auth/entity errors as-is (already logged)
+            raise
+        except Exception as e:
+            self.logger.error(f"{context}MS_AUTH_ERROR: Unexpected error during Microsoft authentication - Error: {str(e)}")
+            raise UnauthorizedError("Microsoft authentication failed")
+
+    @log_execution_time()
+    async def login_with_microsoft(
+        self,
+        db: AsyncSession,
+        *,
+        id_token_claims: Dict[str, Any]
+    ) -> Dict[str, str]:
+        """
+        Complete Microsoft SSO login and generate JWT tokens.
+
+        Args:
+            db: Database session
+            id_token_claims: Decoded claims from Microsoft ID token
+
+        Returns:
+            Dict with access_token, refresh_token, token_type
+
+        Raises:
+            UnauthorizedError: If login fails
+        """
+        context = build_log_context()
+
+        try:
+            email = (
+                id_token_claims.get("email") or
+                id_token_claims.get("preferred_username") or
+                id_token_claims.get("upn", "unknown")
+            )
+            self.logger.info(f"{context}MS_LOGIN_START: Microsoft login process initiated - Email: {sanitize_log_data(email)}")
+
+            # Authenticate user
+            employee = await self.authenticate_with_microsoft(db, id_token_claims=id_token_claims)
+
+            self.logger.debug(f"{context}MS_LOGIN_AUTH_SUCCESS: User authenticated, creating tokens - Employee ID: {employee.emp_id}")
+
+            # Create JWT tokens
+            access_token = self.create_access_token(employee=employee)
+            refresh_token = self.create_refresh_token(employee=employee)
+
+            self.logger.info(f"{context}MS_LOGIN_SUCCESS: Microsoft login completed successfully - Employee ID: {employee.emp_id}, Email: {sanitize_log_data(email)}")
+
+            return {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "token_type": "bearer"
+            }
+
+        except (UnauthorizedError, EntityNotFoundError):
+            # Re-raise auth/entity errors as-is (already logged)
+            raise
+        except Exception as e:
+            self.logger.error(f"{context}MS_LOGIN_ERROR: Unexpected error during Microsoft login - Error: {str(e)}")
+            raise UnauthorizedError("Microsoft login failed")

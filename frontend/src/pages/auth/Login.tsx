@@ -11,12 +11,12 @@ import {
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { Mail, LogIn, Loader2, AlertCircle } from "lucide-react";
+import { Mail, LogIn, Loader2, AlertCircle, Building2 } from "lucide-react";
 import { toast } from "sonner";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { loginWithCredentials, status, user } = useAuth();
+  const { loginWithCredentials, checkSilentSSO, status, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>(
@@ -25,8 +25,57 @@ const Login = () => {
 
   // If already authenticated (session persisted), redirect away from login
   useEffect(() => {
-    if (user) navigate("/");
-  }, [user, navigate]);
+    if (user) {
+      navigate("/");
+      return;
+    }
+
+    // Check for OAuth errors in URL (from backend redirect)
+    const urlParams = new URLSearchParams(window.location.search);
+    const error = urlParams.get("error");
+    const errorDescription = urlParams.get("error_description");
+
+    if (error) {
+      console.error("[Login] OAuth error:", error, errorDescription);
+      let errorMessage = "Microsoft sign-in failed. Please try again.";
+
+      if (error === "user_not_found") {
+        errorMessage = "User not found. Please contact your administrator.";
+      } else if (error === "unauthorized") {
+        errorMessage = errorDescription || "Unauthorized. Please check your email domain.";
+      } else if (errorDescription) {
+        errorMessage = errorDescription;
+      }
+
+      toast.error(errorMessage);
+
+      // Clean up URL by removing error parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
+
+    // Only attempt silent SSO if there's a hint that user came from SharePoint/Microsoft 365
+    // This prevents the iframe warning when user doesn't have an active Microsoft session
+    const ssoEnabled = import.meta.env.VITE_ENABLE_SSO === "true";
+    const fromSharePoint = urlParams.get("sso") === "true" ||
+                          document.referrer.includes("sharepoint.com") ||
+                          document.referrer.includes("office.com");
+
+    if (ssoEnabled && fromSharePoint) {
+      console.log("[Login] Detected SharePoint/M365 context, attempting silent SSO");
+      checkSilentSSO()
+        .then((success) => {
+          if (success) {
+            toast.success("Signed in automatically");
+            navigate("/");
+          }
+        })
+        .catch(() => {
+          // Silent SSO failed, show login form
+          console.log("[Login] Silent SSO not available");
+        });
+    }
+  }, [user, navigate, checkSilentSSO]);
 
   const validateEmail = (email: string) => {
     if (!email) return "Please enter your email";
@@ -90,6 +139,38 @@ const Login = () => {
     }
   };
 
+  const handleMicrosoftLogin = () => {
+    try {
+      // Build Microsoft authorization URL and redirect
+      const clientId = import.meta.env.VITE_MICROSOFT_CLIENT_ID;
+      const tenantId = import.meta.env.VITE_MICROSOFT_TENANT_ID;
+      const redirectUri = import.meta.env.VITE_MICROSOFT_REDIRECT_URI;
+
+      // Generate state for CSRF protection
+      const state = Math.random().toString(36).substring(7);
+      sessionStorage.setItem('oauth_state', state);
+
+      // Build authorization URL
+      // Using Microsoft Graph User.Read scope instead of reserved OIDC scopes
+      const authUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?` +
+        `client_id=${encodeURIComponent(clientId)}` +
+        `&response_type=code` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&response_mode=query` +
+        `&scope=${encodeURIComponent('https://graph.microsoft.com/User.Read')}` +
+        `&state=${encodeURIComponent(state)}`;
+
+      // Redirect to Microsoft login
+      window.location.href = authUrl;
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Microsoft sign-in failed. Please try again.";
+      toast.error(errorMessage);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 animate-fade-in">
       <div className="w-full max-w-md">
@@ -110,6 +191,32 @@ const Login = () => {
           </CardHeader>
 
           <CardContent className="space-y-6">
+            {/* Microsoft SSO Button */}
+            {import.meta.env.VITE_ENABLE_SSO === "true" && (
+              <>
+                <Button
+                  type="button"
+                  onClick={handleMicrosoftLogin}
+                  disabled={status === "loading"}
+                  className="w-full h-12 bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 shadow-soft"
+                >
+                  <Building2 className="h-5 w-5 mr-2" />
+                  Sign in with Microsoft
+                </Button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Or continue with email
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+
             <form noValidate onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-3">
                 <Label

@@ -37,6 +37,106 @@ interface AppraisalGoal {
   };
 }
 
+export interface DraftAppraisal {
+  appraisal_id: number;
+  appraisee_name: string;
+  reviewer_name: string;
+  appraisal_type_name: string;
+  appraisal_range_name?: string;
+  start_date?: string;
+  end_date?: string;
+  goals_count: number;
+  total_weightage: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// Helper function to check for existing draft appraisals with matching criteria
+export const checkForDraftAppraisal = async (
+  appraisee_id: number,
+  reviewer_id: number,
+  appraisal_type_id: number,
+  appraisal_type_range_id?: number
+): Promise<DraftAppraisal | null> => {
+  try {
+    const params = new URLSearchParams({
+      status_filter: "Draft",
+      appraisee_id: appraisee_id.toString(),
+      reviewer_id: reviewer_id.toString(),
+      appraisal_type_id: appraisal_type_id.toString(),
+    });
+
+    const res = await apiFetch<any[]>(`/api/appraisals/?${params.toString()}`);
+
+    if (!res.ok || !res.data || res.data.length === 0) {
+      return null;
+    }
+
+    // Find matching draft (if range is provided, match it too)
+    const matchingDraft = res.data.find((appraisal: any) => {
+      const rangeMatches = appraisal_type_range_id
+        ? appraisal.appraisal_type_range_id === appraisal_type_range_id
+        : true;
+      return rangeMatches;
+    });
+
+    if (!matchingDraft) {
+      return null;
+    }
+
+    // Fetch full details including goals using the specific appraisal endpoint
+    const detailRes = await apiFetch<any>(`/api/appraisals/${matchingDraft.appraisal_id}`);
+
+    if (!detailRes.ok || !detailRes.data) {
+      console.error("Failed to fetch draft details");
+      // Fall back to basic data
+      return {
+        appraisal_id: matchingDraft.appraisal_id,
+        appraisee_name: "", // Will be filled by component
+        reviewer_name: "", // Will be filled by component
+        appraisal_type_name: matchingDraft.appraisal_type?.name || "Unknown",
+        appraisal_range_name: matchingDraft.appraisal_type_range?.name,
+        start_date: matchingDraft.start_date,
+        end_date: matchingDraft.end_date,
+        goals_count: 0,
+        total_weightage: 0,
+        created_at: matchingDraft.created_at,
+        updated_at: matchingDraft.updated_at,
+      };
+    }
+
+    const fullDraft = detailRes.data;
+    console.log("Full draft details:", fullDraft);
+
+    // Calculate total weightage from goals
+    const goalsCount = Array.isArray(fullDraft.appraisal_goals) ? fullDraft.appraisal_goals.length : 0;
+    const totalWeightage = Array.isArray(fullDraft.appraisal_goals)
+      ? fullDraft.appraisal_goals.reduce((sum: number, appraisalGoal: any) => {
+        return sum + (appraisalGoal.goal?.goal_weightage || 0);
+      }, 0)
+      : 0;
+
+    // Transform to our DraftAppraisal interface
+    // Note: Employee names will be populated by the component using the employees list
+    return {
+      appraisal_id: fullDraft.appraisal_id,
+      appraisee_name: "", // Will be filled by component
+      reviewer_name: "", // Will be filled by component
+      appraisal_type_name: fullDraft.appraisal_type?.name || "Unknown",
+      appraisal_range_name: fullDraft.appraisal_type_range?.name,
+      start_date: fullDraft.start_date,
+      end_date: fullDraft.end_date,
+      goals_count: goalsCount,
+      total_weightage: totalWeightage,
+      created_at: fullDraft.created_at,
+      updated_at: fullDraft.updated_at,
+    };
+  } catch (error) {
+    console.error("Error checking for draft appraisal:", error);
+    return null;
+  }
+};
+
 // Helper function to load appraisal data
 export const loadAppraisal = async (id: number) => {
   const res = await apiFetch(`/api/appraisals/${id}`);

@@ -196,21 +196,16 @@ const GoalTemplates = () => {
       });
       if (!res.ok) throw new Error(res.error || "Failed to delete template");
       toast.success("Template deleted");
-      // Refresh cache and reapply filters
-      const updatedCache = await refreshCache();
-      let filtered = updatedCache;
-      if (selectedRoleId) {
-        filtered = filtered.filter((h) => h.role_id === selectedRoleId);
+      // Refresh data by reloading current filter type
+      const data = await loadTemplates(filterType);
+      // Apply role filter if selected
+      if (data && selectedRoleId) {
+        const filtered = data.filter((h) => h.role_id === selectedRoleId);
+        setHeaders(filtered);
+        setTemplates(filtered.flatMap((h) => h.goal_templates || []));
       }
-      if (filterType) {
-        filtered = filtered.filter((h) =>
-          filterType === "shared"
-            ? h.is_shared
-            : (h.goal_template_type || "").toLowerCase() === filterType
-        );
-      }
-      setHeaders(filtered);
-      setTemplates(filtered.flatMap((h) => h.goal_templates || []));
+      // Also refresh cache for other filters
+      await refreshCache();
     } catch (e: any) {
       toast.error(e?.message || "Delete failed");
     } finally {
@@ -306,25 +301,23 @@ const GoalTemplates = () => {
   // ...existing code...
 
   const handleDeleteHeader = async (headerId: number) => {
+    // Close dialog immediately before async operation
+    setDeleteHeaderConfirmId(null);
+
     try {
       const res = await deleteTemplateHeader(headerId);
       if (res.ok) {
         toast.success("Header deleted successfully");
-        // Refresh cache and reapply filters
-        const updatedCache = await refreshCache();
-        let filtered = updatedCache;
-        if (selectedRoleId) {
-          filtered = filtered.filter((h) => h.role_id === selectedRoleId);
+        // Refresh data by reloading current filter type
+        const data = await loadTemplates(filterType);
+        // Apply role filter if selected
+        if (data && selectedRoleId) {
+          const filtered = data.filter((h) => h.role_id === selectedRoleId);
+          setHeaders(filtered);
+          setTemplates(filtered.flatMap((h) => h.goal_templates || []));
         }
-        if (filterType) {
-          filtered = filtered.filter((h) =>
-            filterType === "shared"
-              ? h.is_shared
-              : (h.goal_template_type || "").toLowerCase() === filterType
-          );
-        }
-        setHeaders(filtered);
-        setTemplates(filtered.flatMap((h) => h.goal_templates || []));
+        // Also refresh cache for other filters
+        await refreshCache();
       } else {
         toast.error(res.error || "Failed to delete header");
       }
@@ -332,7 +325,6 @@ const GoalTemplates = () => {
       console.error("Failed to delete header", e);
       toast.error("Failed to delete header");
     }
-    setDeleteHeaderConfirmId(null);
   };
 
   const handleCloneHeader = async (headerId: number) => {
@@ -341,21 +333,16 @@ const GoalTemplates = () => {
       const res = await cloneHeaderToSelf(headerId);
       if (res.ok) {
         toast.success("Header cloned to your Self templates");
-        // Refresh cache and reapply filters
-        const updatedCache = await refreshCache();
-        let filtered = updatedCache;
-        if (selectedRoleId) {
-          filtered = filtered.filter((h) => h.role_id === selectedRoleId);
+        // Refresh data by reloading current filter type
+        const data = await loadTemplates(filterType);
+        // Apply role filter if selected
+        if (data && selectedRoleId) {
+          const filtered = data.filter((h) => h.role_id === selectedRoleId);
+          setHeaders(filtered);
+          setTemplates(filtered.flatMap((h) => h.goal_templates || []));
         }
-        if (filterType) {
-          filtered = filtered.filter((h) =>
-            filterType === "shared"
-              ? h.is_shared
-              : (h.goal_template_type || "").toLowerCase() === filterType
-          );
-        }
-        setHeaders(filtered);
-        setTemplates(filtered.flatMap((h) => h.goal_templates || []));
+        // Also refresh cache for other filters
+        await refreshCache();
       } else {
         // Show more specific error messages
         const errorMsg = res.error || "Failed to clone header";
@@ -394,9 +381,12 @@ const GoalTemplates = () => {
     // Refresh cache and reapply filters
     const updatedCache = await refreshCache();
     let filtered = updatedCache;
+
+    // Apply role filter if selected (for all filter types)
     if (selectedRoleId) {
       filtered = filtered.filter((h) => h.role_id === selectedRoleId);
     }
+
     if (filterType) {
       filtered = filtered.filter((h) =>
         filterType === "shared"
@@ -414,9 +404,12 @@ const GoalTemplates = () => {
     // Refresh cache and reapply filters
     const updatedCache = await refreshCache();
     let filtered = updatedCache;
+
+    // Apply role filter if selected (for all filter types)
     if (selectedRoleId) {
       filtered = filtered.filter((h) => h.role_id === selectedRoleId);
     }
+
     if (filterType) {
       filtered = filtered.filter((h) =>
         filterType === "shared"
@@ -839,12 +832,10 @@ const GoalTemplates = () => {
                   const id = Number(v);
                   setSelectedRoleId(id);
 
-                  // If Self or Shared filter is active, re-fetch from server
-                  // because these are user-specific and can't be filtered locally
+                  // For Self or Shared, re-fetch and apply role filter
                   if (filterType === "self" || filterType === "shared") {
                     const data = await loadTemplates(filterType);
                     if (data) {
-                      // Apply role filter to server response
                       const filtered = data.filter((h) => h.role_id === id);
                       setHeaders(filtered);
                       setTemplates(
@@ -1001,20 +992,39 @@ const GoalTemplates = () => {
                 const newFilter = "shared";
                 setFilterType(newFilter);
 
-                // Shared templates are editable copies created when someone shared with you
+                // Shared templates are read-only headers that others have shared with you
                 // Suppress skeleton loading when switching filter buttons
                 const data = await loadTemplates(newFilter, {
                   suppressLoading: true,
                 });
 
-                // If a role is selected, apply role filter to the server response
+                console.log(
+                  "Shared filter loaded:",
+                  data?.length,
+                  "headers:",
+                  data
+                );
+
+                // Apply role filter if selected
                 if (selectedRoleId && data) {
+                  console.log(
+                    "Applying role filter:",
+                    selectedRoleId,
+                    "to shared templates"
+                  );
                   const filtered = data.filter(
                     (h) => h.role_id === selectedRoleId
+                  );
+                  console.log(
+                    "Filtered shared templates:",
+                    filtered.length,
+                    "of",
+                    data.length
                   );
                   setHeaders(filtered);
                   setTemplates(filtered.flatMap((h) => h.goal_templates || []));
                 } else if (data) {
+                  console.log("Setting shared headers directly:", data.length);
                   setHeaders(data);
                   setTemplates(data.flatMap((h) => h.goal_templates || []));
                 }
@@ -1086,16 +1096,16 @@ const GoalTemplates = () => {
                   const headerTypeLower = String(
                     header.goal_template_type || ""
                   ).toLowerCase();
-                  const isSharedHeader =
-                    headerTypeLower === "shared" || header.is_shared;
+                  // Headers in the Shared filter are read-only (received from others)
+                  const isSharedHeader = filterType === "shared";
                   const isOrganizationHeader =
                     headerTypeLower === "organization";
-                  // Only allow editing of organization headers to the creator; other non-shared headers remain editable
+                  // Shared headers are read-only; organization headers editable only by creator
                   const canEditHeader =
                     !isSharedHeader &&
                     (!isOrganizationHeader ||
                       header.creator_id === user?.emp_id);
-                  // Only allow adding templates to organization headers by the creator; non-organization headers are addable when not shared
+                  // Shared headers are read-only; organization headers can add templates only by creator
                   const canAddHeader =
                     !isSharedHeader &&
                     (!isOrganizationHeader ||
@@ -1195,18 +1205,10 @@ const GoalTemplates = () => {
                                     <Edit className="h-4 w-4" />
                                   </Button>
                                 )}
-                                {/* Share button (visible only for Self headers created by current user) */}
-                                {header.goal_template_type &&
-                                  String(
-                                    header.goal_template_type
-                                  ).toLowerCase() === "self" &&
+                                {/* Share button (visible only for Self headers created by current user, not for shared headers) */}
+                                {headerTypeLower === "self" &&
                                   header.creator_id === user?.emp_id &&
-                                  !(
-                                    String(
-                                      header.goal_template_type
-                                    ).toLowerCase() === "shared" ||
-                                    header.is_shared
-                                  ) && (
+                                  filterType !== "shared" && (
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -1220,16 +1222,21 @@ const GoalTemplates = () => {
                                       <Share2 className="h-4 w-4" />
                                     </Button>
                                   )}
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeleteHeaderConfirmId(header.header_id);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                {/* Delete button (hidden for shared headers - they are read-only) */}
+                                {canEditHeader && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDeleteHeaderConfirmId(
+                                        header.header_id
+                                      );
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
                                 {/* Clone button - visible only for Organization headers */}
                                 {header.goal_template_type &&
                                   String(
@@ -1315,12 +1322,7 @@ const GoalTemplates = () => {
                                           user?.role_id,
                                           user?.role?.role_name
                                         ) &&
-                                          !(
-                                            String(
-                                              header.goal_template_type
-                                            ).toLowerCase() === "shared" ||
-                                            header.is_shared
-                                          ) && (
+                                          !isSharedHeader && (
                                             <div className="flex gap-2 shrink-0">
                                               <Button
                                                 size={BUTTON_STYLES.EDIT.size}
@@ -1487,6 +1489,8 @@ const GoalTemplates = () => {
                         filtered.flatMap((h) => h.goal_templates || [])
                       );
                     }
+                    // Also refresh cache for other filters
+                    await refreshCache();
                   }}
                   header={editingHeader as any}
                 />
@@ -1499,29 +1503,23 @@ const GoalTemplates = () => {
                   }}
                   header={sharingHeader as any}
                   onSuccess={async () => {
-                    // After sharing, refresh cache to update counts
+                    // After sharing, refresh data
                     setShareHeaderModalOpen(false);
                     setSharingHeader(null);
-                    await refreshCache();
-                    // Reapply current filters
-                    let filtered = allHeaders;
-                    if (selectedRoleId) {
-                      filtered = filtered.filter(
+                    // Refresh data by reloading current filter type
+                    const data = await loadTemplates(filterType);
+                    // Apply role filter if selected
+                    if (data && selectedRoleId) {
+                      const filtered = data.filter(
                         (h) => h.role_id === selectedRoleId
                       );
-                    }
-                    if (filterType) {
-                      filtered = filtered.filter((h) =>
-                        filterType === "shared"
-                          ? h.is_shared
-                          : (h.goal_template_type || "").toLowerCase() ===
-                            filterType
+                      setHeaders(filtered);
+                      setTemplates(
+                        filtered.flatMap((h) => h.goal_templates || [])
                       );
                     }
-                    setHeaders(filtered);
-                    setTemplates(
-                      filtered.flatMap((h) => h.goal_templates || [])
-                    );
+                    // Also refresh cache for other filters
+                    await refreshCache();
                   }}
                 />
 

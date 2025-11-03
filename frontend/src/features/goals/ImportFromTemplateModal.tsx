@@ -40,7 +40,7 @@ import type {
   Role,
   HeaderSelection,
 } from "../../types/goalTemplateHeader";
-import { getHeadersByRole } from "../../api/goalTemplateHeaders";
+import { getAllHeaders } from "../../api/goalTemplateHeaders";
 
 interface ImportFromTemplateModalProps {
   open: boolean;
@@ -143,17 +143,81 @@ const ImportFromTemplateModal = ({
   const loadHeadersForRole = async (roleId: number) => {
     setLoading(true);
     try {
-      const result = await getHeadersByRole(roleId);
-      if (result.ok && result.data) {
-        // Ensure server response only contains headers for the requested role.
-        // Some backend responses may be noisy; guard client-side to avoid
-        // showing headers that don't belong to the selected role.
-        const filteredByRole = result.data.filter((h) => h.role_id === roleId);
-        setHeaders(filteredByRole);
-      } else {
-        toast.error("Failed to load templates", {
-          description: result.error || "Please try again",
-        });
+      // Load all three types: organization, self, and shared
+      const [orgResult, selfResult, sharedResult] = await Promise.all([
+        getAllHeaders(0, 100, "organization"),
+        getAllHeaders(0, 100, "self"),
+        getAllHeaders(0, 100, "shared"),
+      ]);
+
+      const combinedHeaders: GoalTemplateHeaderWithTemplates[] = [];
+
+      // Collect organization headers for this role
+      if (orgResult.ok && orgResult.data) {
+        const orgFiltered = orgResult.data.filter((h) => h.role_id === roleId);
+        console.log(
+          `Organization: ${orgResult.data.length} total, ${orgFiltered.length} for role ${roleId}`
+        );
+        combinedHeaders.push(...orgFiltered);
+      }
+
+      // Collect self headers for this role
+      if (selfResult.ok && selfResult.data) {
+        const selfFiltered = selfResult.data.filter(
+          (h) => h.role_id === roleId
+        );
+        console.log(
+          `Self: ${selfResult.data.length} total, ${selfFiltered.length} for role ${roleId}`
+        );
+        combinedHeaders.push(...selfFiltered);
+      }
+
+      // Collect shared headers - these are already filtered by shared_users_id on backend
+      // Just filter by role_id to match the selected role
+      if (sharedResult.ok && sharedResult.data) {
+        const sharedForRole = sharedResult.data
+          .filter((h) => h.role_id === roleId)
+          .map((h) => ({
+            ...h,
+            _isSharedWithMe: true, // Internal flag to identify shared headers
+          }));
+        console.log(
+          `Shared: ${sharedResult.data.length} total, ${sharedForRole.length} for role ${roleId}`
+        );
+        combinedHeaders.push(...(sharedForRole as any));
+      }
+
+      // Remove duplicates by header_id (shouldn't happen, but just in case)
+      const uniqueHeaders = Array.from(
+        new Map(combinedHeaders.map((h) => [h.header_id, h])).values()
+      );
+
+      console.log(
+        `Total combined headers for role ${roleId}: ${uniqueHeaders.length}`
+      );
+      console.log(
+        "Headers:",
+        uniqueHeaders.map((h) => ({
+          id: h.header_id,
+          title: h.title,
+          type: h.goal_template_type,
+          role_id: h.role_id,
+          isShared: (h as any)._isSharedWithMe,
+        }))
+      );
+
+      setHeaders(uniqueHeaders);
+
+      if (!orgResult.ok || !selfResult.ok || !sharedResult.ok) {
+        const errors = [orgResult, selfResult, sharedResult]
+          .filter((r) => !r.ok)
+          .map((r) => r.error)
+          .join(", ");
+        if (errors) {
+          toast.error("Some templates failed to load", {
+            description: errors,
+          });
+        }
       }
     } catch (e: unknown) {
       const errorMessage =
@@ -312,19 +376,36 @@ const ImportFromTemplateModal = ({
 
     // Goal type filter: All | Organization | Self | Shared
     if (goalTypeFilter === "All") return true;
-    if (goalTypeFilter === "Shared") return Boolean(h.is_shared);
+
+    // Check if this header was loaded from the "shared" endpoint
+    const isSharedWithMe = (h as any)._isSharedWithMe === true;
+
+    // Priority order for classification:
+    // 1. If _isSharedWithMe flag is true, it's a "Shared" template
+    // 2. Else, use goal_template_type to determine if it's "Self" or "Organization"
+
+    if (goalTypeFilter === "Shared") {
+      // Only show headers that were loaded from shared endpoint
+      return isSharedWithMe;
+    }
+
     if (goalTypeFilter === "Self") {
-      // For the Import modal, treat 'Self' as headers that are owned by the
-      // user (goal_template_type === 'Self') and NOT shared copies. Shared
-      // copies should appear only under 'Shared'. Use case-insensitive
-      // comparison to be robust against backend casing.
+      // Self headers: NOT from shared endpoint AND goal_template_type is Self
       return (
-        String(h.goal_template_type || "").toLowerCase() === "self" &&
-        !Boolean(h.is_shared)
+        !isSharedWithMe &&
+        String(h.goal_template_type || "").toLowerCase() === "self"
       );
     }
-    // Organization
-    return String(h.goal_template_type || "").toLowerCase() === "organization";
+
+    if (goalTypeFilter === "Organization") {
+      // Organization headers: NOT from shared endpoint AND goal_template_type is Organization
+      return (
+        !isSharedWithMe &&
+        String(h.goal_template_type || "").toLowerCase() === "organization"
+      );
+    }
+
+    return false;
   });
 
   const totalSelectedWeightage = Object.keys(selectedHeaders)
@@ -545,23 +626,25 @@ const ImportFromTemplateModal = ({
 
                             {/* Header Metadata */}
                             <div className="flex flex-wrap items-center gap-2">
-                              {/* Priority: Self > Shared > Organization
-                                  Show Self if goal_template_type is Self even if is_shared is true.
-                                  Otherwise show Shared if is_shared is true.
-                                  Otherwise show Organization. */}
-                              {header.goal_template_type === "Self" ? (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs whitespace-nowrap bg-emerald-50 text-emerald-700 border-emerald-200"
-                                >
-                                  Self
-                                </Badge>
-                              ) : header.is_shared ? (
+                              {/* Badge classification:
+                                  1. If _isSharedWithMe flag is true: show "Shared" badge (shared with user)
+                                  2. Else if goal_template_type is "Self": show "Self" badge (user created)
+                                  3. Else: show "Organization" badge (organization template) */}
+                              {(header as any)._isSharedWithMe ? (
                                 <Badge
                                   variant="outline"
                                   className="text-xs bg-amber-50 text-amber-700 border-amber-200"
                                 >
                                   Shared
+                                </Badge>
+                              ) : String(
+                                  header.goal_template_type || ""
+                                ).toLowerCase() === "self" ? (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs whitespace-nowrap bg-emerald-50 text-emerald-700 border-emerald-200"
+                                >
+                                  Self
                                 </Badge>
                               ) : (
                                 <Badge

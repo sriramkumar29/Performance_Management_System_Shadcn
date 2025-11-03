@@ -206,18 +206,22 @@ async def get_all_headers(
                 search=search,
             )
         elif filter_type == "self":
+            logger.debug(f"{context}ROUTER_GET_SELF_HEADERS: User emp_id={current_user.emp_id}, role_id={current_user.role_id}")
             headers = await service.get_self_headers_for_user(
                 db,
                 current_user.emp_id,
+                current_user.role_id,
                 include_templates=True,
                 skip=skip,
                 limit=limit,
                 search=search,
             )
         elif filter_type == "shared":
+            logger.debug(f"{context}ROUTER_GET_SHARED_HEADERS: User emp_id={current_user.emp_id}, role_id={current_user.role_id}")
             headers = await service.get_shared_with_user(
                 db,
                 current_user.emp_id,
+                current_user.role_id,
                 include_templates=True,
                 skip=skip,
                 limit=limit,
@@ -311,10 +315,15 @@ async def clone_header_to_self(
 
     except BaseDomainException as e:
         status_code = map_domain_exception_to_http_status(e)
-        logger.error(f"{context}ROUTER_CLONE_HEADER_TO_SELF_ERROR: {str(e)}")
-        raise HTTPException(status_code=status_code, detail=str(e))
+        # Use e.message directly to avoid async context issues with str(e)
+        error_detail = getattr(e, 'message', 'An error occurred')
+        logger.error(f"{context}ROUTER_CLONE_HEADER_TO_SELF_ERROR: {error_detail}")
+        raise HTTPException(status_code=status_code, detail=error_detail)
     except Exception as e:
-        logger.error(f"{context}ROUTER_CLONE_HEADER_TO_SELF_UNEXPECTED_ERROR: {str(e)}")
+        # Extract safe error info without calling str()
+        exc_type = type(e).__name__
+        error_detail = getattr(e, 'message', f'{exc_type} occurred')
+        logger.error(f"{context}ROUTER_CLONE_HEADER_TO_SELF_UNEXPECTED_ERROR: {error_detail}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 

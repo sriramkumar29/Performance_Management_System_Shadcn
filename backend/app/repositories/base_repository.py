@@ -290,10 +290,23 @@ class BaseRepository(ABC, Generic[ModelType]):
                 # ignore rollback failures to not mask original exception
                 pass
 
-            self.logger.error(f"Failed to create {self.entity_name}: {str(e)}")
+            # Extract error string early to avoid async context issues
+            error_str = None
+            try:
+                error_str = str(e)
+            except:
+                # Completely suppress any error including greenlet errors
+                pass
+
+            if error_str is None:
+                # If str() failed, use exception type name
+                error_str = f"{type(e).__name__} occurred"
+
+            self.logger.error(f"Failed to create {self.entity_name}: {error_str}")
             # Convert SQLAlchemy exceptions to domain exceptions
             domain_exception = convert_sqlalchemy_error(e, self.entity_name)
-            raise domain_exception
+            # Use 'from None' to suppress exception chain and avoid async context issues
+            raise domain_exception from None
 
     @log_execution_time()  
     async def update(
