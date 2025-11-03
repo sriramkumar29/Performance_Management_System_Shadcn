@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
+import type { Employee } from "../../contexts/AuthContext";
 import { apiFetch } from "../../utils/api";
 import {
   Card,
@@ -16,18 +17,36 @@ import { toast } from "sonner";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { loginWithCredentials, checkSilentSSO, status, user } = useAuth();
+  const { loginWithCredentials, checkSilentSSO, status, user, setUser, setStatus } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>(
     {}
   );
+  const [isProcessingCallback, setIsProcessingCallback] = useState(false);
+  const [isMicrosoftLoading, setIsMicrosoftLoading] = useState(false);
 
   // If already authenticated (session persisted), redirect away from login
   useEffect(() => {
     if (user) {
       navigate("/");
       return;
+    }
+
+    // Check for tokens in URL hash (Microsoft callback)
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+      const params = new URLSearchParams(hash);
+      const accessToken = params.get("access_token");
+      const refreshToken = params.get("refresh_token");
+
+      if (accessToken && refreshToken) {
+        // Process callback on login page
+        console.log("[Login] Tokens detected in hash, showing modal");
+        setIsProcessingCallback(true);
+        processCallback(accessToken, refreshToken);
+        return;
+      }
     }
 
     // Check for OAuth errors in URL (from backend redirect)
@@ -139,8 +158,69 @@ const Login = () => {
     }
   };
 
+  const processCallback = async (accessToken: string, refreshToken: string) => {
+    try {
+      console.log("[Login] Processing Microsoft callback");
+
+      // Store tokens
+      sessionStorage.setItem("auth_token", accessToken);
+      sessionStorage.setItem("refresh_token", refreshToken);
+
+      // Fetch user profile
+      const userRes = await apiFetch<Employee>("/employees/profile", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!userRes.ok || !userRes.data) {
+        throw new Error(userRes.error || "Failed to fetch user profile");
+      }
+
+      // Update auth context
+      setUser(userRes.data);
+      setStatus("succeeded");
+
+      // Store user in sessionStorage
+      sessionStorage.setItem("auth_user", JSON.stringify(userRes.data));
+
+      console.log("[Login] Microsoft login successful");
+
+      // Show success toast
+      toast.success("Welcome back!", {
+        description: "Successfully signed in with Microsoft",
+        duration: 2000,
+      });
+
+      // Clean up URL hash
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      // Hide modal
+      setIsProcessingCallback(false);
+
+      // Redirect to dashboard
+      navigate("/", { replace: true });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Authentication failed";
+      console.error("[Login] Microsoft callback error:", errorMessage);
+
+      // Show error toast
+      toast.error("Sign-in failed", {
+        description: errorMessage,
+        duration: 4000,
+      });
+
+      // Clean up URL hash
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      // Hide modal
+      setIsProcessingCallback(false);
+    }
+  };
+
   const handleMicrosoftLogin = () => {
     try {
+      // Set loading state
+      setIsMicrosoftLoading(true);
+
       // Build Microsoft authorization URL and redirect
       const clientId = import.meta.env.VITE_MICROSOFT_CLIENT_ID;
       const tenantId = import.meta.env.VITE_MICROSOFT_TENANT_ID;
@@ -163,6 +243,7 @@ const Login = () => {
       // Redirect to Microsoft login
       window.location.href = authUrl;
     } catch (error: unknown) {
+      setIsMicrosoftLoading(false);
       const errorMessage =
         error instanceof Error
           ? error.message
@@ -172,8 +253,39 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4 animate-fade-in">
-      <div className="w-full max-w-md">
+    <>
+      {/* Microsoft Sign-in Loading Modal */}
+      {isProcessingCallback && (
+        <>
+          {/* Modal Backdrop */}
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] animate-in fade-in duration-200" />
+
+          {/* Modal Content */}
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+            <div className="bg-background rounded-lg shadow-lg p-8 max-w-sm w-full animate-in zoom-in-95 duration-200">
+              <div className="text-center space-y-6">
+                {/* Spinner */}
+                <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+
+                {/* Text */}
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-foreground">
+                    Signing you in
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Please wait while we complete your Microsoft authentication
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="min-h-screen flex items-center justify-center bg-background p-4 animate-fade-in">
+        <div className="w-full max-w-md">
         {/* Login Card */}
         <Card className="shadow-soft hover-lift border-0 glass-effect animate-slide-up">
           <CardHeader className="text-center space-y-4 pb-6">
@@ -197,11 +309,20 @@ const Login = () => {
                 <Button
                   type="button"
                   onClick={handleMicrosoftLogin}
-                  disabled={status === "loading"}
+                  disabled={status === "loading" || isMicrosoftLoading}
                   className="w-full h-12 bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 shadow-soft"
                 >
-                  <Building2 className="h-5 w-5 mr-2" />
-                  Sign in with Microsoft
+                  {isMicrosoftLoading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Connecting to Microsoft...
+                    </>
+                  ) : (
+                    <>
+                      <Building2 className="h-5 w-5 mr-2" />
+                      Sign in with Microsoft
+                    </>
+                  )}
                 </Button>
 
                 <div className="relative">
@@ -304,10 +425,12 @@ const Login = () => {
                 </p>
               </div>
             </div>
+
           </CardContent>
         </Card>
       </div>
     </div>
+    </>
   );
 };
 

@@ -30,6 +30,7 @@ import {
   Send,
   User,
   UserCheck,
+  FileText,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -56,6 +57,7 @@ interface Goal {
   goal_title: string;
   goal_description?: string | null;
   goal_importance?: string | null;
+  goal_performance_factor?: string | null;
   goal_weightage: number;
   category?: GoalCategory | null;
 }
@@ -218,7 +220,7 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
   const editableSelfSection = config.editableSelfSection && !isReadOnly;
   const editableAppraiserSection =
     config.editableAppraiserSection && !isReadOnly;
-    
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [appraisal, setAppraisal] = useState<AppraisalWithGoals | null>(null);
@@ -897,6 +899,21 @@ const AppraisalWorkflow: React.FC<AppraisalWorkflowProps> = ({
                           <div className="space-y-2">
                             <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap pr-2 custom-scrollbar">
                               {ag.goal.goal_description}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Performance Factor Section */}
+                        {ag.goal.goal_performance_factor && (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                              <h3 className="text-sm font-medium text-foreground">
+                                Performance Factor
+                              </h3>
+                            </div>
+                            <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                              {ag.goal.goal_performance_factor}
                             </div>
                           </div>
                         )}

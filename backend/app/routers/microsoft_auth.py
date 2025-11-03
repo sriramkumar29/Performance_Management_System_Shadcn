@@ -176,7 +176,7 @@ async def microsoft_auth_callback(
 
         logger.info(f"{context}MS_CALLBACK_SUCCESS: Microsoft callback processed - Email: {sanitize_log_data(user_info['email'])}")
 
-        # Redirect to frontend with tokens in URL fragment (hash)
+        # Redirect to frontend LOGIN PAGE with tokens in URL fragment (hash)
         # Using fragment (#) instead of query (?) keeps tokens out of server logs
         # Determine frontend URL - use localhost for development, FRONTEND_URL for production
         if settings.APP_ENV == "development":
@@ -184,7 +184,8 @@ async def microsoft_auth_callback(
         else:
             frontend_url = settings.FRONTEND_URL
 
-        redirect_url = f"{frontend_url}/auth/callback#access_token={jwt_tokens['access_token']}&refresh_token={jwt_tokens['refresh_token']}&token_type=bearer"
+        # Redirect back to login page (not /auth/callback)
+        redirect_url = f"{frontend_url}/login#access_token={jwt_tokens['access_token']}&refresh_token={jwt_tokens['refresh_token']}&token_type=bearer"
 
         return RedirectResponse(url=redirect_url)
 

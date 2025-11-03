@@ -479,12 +479,14 @@ const CreateAppraisal = () => {
       // 2. All required fields are filled
       // 3. Not already checking
       // 4. Dialog not already shown
+      // 5. User is authenticated
       if (
         routeAppraisalId ||
         createdAppraisalId ||
         !formValues.appraisee_id ||
         !formValues.reviewer_id ||
         !formValues.appraisal_type_id ||
+        !user?.emp_id || // Ensure user is authenticated
         draftCheckInProgress ||
         showDraftDialog ||
         draftDismissed // Don't check again if user dismissed it
@@ -498,6 +500,7 @@ const CreateAppraisal = () => {
           formValues.appraisee_id,
           formValues.reviewer_id,
           formValues.appraisal_type_id,
+          user.emp_id, // Pass current user's ID for user-specific filtering
           formValues.appraisal_type_range_id
         );
 

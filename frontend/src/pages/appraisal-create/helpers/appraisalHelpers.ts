@@ -56,6 +56,7 @@ export const checkForDraftAppraisal = async (
   appraisee_id: number,
   reviewer_id: number,
   appraisal_type_id: number,
+  appraiser_id: number, // Current logged-in user ID
   appraisal_type_range_id?: number
 ): Promise<DraftAppraisal | null> => {
   try {
@@ -64,6 +65,7 @@ export const checkForDraftAppraisal = async (
       appraisee_id: appraisee_id.toString(),
       reviewer_id: reviewer_id.toString(),
       appraisal_type_id: appraisal_type_id.toString(),
+      appraiser_id: appraiser_id.toString(), // Filter by current user
     });
 
     const res = await apiFetch<any[]>(`/api/appraisals/?${params.toString()}`);

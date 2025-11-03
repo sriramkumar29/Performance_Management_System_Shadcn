@@ -435,7 +435,7 @@ const ImportFromTemplateModal = ({
             </div>
             <div className="flex-1 min-w-0">
               <DialogTitle className="text-lg sm:text-xl font-semibold text-foreground">
-                Import Goals from Template Headers
+                Import Goals from Template
               </DialogTitle>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                 Select template headers to import all goals as a set with
@@ -779,7 +779,7 @@ const ImportFromTemplateModal = ({
             className={`w-full sm:w-auto ${BUTTON_STYLES.SUBMIT.className}`}
           >
             <Download className={`${ICON_SIZES.DEFAULT} sm:mr-2`} />
-            <span>Import Selected Headers</span>
+            <span>Import Selected</span>
           </Button>
         </div>
       </DialogContent>
