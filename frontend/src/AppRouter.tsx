@@ -1,10 +1,4 @@
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Navigate,
-  useNavigate,
-} from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import ManagerRoute from "./routes/ManagerRoute";
 import AdminRoute from "./routes/AdminRoute";
@@ -22,16 +16,7 @@ import ReviewerEvaluation from "./pages/reviewer-evaluation/ReviewerEvaluationNe
 import AppraisalView from "./pages/appraisal-view/AppraisalViewNew";
 import CreateAppraisal from "./pages/appraisal-create/CreateAppraisal";
 import GoalTemplates from "./pages/goal-templates/GoalTemplates";
-import GoalTemplatesByRole from "./pages/goal-templates-by-role/GoalTemplatesByRole";
 import CreateHeaderWithTemplates from "./pages/goal-templates/CreateHeaderWithTemplates";
-import CreateAppraisalModal from "./features/appraisal/CreateAppraisalModal";
-
-// Route wrapper that provides the modal's required props.
-const CreateAppraisalModalRoute = () => {
-  const navigate = useNavigate();
-  const handleClose = () => navigate("/team-appraisal");
-  return <CreateAppraisalModal open={true} onClose={handleClose} />;
-};
 
 const AppRouter = () => (
   <BrowserRouter>
@@ -65,14 +50,6 @@ const AppRouter = () => (
             <Route
               path="/goal-templates/new-header"
               element={<CreateHeaderWithTemplates />}
-            />
-            <Route
-              path="/goal-templates-by-role"
-              element={<GoalTemplatesByRole />}
-            />
-            <Route
-              path="/appraisal/createmodal"
-              element={<CreateAppraisalModalRoute />}
             />
           </Route>
 

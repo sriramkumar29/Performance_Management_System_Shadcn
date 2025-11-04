@@ -166,10 +166,10 @@ const AppraisalDialog = ({
       const payload: any = {};
 
       if (formData.appraiser_id) {
-        payload.appraiser_id = parseInt(formData.appraiser_id);
+        payload.appraiser_id = Number.parseInt(formData.appraiser_id);
       }
       if (formData.reviewer_id) {
-        payload.reviewer_id = parseInt(formData.reviewer_id);
+        payload.reviewer_id = Number.parseInt(formData.reviewer_id);
       }
 
       const res = await api.put(
