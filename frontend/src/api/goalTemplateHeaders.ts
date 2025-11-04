@@ -51,12 +51,15 @@ export async function getHeaderById(
  * @param skip - Number of records to skip
  * @param limit - Maximum number of records to return
  * @param filterType - Optional filter: 'organization', 'self', or 'shared'
+ * @param search - Optional search term for filtering by title or description
+ * @param applicationRoleId - Optional filter by application role (job position)
  */
 export async function getAllHeaders(
   skip: number = 0,
   limit: number = 100,
   filterType?: 'organization' | 'self' | 'shared',
-  search?: string
+  search?: string,
+  applicationRoleId?: number
 ): Promise<ApiResult<GoalTemplateHeaderWithTemplates[]>> {
   let url = `${BASE_PATH}/?skip=${skip}&limit=${limit}`;
   if (filterType) {
@@ -65,6 +68,9 @@ export async function getAllHeaders(
   if (search && search.length > 0) {
     // encode search term to be safe in URL
     url += `&search=${encodeURIComponent(search)}`;
+  }
+  if (applicationRoleId) {
+    url += `&application_role_id=${applicationRoleId}`;
   }
   return apiFetch<GoalTemplateHeaderWithTemplates[]>(url);
 }

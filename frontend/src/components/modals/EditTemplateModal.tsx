@@ -3,7 +3,6 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
 import { Button } from "../../components/ui/button";
-import { Badge } from "../../components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
+import { CategorySelector } from "../../components/ui/category-selector";
 import { apiFetch } from "../../utils/api";
 import { toast } from "sonner";
 import { useAuth } from "../../contexts/AuthContext";
@@ -64,7 +64,7 @@ const EditTemplateModal = ({
   const [tempPerformanceFactor, setTempPerformanceFactor] = useState("");
   const [tempImportance, setTempImportance] = useState("");
   const [tempWeightage, setTempWeightage] = useState<number | "">("");
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categoryIds, setCategoryIds] = useState<number[]>([]);
   const [allCategories, setAllCategories] = useState<CategoryDto[]>([]);
 
   // Use centralized role helper for manager-or-above checks (excludes Admin)
@@ -95,7 +95,8 @@ const EditTemplateModal = ({
           setTempPerformanceFactor(template.temp_performance_factor);
           setTempImportance(template.temp_importance);
           setTempWeightage(template.temp_weightage);
-          setCategories(template.categories?.map((c) => c.name) || []);
+          // Convert categories to IDs
+          setCategoryIds(template.categories?.map((c) => c.id) || []);
         } catch (error: any) {
           toast.error(error?.message || "Failed to load template");
           onOpenChange(false);
@@ -111,15 +112,11 @@ const EditTemplateModal = ({
       setTempPerformanceFactor("");
       setTempImportance("");
       setTempWeightage("");
-      setCategories([]);
+      setCategoryIds([]);
       setSaving(false);
       setLoading(false);
     }
   }, [open, templateId, onOpenChange]);
-
-  const handleRemoveCategory = (cat: string) => {
-    setCategories(categories.filter((c) => c !== cat));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,7 +151,7 @@ const EditTemplateModal = ({
       return;
     }
 
-    if (!categories || categories.length === 0) {
+    if (!categoryIds || categoryIds.length === 0) {
       toast.error("Select at least one category");
       return;
     }
@@ -171,13 +168,18 @@ const EditTemplateModal = ({
       }
     }
 
+    // Convert category IDs to names for the API
+    const categoryNames = categoryIds
+      .map((id) => allCategories.find((c) => c.id === id)?.name)
+      .filter(Boolean) as string[];
+
     const payload = {
       temp_title: tempTitle.trim(),
       temp_description: tempDescription.trim(),
       temp_performance_factor: tempPerformanceFactor.trim(),
       temp_importance: tempImportance.trim(),
       temp_weightage: weight,
-      categories: categories,
+      categories: categoryNames,
     };
 
     try {
@@ -402,61 +404,15 @@ const EditTemplateModal = ({
               </div>
             </div>
 
-            <div className="space-y-3">
-              <Label className="text-sm font-medium text-foreground">
-                Categories
-              </Label>
-              <div className="space-y-3">
-                {categories.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {categories.map((cat) => (
-                      <Badge
-                        key={cat}
-                        variant="secondary"
-                        className="flex items-center gap-1 px-3 py-1"
-                      >
-                        {cat}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveCategory(cat)}
-                          disabled={saving}
-                          className="ml-1 hover:text-destructive transition-colors"
-                          aria-label={`Remove ${cat}`}
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-
-                {allCategories.length > 0 && (
-                  <div className="space-y-2">
-                    {/* <p className="text-sm text-muted-foreground">
-                      Or select from existing categories:
-                    </p> */}
-                    <div className="flex flex-wrap gap-2">
-                      {allCategories
-                        .filter((cat) => !categories.includes(cat.name))
-                        .map((cat) => (
-                          <Badge
-                            key={cat.id}
-                            variant="outline"
-                            className="cursor-pointer hover:bg-accent transition-colors px-3 py-1"
-                            onClick={() => {
-                              if (!categories.includes(cat.name)) {
-                                setCategories([...categories, cat.name]);
-                              }
-                            }}
-                          >
-                            + {cat.name}
-                          </Badge>
-                        ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            <CategorySelector
+              categories={allCategories}
+              selectedCategoryIds={categoryIds}
+              onCategoryChange={setCategoryIds}
+              disabled={saving || loading}
+              label="Categories"
+              placeholder="Search categories..."
+              required
+            />
 
             <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
               <Button

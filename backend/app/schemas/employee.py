@@ -12,6 +12,7 @@ class EmployeeBase(BaseModel):
     emp_email: EmailStr = Field(..., description=EMPLOYEE_EMAIL_ADDRESS_DESC)
     emp_department: str = Field(..., min_length=2, max_length=50, description="Employee department")
     role_id: int = Field(..., ge=1, description="Role ID")
+    application_role_id: Optional[int] = Field(None, ge=1, description="Application role (job position) ID")
     emp_reporting_manager_id: Optional[int] = Field(None, ge=1, description="Reporting manager ID")
     emp_status: bool = Field(True, description="Employee active status")
 
@@ -50,6 +51,7 @@ class EmployeeUpdate(BaseModel):
     emp_email: Optional[EmailStr] = Field(None, description=EMPLOYEE_EMAIL_ADDRESS_DESC)
     emp_department: Optional[str] = Field(None, min_length=2, max_length=50, description="Employee department")
     role_id: Optional[int] = Field(None, ge=1, description="Role ID")
+    application_role_id: Optional[int] = Field(None, ge=1, description="Application role (job position) ID")
     emp_reporting_manager_id: Optional[int] = Field(None, ge=1, description="Reporting manager ID")
     emp_status: Optional[bool] = Field(None, description="Employee active status")
 

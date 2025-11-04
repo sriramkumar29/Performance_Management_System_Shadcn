@@ -5,6 +5,9 @@ from app.utils.logger import get_database_logger, log_exception
 
 logger = get_database_logger()
 
+# Create base class for models
+Base = declarative_base()
+
 # Create async engine
 engine = create_async_engine(
     settings.DATABASE_URL,
@@ -49,10 +52,6 @@ async_session = sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False,
 )
-
-# Create base class for models
-Base = declarative_base()
-
 
 async def get_db():
     """Dependency for getting async DB session."""

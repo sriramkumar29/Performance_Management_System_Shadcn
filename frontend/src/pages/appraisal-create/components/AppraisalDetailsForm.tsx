@@ -68,6 +68,7 @@ interface AppraisalDetailsFormProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   isLocked: boolean;
+  disableTypeSelection?: boolean;
   onFetchRanges: (typeId: number) => Promise<AppraisalRange[]>;
 }
 
@@ -84,6 +85,7 @@ export const AppraisalDetailsForm = ({
   isCollapsed,
   onToggleCollapse,
   isLocked,
+  disableTypeSelection = false,
   onFetchRanges,
 }: AppraisalDetailsFormProps) => {
   const selectedEmployee = employees.find(
@@ -240,7 +242,7 @@ export const AppraisalDetailsForm = ({
                 <UiSelect
                   value={selectedTypeId ? String(selectedTypeId) : undefined}
                   onValueChange={handleTypeChange}
-                  disabled={isLocked}
+                  disabled={isLocked || disableTypeSelection}
                 >
                   <SelectTrigger aria-label="Appraisal Type">
                     <SelectValue placeholder="Select appraisal type" />

@@ -80,7 +80,9 @@ export function isAppraiserEligible(roleId?: number, roleName?: string): boolean
 }
 
 /**
- * Check if user is eligible to be a reviewer (Manager or above)
+ * Check if user is eligible to be a reviewer (Manager or above, excluding Admin)
+ * Note: The appraiser who creates the appraisal can also be a reviewer if they are Manager or above,
+ * but this is handled separately in the appraisal creation logic.
  */
 export function isReviewerEligible(roleId?: number, roleName?: string): boolean {
   return isManagerOrAbove(roleId, roleName);

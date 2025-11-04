@@ -21,18 +21,12 @@ import { toast } from "sonner";
 import { X, Save, Edit } from "lucide-react";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import { updateTemplateHeader } from "../../api/goalTemplateHeaders";
-import {
-  ROLE_ID_EMPLOYEE,
-  ROLE_ID_LEAD,
-  ROLE_ID_MANAGER,
-  ROLE_NAME_EMPLOYEE,
-  ROLE_NAME_LEAD,
-  ROLE_NAME_MANAGER,
-} from "../../utils/roleHelpers";
+import { getAllApplicationRoles } from "../../api/applicationRoles";
 import type {
   GoalTemplateHeader,
   GoalTemplateType,
 } from "../../types/goalTemplateHeader";
+import type { ApplicationRole } from "../../types/applicationRole";
 
 interface EditHeaderModalProps {
   open: boolean;
@@ -48,28 +42,36 @@ const EditHeaderModal = ({
   header,
 }: EditHeaderModalProps) => {
   const [loading, setLoading] = useState(false);
+  const [applicationRoles, setApplicationRoles] = useState<ApplicationRole[]>(
+    []
+  );
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    role_id: 0,
+    application_role_id: undefined as number | undefined,
     goal_template_type: "Organization" as GoalTemplateType,
     shared_users_id: [] as number[],
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Define available roles (excluding CEO)
-  const availableRoles = [
-    { id: ROLE_ID_EMPLOYEE, name: ROLE_NAME_EMPLOYEE },
-    { id: ROLE_ID_LEAD, name: ROLE_NAME_LEAD },
-    { id: ROLE_ID_MANAGER, name: ROLE_NAME_MANAGER },
-  ];
+  // Load application roles on mount
+  useEffect(() => {
+    const loadApplicationRoles = async () => {
+      const result = await getAllApplicationRoles();
+      if (result.ok && result.data) {
+        setApplicationRoles(result.data);
+      }
+    };
+    loadApplicationRoles();
+  }, []);
 
   useEffect(() => {
     if (open && header) {
+      console.log("EditHeaderModal - Loading header data:", header);
       setFormData({
         title: header.title,
         description: header.description || "",
-        role_id: header.role_id,
+        application_role_id: header.application_role_id,
         goal_template_type: header.goal_template_type || "Organization",
         shared_users_id: header.shared_users_id || [],
       });
@@ -88,8 +90,8 @@ const EditHeaderModal = ({
       newErrors.title = "Title must be less than 255 characters";
     }
 
-    if (!formData.role_id || formData.role_id === 0) {
-      newErrors.role_id = "Role is required";
+    if (!formData.application_role_id || formData.application_role_id === 0) {
+      newErrors.application_role_id = "Application Role is required";
     }
 
     setErrors(newErrors);
@@ -100,15 +102,18 @@ const EditHeaderModal = ({
     e.preventDefault();
 
     if (!header || !validate()) {
+      console.log("EditHeaderModal - Validation failed or no header");
       return;
     }
+
+    console.log("EditHeaderModal - Submitting with formData:", formData);
 
     setLoading(true);
     try {
       const payload: any = {
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
-        role_id: formData.role_id,
+        application_role_id: formData.application_role_id,
         goal_template_type: formData.goal_template_type,
       };
 
@@ -211,37 +216,52 @@ const EditHeaderModal = ({
             </p>
           </div>
 
-          {/* Role Selection */}
+          {/* Application Role Selection */}
           <div className="space-y-2">
-            <Label htmlFor="role" className="text-sm font-medium">
-              Role <span className="text-destructive">*</span>
+            <Label htmlFor="appRole" className="text-sm font-medium">
+              Application Role (Job Position){" "}
+              <span className="text-destructive">*</span>
             </Label>
             <Select
-              value={formData.role_id.toString()}
+              value={
+                formData.application_role_id
+                  ? formData.application_role_id.toString()
+                  : ""
+              }
               onValueChange={(value) =>
-                setFormData({ ...formData, role_id: Number.parseInt(value) })
+                setFormData({
+                  ...formData,
+                  application_role_id: Number.parseInt(value),
+                })
               }
               disabled={loading}
             >
               <SelectTrigger
-                id="role"
-                className={errors.role_id ? "border-destructive" : ""}
+                id="appRole"
+                className={
+                  errors.application_role_id ? "border-destructive" : ""
+                }
               >
-                <SelectValue placeholder="Select a role" />
+                <SelectValue placeholder="Select an application role" />
               </SelectTrigger>
               <SelectContent>
-                {availableRoles.map((role) => (
-                  <SelectItem key={role.id} value={role.id.toString()}>
-                    {role.name}
+                {applicationRoles.map((role) => (
+                  <SelectItem
+                    key={role.app_role_id}
+                    value={role.app_role_id.toString()}
+                  >
+                    {role.app_role_name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {errors.role_id && (
-              <p className="text-xs text-destructive">{errors.role_id}</p>
+            {errors.application_role_id && (
+              <p className="text-xs text-destructive">
+                {errors.application_role_id}
+              </p>
             )}
             <p className="text-xs text-muted-foreground">
-              Select the role this template header is designed for
+              Select the job position this template header is designed for
             </p>
           </div>
 

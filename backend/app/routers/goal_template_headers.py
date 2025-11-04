@@ -169,6 +169,7 @@ async def get_all_headers(
     limit: int = 100,
     filter_type: Optional[str] = Query(None, description="Filter by type: 'organization', 'self', or 'shared'"),
     search: Optional[str] = Query(None, description="Optional search term to filter by title or description"),
+    application_role_id: Optional[int] = Query(None, description="Filter by application role (job position)"),
     db: AsyncSession = Depends(get_db),
     service: GoalTemplateHeaderService = Depends(get_header_service),
     current_user: Employee = Depends(get_current_active_user)
@@ -176,10 +177,14 @@ async def get_all_headers(
     """
     Get all template headers with their templates, with optional filtering.
 
+    Now supports filtering by application_role_id (job position) instead of system role.
+
     Args:
         skip: Number of records to skip
         limit: Maximum number of records to return
         filter_type: Optional filter - 'organization', 'self', or 'shared'
+        search: Optional search term to filter by title or description
+        application_role_id: Optional filter by application role (job position)
         db: Database session
         service: Header service instance
         current_user: Current authenticated user
@@ -192,11 +197,21 @@ async def get_all_headers(
     """
     context = build_log_context(user_id=current_user.emp_id if current_user else None)
 
-    logger.info(f"{context}ROUTER_GET_ALL_HEADERS: Getting headers - Skip: {skip}, Limit: {limit}, Filter: {filter_type}")
+    logger.info(f"{context}ROUTER_GET_ALL_HEADERS: Getting headers - Skip: {skip}, Limit: {limit}, Filter: {filter_type}, App Role ID: {application_role_id}")
 
     try:
+        # If application_role_id is provided, filter by it
+        if application_role_id:
+            headers = await service.get_by_application_role_id(
+                db,
+                application_role_id,
+                include_templates=True,
+                skip=skip,
+                limit=limit,
+                search=search
+            )
         # Apply filtering based on filter_type — always pass pagination and search so results are coordinated
-        if filter_type == "organization":
+        elif filter_type == "organization":
             headers = await service.get_by_type(
                 db,
                 GoalTemplateTypeEnum.ORGANIZATION,

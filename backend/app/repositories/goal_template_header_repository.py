@@ -329,3 +329,84 @@ class GoalTemplateHeaderRepository(BaseRepository[GoalTemplateHeader]):
             error_msg = f"Error getting headers shared with user {user_id}"
             self.logger.error(f"{context}REPO_GET_SHARED_WITH_USER_ERROR: {error_msg}, Error: {str(e)}")
             raise RepositoryException(error_msg, details={"user_id": user_id, "original_error": str(e)})
+
+    @log_execution_time()
+    async def get_by_application_role(
+        self,
+        db: AsyncSession,
+        application_role_id: int,
+        load_templates: bool = False,
+        skip: int = 0,
+        limit: int = 100,
+        search: Optional[str] = None
+    ) -> List[GoalTemplateHeader]:
+        """Get all headers for a specific application role."""
+        context = build_log_context()
+
+        self.logger.debug(f"{context}REPO_GET_BY_APP_ROLE: Getting headers - App Role ID: {application_role_id}")
+
+        try:
+            query = select(GoalTemplateHeader).where(
+                GoalTemplateHeader.application_role_id == application_role_id
+            )
+
+            if search:
+                like_term = f"%{search}%"
+                query = query.where(
+                    or_(
+                        GoalTemplateHeader.title.ilike(like_term),
+                        GoalTemplateHeader.description.ilike(like_term)
+                    )
+                )
+
+            if load_templates:
+                query = query.options(
+                    selectinload(GoalTemplateHeader.goal_templates)
+                    .selectinload(GoalTemplate.categories)
+                )
+
+            query = query.offset(skip).limit(limit)
+            result = await db.execute(query)
+            headers = list(result.scalars().all())
+
+            self.logger.debug(f"{context}REPO_GET_BY_APP_ROLE_SUCCESS: Retrieved {len(headers)} headers")
+            return headers
+
+        except Exception as e:
+            error_msg = f"Error getting headers by application_role_id {application_role_id}"
+            self.logger.error(f"{context}REPO_GET_BY_APP_ROLE_ERROR: {error_msg}, Error: {str(e)}")
+            raise RepositoryException(error_msg, details={"application_role_id": application_role_id, "original_error": str(e)})
+
+    @log_execution_time()
+    async def check_duplicate_title(
+        self,
+        db: AsyncSession,
+        application_role_id: int,
+        title: str,
+        exclude_header_id: Optional[int] = None
+    ) -> bool:
+        """Check if a header with the same title exists for the application role."""
+        context = build_log_context()
+
+        self.logger.debug(f"{context}REPO_CHECK_DUPLICATE_TITLE: App Role ID: {application_role_id}, Title: {title}")
+
+        try:
+            query = select(GoalTemplateHeader).where(
+                GoalTemplateHeader.application_role_id == application_role_id,
+                GoalTemplateHeader.title == title
+            )
+
+            if exclude_header_id:
+                query = query.where(GoalTemplateHeader.header_id != exclude_header_id)
+
+            result = await db.execute(query)
+            exists = result.scalars().first() is not None
+
+            self.logger.debug(f"{context}REPO_CHECK_DUPLICATE_TITLE_RESULT: Duplicate exists: {exists}")
+            return exists
+
+        except Exception as e:
+            error_msg = "Error checking duplicate title"
+            self.logger.error(f"{context}REPO_CHECK_DUPLICATE_TITLE_ERROR: {error_msg}, Error: {str(e)}")
+            raise RepositoryException(error_msg, details={"application_role_id": application_role_id, "title": title, "original_error": str(e)})
+

@@ -6,6 +6,7 @@ import ImportFromTemplateModal from "../goals/ImportFromTemplateModal";
 import { useAuth } from "../../contexts/AuthContext";
 
 import type { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 
 import { getAddGoalDisabledReason } from "../../pages/appraisal-create/helpers/uiHelpers";
 import {
@@ -18,6 +19,7 @@ import {
   syncGoalChanges as syncGoalChangesHelper,
   saveAppraisal,
   submitAppraisal,
+  checkForDuplicateAppraisal,
 } from "../../pages/appraisal-create/helpers/appraisalHelpers";
 import {
   handleAddGoal,
@@ -118,13 +120,19 @@ const CreateAppraisalModal = ({
     return isNew ? "Save Draft" : "Save Changes";
   };
 
+  // Default annual appraisal period: Oct 1, 2024 - Sep 30, 2025
+  const defaultPeriod: [Dayjs, Dayjs] = [
+    dayjs("2024-10-01"),
+    dayjs("2025-09-30"),
+  ];
+
   // Controlled form state
   const [formValues, setFormValues] = useState<AppraisalFormValues>({
     appraisee_id: 0,
     reviewer_id: 0,
     appraisal_type_id: 0,
     appraisal_type_range_id: undefined,
-    period: undefined,
+    period: defaultPeriod,
   });
   const [loading, setLoading] = useState(false);
   const [isAppraisalDetailsCollapsed, setIsAppraisalDetailsCollapsed] =
@@ -150,6 +158,14 @@ const CreateAppraisalModal = ({
     removed: number[]; // goal_ids
     updated: AppraisalGoal[];
   }>({ added: [], removed: [], updated: [] });
+
+  // Duplicate appraisal detection state
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [duplicateAppraisalInfo, setDuplicateAppraisalInfo] = useState<{
+    period: string;
+    appraisalId: number;
+  } | null>(null);
+
   const { user } = useAuth();
   const isLocked =
     createdAppraisalId !== null && createdAppraisalStatus !== "Draft";
@@ -203,13 +219,23 @@ const CreateAppraisalModal = ({
 
   // Eligible reviewers: Manager or above. Use centralized helper which
   // explicitly excludes Admin from reviewer eligibility.
-  const eligibleReviewers = employees.filter(
-    (emp) =>
-      isReviewerEligible((emp as any).role_id, (emp as any).role?.role_name) &&
-      // Require reviewer to be equal or higher in role level than the current user
-      compareRoleLevels((emp as any).role_id ?? 0, appraiserRoleId ?? 0) >= 0 &&
-      emp.emp_id !== user?.emp_id
-  );
+  // Special case: The appraiser (current user) can also be a reviewer if they are Manager or above
+  const eligibleReviewers = employees.filter((emp) => {
+    const isGenerallyEligible = isReviewerEligible(
+      (emp as any).role_id,
+      (emp as any).role?.role_name
+    );
+    const isCurrentUserAndManagerPlus =
+      emp.emp_id === user?.emp_id &&
+      isReviewerEligible(user?.role_id, user?.role?.role_name);
+
+    return (
+      (isGenerallyEligible || isCurrentUserAndManagerPlus) &&
+      // Require reviewer to be equal or higher in role level than the current user (for non-current users)
+      (emp.emp_id === user?.emp_id ||
+        compareRoleLevels((emp as any).role_id ?? 0, appraiserRoleId ?? 0) >= 0)
+    );
+  });
 
   const handleGoalAdded = (appraisalGoal: AppraisalGoal) => {
     handleAddGoal(appraisalGoal, goals, setGoals, setAddGoalModalOpen);
@@ -321,6 +347,56 @@ const CreateAppraisalModal = ({
       return;
     }
 
+    // Check for duplicate appraisal with overlapping period before saving
+    if (
+      formValues.period &&
+      formValues.period[0] &&
+      formValues.period[1] &&
+      formValues.appraisee_id
+    ) {
+      const start_date = formValues.period[0].format("YYYY-MM-DD");
+      const end_date = formValues.period[1].format("YYYY-MM-DD");
+
+      try {
+        // Always check against the currently selected employee
+        const duplicateCheck = await checkForDuplicateAppraisal(
+          formValues.appraisee_id,
+          start_date,
+          end_date,
+          createdAppraisalId ?? undefined
+        );
+
+        if (duplicateCheck.exists && duplicateCheck.appraisal) {
+          const existing = duplicateCheck.appraisal;
+          const existingPeriod = `${dayjs(existing.start_date).format(
+            "MMM DD, YYYY"
+          )} - ${dayjs(existing.end_date).format("MMM DD, YYYY")}`;
+
+          // Get employee name for better error message
+          const employeeName =
+            employees.find((e) => e.emp_id === formValues.appraisee_id)
+              ?.emp_name || "this employee";
+
+          // Show dialog instead of just toast
+          setDuplicateAppraisalInfo({
+            period: existingPeriod,
+            appraisalId: existing.appraisal_id,
+          });
+          setShowDuplicateDialog(true);
+
+          // Also show a toast for immediate feedback
+          toast.error("Cannot save", {
+            description: `${employeeName} already has an appraisal with overlapping period.`,
+          });
+
+          return; // Stop the save process
+        }
+      } catch (error) {
+        console.error("Error checking for duplicate:", error);
+        // Continue with save if check fails (fail open)
+      }
+    }
+
     setLoading(true);
     try {
       const appraisalId = await saveAppraisal(
@@ -360,6 +436,57 @@ const CreateAppraisalModal = ({
 
   const handleFinish = async () => {
     if (!createdAppraisalId || createdAppraisalStatus !== "Draft") return;
+
+    // Check for duplicate appraisal with overlapping period before submitting
+    if (
+      formValues.period &&
+      formValues.period[0] &&
+      formValues.period[1] &&
+      formValues.appraisee_id
+    ) {
+      const start_date = formValues.period[0].format("YYYY-MM-DD");
+      const end_date = formValues.period[1].format("YYYY-MM-DD");
+
+      try {
+        // Always check against the currently selected employee
+        const duplicateCheck = await checkForDuplicateAppraisal(
+          formValues.appraisee_id,
+          start_date,
+          end_date,
+          createdAppraisalId ?? undefined
+        );
+
+        if (duplicateCheck.exists && duplicateCheck.appraisal) {
+          const existing = duplicateCheck.appraisal;
+          const existingPeriod = `${dayjs(existing.start_date).format(
+            "MMM DD, YYYY"
+          )} - ${dayjs(existing.end_date).format("MMM DD, YYYY")}`;
+
+          // Get employee name for better error message
+          const employeeName =
+            employees.find((e) => e.emp_id === formValues.appraisee_id)
+              ?.emp_name || "this employee";
+
+          // Show dialog instead of just toast
+          setDuplicateAppraisalInfo({
+            period: existingPeriod,
+            appraisalId: existing.appraisal_id,
+          });
+          setShowDuplicateDialog(true);
+
+          // Also show a toast for immediate feedback
+          toast.error("Cannot submit", {
+            description: `${employeeName} already has an appraisal with overlapping period.`,
+          });
+
+          return; // Stop the submit process
+        }
+      } catch (error) {
+        console.error("Error checking for duplicate:", error);
+        // Continue with submit if check fails (fail open)
+      }
+    }
+
     setLoading(true);
     try {
       await syncGoalChanges(createdAppraisalId);
@@ -416,6 +543,18 @@ const CreateAppraisalModal = ({
             toast.error(error.message || "Failed to load appraisal");
             onClose();
           }
+        } else {
+          // Auto-select "Annual" type for new appraisals
+          if (types) {
+            const annualType = types.find((t) => t.name === "Annual");
+            if (annualType) {
+              setSelectedTypeId(annualType.id);
+              setFormValues((prev) => ({
+                ...prev,
+                appraisal_type_id: annualType.id,
+              }));
+            }
+          }
         }
       };
       loadData();
@@ -463,6 +602,7 @@ const CreateAppraisalModal = ({
                   setIsAppraisalDetailsCollapsed(!isAppraisalDetailsCollapsed)
                 }
                 isLocked={isLocked}
+                disableTypeSelection={!appraisalId}
                 onFetchRanges={fetchRanges}
               />
             </div>
@@ -589,6 +729,39 @@ const CreateAppraisalModal = ({
             : Math.max(0, 100 - totalWeightageUi)
         }
       />
+
+      {/* Duplicate Appraisal Dialog */}
+      <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>⚠️ Duplicate Appraisal Period</DialogTitle>
+            <div className="space-y-3 pt-2 text-sm text-muted-foreground">
+              <p className="font-semibold text-destructive">
+                Cannot create appraisal with overlapping period.
+              </p>
+              <p>
+                An appraisal already exists for this employee with the period:
+              </p>
+              <p className="font-semibold text-foreground bg-muted px-3 py-2 rounded">
+                {duplicateAppraisalInfo?.period}
+              </p>
+              <p className="text-sm">
+                Please select a different date range that doesn't overlap with
+                existing appraisals.
+              </p>
+            </div>
+          </DialogHeader>
+          <div className="flex justify-end pt-4">
+            <Button
+              onClick={() => setShowDuplicateDialog(false)}
+              variant="default"
+              className="w-full sm:w-auto"
+            >
+              OK, I'll Change the Dates
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

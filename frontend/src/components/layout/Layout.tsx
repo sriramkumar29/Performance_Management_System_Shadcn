@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import Navbar from "../navbar/Navbar";
 import CreateAppraisalButton from "../../features/appraisal/CreateAppraisalButton";
 import { Toaster } from "../ui/toaster";
-import { isManagerOrAbove } from "../../utils/roleHelpers";
+import { isLeadOrAbove } from "../../utils/roleHelpers";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -13,7 +13,7 @@ const Layout = ({ children }: LayoutProps) => {
   const { user } = useAuth();
   const location = useLocation();
 
-  const showTeamTab = isManagerOrAbove(user?.role_id, user?.role?.role_name);
+  const showTeamTab = isLeadOrAbove(user?.role_id, user?.role?.role_name);
 
   // Determine the page title based on the current route
   const getPageTitle = () => {

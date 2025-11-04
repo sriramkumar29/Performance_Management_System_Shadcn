@@ -7,7 +7,7 @@
   </head>
   <body style="margin:0;padding:0;background-color:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#333;">
     <!-- Preheader text (hidden in email clients) -->
-    <div style="display:none;max-height:0px;overflow:hidden;">A new appraisal {{ appraisal_id}} has been created for you. View details inside.</div>
+    <div style="display:none;max-height:0px;overflow:hidden;">A new appraisal has been created for you. View details inside.</div>
 
     <table role="presentation" style="border-collapse:collapse;width:100%;">
       <tr>
@@ -18,85 +18,58 @@
                 <h1 style="margin:0;font-size:20px;font-weight:600;">New Appraisal Created</h1>
               </td>
             </tr>
-            <!-- Progress bar (initial state) -->
-            <tr>
-              <td style="padding:18px 24px 6px 24px;background:#ffffff;">
-                {% set steps = ['Draft','Submitted','Appraisee Self Assessment','Appraiser Evaluation','Reviewer Evaluation','Complete'] %}
-                <table role="presentation" style="border-collapse:collapse;width:100%;font-family:Arial,Helvetica,sans-serif;table-layout:fixed;">
-                  <tr>
-                    <td style="padding:8px 0 0 0;text-align:center;">
-                      <div style="display:inline-block;width:100%;max-width:520px;">
-                        <table role="presentation" style="border-collapse:collapse;width:100%;">
-                          <tr>
-                            {% for step in steps %}
-                              {% set idx = loop.index0 %}
-                              {% set completed = (status in steps and steps.index(status) >= idx) %}
-                              <td style="width:15%;text-align:center;vertical-align:middle;padding:6px 4px;">
-                                <div style="display:inline-block;text-align:center;vertical-align:middle;">
-                                  {% if completed %}
-                                    <div style="width:36px;height:36px;border-radius:18px;line-height:36px;margin:0 auto;background:#2b8aef;color:#ffffff;font-weight:700;font-size:14px;box-shadow:0 2px 4px rgba(43,138,239,0.18);">
-                                      &#10003;
-                                    </div>
-                                  {% else %}
-                                    <div style="width:36px;height:36px;border-radius:18px;line-height:36px;margin:0 auto;background:#f1f5f9;color:#6b7280;font-weight:700;font-size:14px;">
-                                      {{ loop.index }}
-                                    </div>
-                                  {% endif %}
-                                  <div style="margin-top:8px;font-size:12px;color:#6b7280;">{{ step }}</div>
-                                </div>
-                              </td>
-                              {% if not loop.last %}
-                                <td style="width:2%;vertical-align:middle;">
-                                  <div style="height:2px;background:#e6eefb;width:100%;display:inline-block;margin:0 2px;">&nbsp;</div>
-                                </td>
-                              {% endif %}
-                            {% endfor %}
-                          </tr>
-                        </table>
-                      </div>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
             <tr>
               <td style="padding:24px;">
                 <p style="margin:0 0 12px 0;font-size:15px;">Hello <strong>{{ appraisee_name }}</strong>,</p>
                 <p style="margin:0 0 16px 0;color:#444;font-size:14px;line-height:1.5;">An appraisal has been created for you. Below are the details — please review and complete any required actions within the deadline.</p>
 
-                <table role="presentation" style="border-collapse:collapse;width:100%;margin:16px 0 20px 0;">
+                <!-- Grid style information table -->
+                <table role="presentation" style="border-collapse:collapse;width:100%;margin:16px 0 20px 0;background:#f7f9fb;border:1px solid #eef4fb;border-radius:6px;">
                   <tr>
-                    <td style="padding:8px 12px;background:#f7f9fb;border:1px solid #eef4fb;border-radius:6px;color:#333;font-size:14px;">
-                      <div style="margin-bottom:6px"><strong>Appraisal ID:</strong> {{ appraisal_id }}</div>
-                      <div style="margin-bottom:6px"><strong>Start Date:</strong> {{ start_date }}</div>
-                      <div style="margin-bottom:6px"><strong>End Date:</strong> {{ end_date }}</div>
+                    <td style="padding:12px;width:50%;vertical-align:top;border-right:1px solid #eef4fb;">
+                      <div style="margin-bottom:12px;">
+                        <div style="font-size:11px;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Start Date</div>
+                        <div style="font-size:14px;color:#333;font-weight:600;">{{ start_date }}</div>
+                      </div>
                       {% if appraisal_type %}
-                      <div style="margin-bottom:6px"><strong>Type:</strong> {{ appraisal_type }}</div>
-                      {% endif %}
-                      {% if status %}
-                      <div style="margin-bottom:6px"><strong>Status:</strong> {{ status }}</div>
+                      <div style="margin-bottom:12px;">
+                        <div style="font-size:11px;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Type</div>
+                        <div style="font-size:14px;color:#333;font-weight:600;">{{ appraisal_type }}</div>
+                      </div>
                       {% endif %}
                       {% if appraiser_name %}
-                      <div style="margin-bottom:6px"><strong>Appraiser:</strong> {{ appraiser_name }}</div>
+                      <div>
+                        <div style="font-size:11px;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Appraiser</div>
+                        <div style="font-size:14px;color:#333;font-weight:600;">{{ appraiser_name }}</div>
+                      </div>
+                      {% endif %}
+                    </td>
+                    <td style="padding:12px;width:50%;vertical-align:top;">
+                      <div style="margin-bottom:12px;">
+                        <div style="font-size:11px;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">End Date</div>
+                        <div style="font-size:14px;color:#333;font-weight:600;">{{ end_date }}</div>
+                      </div>
+                      {% if status %}
+                      <div style="margin-bottom:12px;">
+                        <div style="font-size:11px;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Status</div>
+                        <div style="font-size:14px;color:#333;font-weight:600;">{{ status }}</div>
+                      </div>
                       {% endif %}
                       {% if reviewer_name %}
-                      <div style="margin-bottom:6px"><strong>Reviewer:</strong> {{ reviewer_name }}</div>
-                      {% endif %}
-                      {% if goals_count is not none %}
-                      <div style="margin-bottom:6px"><strong>Goals:</strong> {{ goals_count }}</div>
+                      <div style="margin-bottom:12px;">
+                        <div style="font-size:11px;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Reviewer</div>
+                        <div style="font-size:14px;color:#333;font-weight:600;">{{ reviewer_name }}</div>
+                      </div>
                       {% endif %}
                       {% if created_at %}
-                      <div style="margin-bottom:6px"><strong>Created:</strong> {{ created_at }}</div>
+                      <div>
+                        <div style="font-size:11px;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Created</div>
+                        <div style="font-size:14px;color:#333;font-weight:600;">{{ created_at }}</div>
+                      </div>
                       {% endif %}
                     </td>
                   </tr>
                 </table>
-
-                {% if appraisal_url %}
-                <p style="text-align:center;margin:0 0 18px 0;">
-                  <a href="{{ appraisal_url }}" style="display:inline-block;padding:12px 20px;background:#2b8aef;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Appraisal</a>
-                </p>
-                {% endif %}
 
                 <p style="margin:0;color:#6b7280;font-size:13px;">If you have any questions, reply to this email or contact your manager.</p>
                 <p style="margin:18px 0 0 0;color:#6b7280;font-size:13px;">Regards,<br/>Performance Management System</p>

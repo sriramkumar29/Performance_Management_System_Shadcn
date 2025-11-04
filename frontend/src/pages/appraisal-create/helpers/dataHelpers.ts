@@ -11,6 +11,7 @@ interface Employee {
   emp_name: string;
   emp_email: string;
   role_id: number;
+  application_role_id?: number;
   role: Role;
 }
 

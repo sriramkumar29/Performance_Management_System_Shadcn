@@ -51,6 +51,69 @@ export interface DraftAppraisal {
   updated_at: string;
 }
 
+// Helper function to check for duplicate/overlapping appraisals for the same employee
+export const checkForDuplicateAppraisal = async (
+  appraisee_id: number,
+  start_date: string,
+  end_date: string,
+  current_appraisal_id?: number
+): Promise<{ exists: boolean; appraisal?: any }> => {
+  try {
+    const params = new URLSearchParams({
+      appraisee_id: appraisee_id.toString(),
+    });
+
+    const res = await apiFetch<any[]>(`/api/appraisals/?${params.toString()}`);
+
+    if (!res.ok || !res.data || res.data.length === 0) {
+      return { exists: false };
+    }
+
+    // Check for overlapping periods (excluding draft status and current appraisal being edited)
+    const overlapping = res.data.find((appraisal: any) => {
+      // Skip the current appraisal being edited
+      if (current_appraisal_id && appraisal.appraisal_id === current_appraisal_id) {
+        return false;
+      }
+
+      // Skip draft appraisals (only check submitted and beyond)
+      if (appraisal.status === "Draft") {
+        return false;
+      }
+
+      // Check if dates overlap
+      const existingStart = dayjs(appraisal.start_date);
+      const existingEnd = dayjs(appraisal.end_date);
+      const newStart = dayjs(start_date);
+      const newEnd = dayjs(end_date);
+
+      // Two periods overlap if:
+      // 1. New period starts during existing period OR
+      // 2. New period ends during existing period OR
+      // 3. New period completely contains existing period
+      const overlaps =
+        ((newStart.isAfter(existingStart) || newStart.isSame(existingStart)) &&
+          (newStart.isBefore(existingEnd) || newStart.isSame(existingEnd))) ||
+        ((newEnd.isAfter(existingStart) || newEnd.isSame(existingStart)) &&
+          (newEnd.isBefore(existingEnd) || newEnd.isSame(existingEnd))) ||
+        ((newStart.isBefore(existingStart) || newStart.isSame(existingStart)) &&
+          (newEnd.isAfter(existingEnd) || newEnd.isSame(existingEnd)));
+
+      return overlaps;
+    });
+
+    if (overlapping) {
+      return { exists: true, appraisal: overlapping };
+    }
+
+    return { exists: false };
+  } catch (error) {
+    console.error("Error checking for duplicate appraisal:", error);
+    // Return false to not block the user in case of API error
+    return { exists: false };
+  }
+};
+
 // Helper function to check for existing draft appraisals with matching criteria
 export const checkForDraftAppraisal = async (
   appraisee_id: number,
@@ -249,14 +312,25 @@ export const saveAppraisal = async (
   appraiserEmpId: number,
   appraisalId?: number
 ) => {
+  // Validate period is provided
+  if (!formValues.period || !formValues.period[0] || !formValues.period[1]) {
+    throw new Error("Appraisal period is required");
+  }
+
+  const start_date = formValues.period[0].format("YYYY-MM-DD");
+  const end_date = formValues.period[1].format("YYYY-MM-DD");
+
+  // Note: Duplicate check is now handled in the component to show a dialog
+  // instead of just throwing an error
+
   const body = {
     appraisee_id: formValues.appraisee_id,
     appraiser_id: appraiserEmpId,
     reviewer_id: formValues.reviewer_id,
     appraisal_type_id: formValues.appraisal_type_id,
     appraisal_type_range_id: formValues.appraisal_type_range_id ?? null,
-    start_date: formValues.period?.[0]?.format("YYYY-MM-DD"),
-    end_date: formValues.period?.[1]?.format("YYYY-MM-DD"),
+    start_date,
+    end_date,
     status: "Draft" as AppraisalStatus,
   };
 

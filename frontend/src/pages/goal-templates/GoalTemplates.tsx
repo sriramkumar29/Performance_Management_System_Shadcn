@@ -8,10 +8,8 @@ import { Label } from "../../components/ui/label";
 import CreateTemplateModal from "../../components/modals/CreateTemplateModal";
 import EditTemplateModal from "../../components/modals/EditTemplateModal";
 // getHeadersByRole removed - use getAllHeaders/loadTemplates with filterType instead
-import type {
-  GoalTemplateHeaderWithTemplates,
-  Role,
-} from "../../types/goalTemplateHeader";
+import type { GoalTemplateHeaderWithTemplates } from "../../types/goalTemplateHeader";
+import type { ApplicationRole } from "../../types/applicationRole";
 import { Card, CardContent } from "../../components/ui/card";
 import { useAuth } from "../../contexts/AuthContext";
 import { toast } from "sonner";
@@ -34,7 +32,7 @@ import {
   Flag,
   TrendingUp,
 } from "lucide-react";
-import { isManagerOrAbove } from "../../utils/roleHelpers";
+import { isManagerOrAbove, isLeadOrAbove } from "../../utils/roleHelpers";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
 import {
   Select,
@@ -64,6 +62,7 @@ import {
   getAllHeaders,
   cloneHeaderToSelf,
 } from "../../api/goalTemplateHeaders";
+import { getAllApplicationRoles } from "../../api/applicationRoles";
 
 interface Category {
   id: number;
@@ -134,13 +133,17 @@ const GoalTemplates = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [templates, setTemplates] = useState<GoalTemplate[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
+  const [applicationRoles, setApplicationRoles] = useState<ApplicationRole[]>(
+    []
+  );
   const [headers, setHeaders] = useState<GoalTemplateHeaderWithTemplates[]>([]);
   // Cached global headers to allow client-side filtering without refetching
   const [allHeaders, setAllHeaders] = useState<
     GoalTemplateHeaderWithTemplates[]
   >([]);
-  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
+  const [selectedAppRoleId, setSelectedAppRoleId] = useState<number | null>(
+    null
+  );
   const [filterType, setFilterType] = useState<
     "organization" | "self" | "shared" | null
   >("organization");
@@ -198,9 +201,11 @@ const GoalTemplates = () => {
       toast.success("Template deleted");
       // Refresh data by reloading current filter type
       const data = await loadTemplates(filterType);
-      // Apply role filter if selected
-      if (data && selectedRoleId) {
-        const filtered = data.filter((h) => h.role_id === selectedRoleId);
+      // Apply application role filter if selected
+      if (data && selectedAppRoleId) {
+        const filtered = data.filter(
+          (h) => h.application_role_id === selectedAppRoleId
+        );
         setHeaders(filtered);
         setTemplates(filtered.flatMap((h) => h.goal_templates || []));
       }
@@ -239,11 +244,13 @@ const GoalTemplates = () => {
       // Load headers with optional filtering
       // Pass the component search state as the 'search' parameter so backend will
       // apply search filtering server-side in coordination with pagination and filters.
+      // Also pass application_role_id if selected
       const res = await getAllHeaders(
         0,
         100,
         filterTypeParam || undefined,
-        filter
+        filter,
+        selectedAppRoleId || undefined
       );
       if (res.ok && res.data) {
         // Only cache allHeaders when loading ALL headers (no search filter AND no type filter)
@@ -269,22 +276,17 @@ const GoalTemplates = () => {
     return null;
   };
 
-  const loadRoles = async () => {
+  const loadApplicationRoles = async () => {
     try {
-      const res = await apiFetch<Role[]>("/api/roles/");
+      const res = await getAllApplicationRoles();
       if (res.ok && res.data) {
-        // Filter out Admin and CEO roles so they don't appear in the role selector
-        const filtered = (res.data as Role[]).filter((r) => {
-          const name = (r.role_name || "").toLowerCase();
-          return !name.includes("admin") && !name.includes("ceo");
-        });
-        setRoles(filtered);
-        return filtered;
+        setApplicationRoles(res.data);
+        return res.data;
       }
     } catch (err) {
-      console.error("Failed to load roles", err);
+      console.error("Failed to load application roles", err);
     }
-    return [] as Role[];
+    return [] as ApplicationRole[];
   };
 
   // roleCounts removed: we no longer show per-role template counts in the UI.
@@ -310,9 +312,11 @@ const GoalTemplates = () => {
         toast.success("Header deleted successfully");
         // Refresh data by reloading current filter type
         const data = await loadTemplates(filterType);
-        // Apply role filter if selected
-        if (data && selectedRoleId) {
-          const filtered = data.filter((h) => h.role_id === selectedRoleId);
+        // Apply application role filter if selected
+        if (data && selectedAppRoleId) {
+          const filtered = data.filter(
+            (h) => h.application_role_id === selectedAppRoleId
+          );
           setHeaders(filtered);
           setTemplates(filtered.flatMap((h) => h.goal_templates || []));
         }
@@ -335,9 +339,11 @@ const GoalTemplates = () => {
         toast.success("Header cloned to your Self templates");
         // Refresh data by reloading current filter type
         const data = await loadTemplates(filterType);
-        // Apply role filter if selected
-        if (data && selectedRoleId) {
-          const filtered = data.filter((h) => h.role_id === selectedRoleId);
+        // Apply application role filter if selected
+        if (data && selectedAppRoleId) {
+          const filtered = data.filter(
+            (h) => h.application_role_id === selectedAppRoleId
+          );
           setHeaders(filtered);
           setTemplates(filtered.flatMap((h) => h.goal_templates || []));
         }
@@ -382,9 +388,11 @@ const GoalTemplates = () => {
     const updatedCache = await refreshCache();
     let filtered = updatedCache;
 
-    // Apply role filter if selected (for all filter types)
-    if (selectedRoleId) {
-      filtered = filtered.filter((h) => h.role_id === selectedRoleId);
+    // Apply application role filter if selected (for all filter types)
+    if (selectedAppRoleId) {
+      filtered = filtered.filter(
+        (h) => h.application_role_id === selectedAppRoleId
+      );
     }
 
     if (filterType) {
@@ -405,9 +413,11 @@ const GoalTemplates = () => {
     const updatedCache = await refreshCache();
     let filtered = updatedCache;
 
-    // Apply role filter if selected (for all filter types)
-    if (selectedRoleId) {
-      filtered = filtered.filter((h) => h.role_id === selectedRoleId);
+    // Apply application role filter if selected (for all filter types)
+    if (selectedAppRoleId) {
+      filtered = filtered.filter(
+        (h) => h.application_role_id === selectedAppRoleId
+      );
     }
 
     if (filterType) {
@@ -450,12 +460,12 @@ const GoalTemplates = () => {
   };
 
   useEffect(() => {
-    // Load roles first. Default the view to 'All Roles' (global flattened templates)
-    // so the page doesn't stay in a perpetual loading state when roles exist.
+    // Load application roles first. Default the view to 'All Application Roles' (global flattened templates)
+    // so the page doesn't stay in a perpetual loading state when application roles exist.
     (async () => {
       setLoading(true);
       try {
-        await loadRoles();
+        await loadApplicationRoles();
 
         // Load all three types to populate cache with user-specific data
         const [orgData, selfData, sharedData] = await Promise.all([
@@ -492,10 +502,10 @@ const GoalTemplates = () => {
     })();
   }, []);
 
-  // whenever roles change, no per-role counts are required anymore; keep dropdown default as 'All Roles'
+  // whenever application roles change, no per-role counts are required anymore; keep dropdown default as 'All Application Roles'
   useEffect(() => {
-    // noop - roles are loaded elsewhere and the dropdown defaults to All Roles
-  }, [roles, selectedRoleId]);
+    // noop - application roles are loaded elsewhere and the dropdown defaults to All Application Roles
+  }, [applicationRoles, selectedAppRoleId]);
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -754,7 +764,7 @@ const GoalTemplates = () => {
             </p>
           </div>
         </div>
-        {isManagerOrAbove(user?.role_id, user?.role?.role_name) && (
+        {isLeadOrAbove(user?.role_id, user?.role?.role_name) && (
           <div className="flex items-center gap-2">
             {/* <Button
               onClick={() => setShowCreateModal(true)}
@@ -796,14 +806,16 @@ const GoalTemplates = () => {
             />
           </div>
 
-          {/* Role selector (replaces role buttons) */}
+          {/* Application Role selector */}
           <div className="w-full sm:w-[260px]">
-            <Label className="mb-1 block text-sm font-medium">Role</Label>
+            <Label className="mb-1 block text-sm font-medium">
+              Application Role
+            </Label>
             <Select
-              value={selectedRoleId ? String(selectedRoleId) : "all"}
+              value={selectedAppRoleId ? String(selectedAppRoleId) : "all"}
               onValueChange={async (v) => {
                 if (v === "all") {
-                  setSelectedRoleId(null);
+                  setSelectedAppRoleId(null);
 
                   // If Self or Shared filter is active, re-fetch from server
                   // because these are user-specific and can't be filtered locally
@@ -830,13 +842,15 @@ const GoalTemplates = () => {
                   }
                 } else {
                   const id = Number(v);
-                  setSelectedRoleId(id);
+                  setSelectedAppRoleId(id);
 
-                  // For Self or Shared, re-fetch and apply role filter
+                  // For Self or Shared, re-fetch and apply application role filter
                   if (filterType === "self" || filterType === "shared") {
                     const data = await loadTemplates(filterType);
                     if (data) {
-                      const filtered = data.filter((h) => h.role_id === id);
+                      const filtered = data.filter(
+                        (h) => h.application_role_id === id
+                      );
                       setHeaders(filtered);
                       setTemplates(
                         filtered.flatMap((h) => h.goal_templates || [])
@@ -844,7 +858,9 @@ const GoalTemplates = () => {
                     }
                   } else {
                     // For Organization or no filter, filter locally from cache
-                    let filtered = allHeaders.filter((h) => h.role_id === id);
+                    let filtered = allHeaders.filter(
+                      (h) => h.application_role_id === id
+                    );
                     if (filterType === "organization") {
                       filtered = filtered.filter(
                         (h) =>
@@ -861,13 +877,16 @@ const GoalTemplates = () => {
               }}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="All Roles" />
+                <SelectValue placeholder="All Application Roles" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                {roles.map((role) => (
-                  <SelectItem key={role.id} value={String(role.id)}>
-                    {role.role_name}
+                <SelectItem value="all">All Application Roles</SelectItem>
+                {applicationRoles.map((appRole) => (
+                  <SelectItem
+                    key={appRole.app_role_id}
+                    value={String(appRole.app_role_id)}
+                  >
+                    {appRole.app_role_name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -881,7 +900,7 @@ const GoalTemplates = () => {
               onClick={() => {
                 setFilter("");
                 setFilterType("organization");
-                setSelectedRoleId(null);
+                setSelectedAppRoleId(null);
                 // Filter locally to show organization headers
                 const filtered = allHeaders.filter(
                   (h) =>
@@ -918,10 +937,10 @@ const GoalTemplates = () => {
                 // Always filter locally from cached data
                 let filtered = allHeaders;
 
-                // Apply role filter if selected
-                if (selectedRoleId) {
+                // Apply application role filter if selected
+                if (selectedAppRoleId) {
                   filtered = filtered.filter(
-                    (h) => h.role_id === selectedRoleId
+                    (h) => h.application_role_id === selectedAppRoleId
                   );
                 }
 
@@ -960,10 +979,10 @@ const GoalTemplates = () => {
                   suppressLoading: true,
                 });
 
-                // If a role is selected, apply role filter to the server response
-                if (selectedRoleId && data) {
+                // If an application role is selected, apply application role filter to the server response
+                if (selectedAppRoleId && data) {
                   const filtered = data.filter(
-                    (h) => h.role_id === selectedRoleId
+                    (h) => h.application_role_id === selectedAppRoleId
                   );
                   setHeaders(filtered);
                   setTemplates(filtered.flatMap((h) => h.goal_templates || []));
@@ -1005,15 +1024,15 @@ const GoalTemplates = () => {
                   data
                 );
 
-                // Apply role filter if selected
-                if (selectedRoleId && data) {
+                // Apply application role filter if selected
+                if (selectedAppRoleId && data) {
                   console.log(
-                    "Applying role filter:",
-                    selectedRoleId,
+                    "Applying application role filter:",
+                    selectedAppRoleId,
                     "to shared templates"
                   );
                   const filtered = data.filter(
-                    (h) => h.role_id === selectedRoleId
+                    (h) => h.application_role_id === selectedAppRoleId
                   );
                   console.log(
                     "Filtered shared templates:",
@@ -1181,7 +1200,7 @@ const GoalTemplates = () => {
                                         header.header_id
                                       );
                                       setCreateModalInitialRoleId(
-                                        header.role_id
+                                        header.application_role_id || null
                                       );
                                       setShowCreateModal(true);
                                     }}
@@ -1318,7 +1337,7 @@ const GoalTemplates = () => {
                                           </div>
                                         </div>
 
-                                        {isManagerOrAbove(
+                                        {isLeadOrAbove(
                                           user?.role_id,
                                           user?.role?.role_name
                                         ) &&
@@ -1479,9 +1498,9 @@ const GoalTemplates = () => {
                     const data = await loadTemplates(filterType);
                     if (data) {
                       let filtered = data;
-                      if (selectedRoleId) {
+                      if (selectedAppRoleId) {
                         filtered = filtered.filter(
-                          (h) => h.role_id === selectedRoleId
+                          (h) => h.application_role_id === selectedAppRoleId
                         );
                       }
                       setHeaders(filtered);
@@ -1508,10 +1527,10 @@ const GoalTemplates = () => {
                     setSharingHeader(null);
                     // Refresh data by reloading current filter type
                     const data = await loadTemplates(filterType);
-                    // Apply role filter if selected
-                    if (data && selectedRoleId) {
+                    // Apply application role filter if selected
+                    if (data && selectedAppRoleId) {
                       const filtered = data.filter(
-                        (h) => h.role_id === selectedRoleId
+                        (h) => h.application_role_id === selectedAppRoleId
                       );
                       setHeaders(filtered);
                       setTemplates(

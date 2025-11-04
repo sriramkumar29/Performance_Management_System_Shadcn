@@ -9,6 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 from pydantic import BaseModel
 
+from sqlalchemy.future import select
+import logging
+
 # Import auth dependencies for easy access
 from .auth import (
     oauth2_scheme,
@@ -80,8 +83,7 @@ async def get_employee_by_id(
         ValidationError: If employee_id is not a positive integer
         EntityNotFoundError: If employee is not found
     """
-    from sqlalchemy.future import select
-    import logging
+
     
     logger = logging.getLogger(__name__)
     logger.info(f"get_employee_by_id called with employee_id: {employee_id} (type: {type(employee_id)})")

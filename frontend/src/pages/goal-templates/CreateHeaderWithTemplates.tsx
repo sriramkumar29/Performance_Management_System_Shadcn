@@ -35,6 +35,7 @@ import {
   getHeaderById,
 } from "../../api/goalTemplateHeaders";
 import { createTemplateForHeader } from "../../api/goalTemplateHeaders";
+import { getAllApplicationRoles } from "../../api/applicationRoles";
 import CreateTemplateModal from "../../components/modals/CreateTemplateModal";
 import EditTemplateModal from "../../components/modals/EditTemplateModal";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
@@ -53,8 +54,10 @@ const CreateHeaderWithTemplates = () => {
   const { user } = useAuth();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedRoleId, setSelectedRoleId] = useState<string>("");
-  const [roles, setRoles] = useState<{ id: number; role_name: string }[]>([]);
+  const [selectedAppRoleId, setSelectedAppRoleId] = useState<string>("");
+  const [applicationRoles, setApplicationRoles] = useState<
+    { app_role_id: number; app_role_name: string }[]
+  >([]);
   const [createdHeaderId, setCreatedHeaderId] = useState<number | null>(null);
   const [employees, setEmployees] = useState<
     {
@@ -86,22 +89,15 @@ const CreateHeaderWithTemplates = () => {
     undefined
   );
 
-  // Load roles (header is tied to role_id in backend)
+  // Load application roles (header is tied to application_role_id in backend)
   useEffect(() => {
     (async () => {
       try {
-        const res = await apiFetch("/api/roles/");
+        const res = await getAllApplicationRoles();
         if (res.ok && Array.isArray(res.data)) {
-          // Exclude CEO and Admin from role selection
-          const filteredRoles = (
-            res.data as { id: number; role_name: string }[]
-          ).filter((role) => {
-            const roleName = role.role_name.toLowerCase();
-            return roleName !== "ceo" && roleName !== "admin";
-          });
-          setRoles(filteredRoles);
+          setApplicationRoles(res.data);
         } else {
-          setRoles([]);
+          setApplicationRoles([]);
         }
       } catch (e) {
         console.error(e);
@@ -162,15 +158,15 @@ const CreateHeaderWithTemplates = () => {
       toast.error("Header title is required");
       return null;
     }
-    if (!selectedRoleId) {
-      toast.error("Please select a role");
+    if (!selectedAppRoleId) {
+      toast.error("Please select an application role");
       return null;
     }
 
     setSaving(true);
     try {
       const payload: any = {
-        role_id: Number(selectedRoleId),
+        application_role_id: Number(selectedAppRoleId),
         title: title.trim(),
         description: description.trim() || undefined,
         goal_template_type: goalTemplateType,
@@ -352,11 +348,11 @@ const CreateHeaderWithTemplates = () => {
   };
 
   const handleBackClick = () => {
-    // Detect simple unsaved changes: title/description/role or any created templates
+    // Detect simple unsaved changes: title/description/application_role or any created templates
     const hasUnsaved =
       title.trim() !== "" ||
       description.trim() !== "" ||
-      !!selectedRoleId ||
+      !!selectedAppRoleId ||
       createdTemplates.length > 0;
 
     if (hasUnsaved) setShowExitDialog(true);
@@ -412,18 +408,21 @@ const CreateHeaderWithTemplates = () => {
                       />
                     </div>
                     <div>
-                      <Label>Role</Label>
+                      <Label>Application Role</Label>
                       <Select
-                        value={selectedRoleId}
-                        onValueChange={setSelectedRoleId}
+                        value={selectedAppRoleId}
+                        onValueChange={setSelectedAppRoleId}
                       >
                         <SelectTrigger className="w-full h-10">
-                          <SelectValue placeholder="Select role" />
+                          <SelectValue placeholder="Select application role" />
                         </SelectTrigger>
                         <SelectContent>
-                          {roles.map((r) => (
-                            <SelectItem key={r.id} value={String(r.id)}>
-                              {r.role_name}
+                          {applicationRoles.map((r) => (
+                            <SelectItem
+                              key={r.app_role_id}
+                              value={String(r.app_role_id)}
+                            >
+                              {r.app_role_name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -564,11 +563,11 @@ const CreateHeaderWithTemplates = () => {
                   onClick={handleAddTemplateClick}
                   variant={BUTTON_STYLES.CREATE.variant}
                   disabled={
-                    !title.trim() || !selectedRoleId || !description.trim()
+                    !title.trim() || !selectedAppRoleId || !description.trim()
                   }
                   title={
-                    !title.trim() || !selectedRoleId || !description.trim()
-                      ? "Enter header title, role and description before adding templates"
+                    !title.trim() || !selectedAppRoleId || !description.trim()
+                      ? "Enter header title, application role and description before adding templates"
                       : undefined
                   }
                 >
@@ -625,7 +624,7 @@ const CreateHeaderWithTemplates = () => {
                               </div>
                             </div>
 
-                            {isManagerOrAbove(
+                            {isLeadOrAbove(
                               user?.role_id,
                               user?.role?.role_name
                             ) && (

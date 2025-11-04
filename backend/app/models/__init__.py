@@ -5,14 +5,17 @@ This module imports all models to ensure they are registered with SQLAlchemy
 and relationships can be properly resolved.
 """
 
+from app.models.role import Role
+from app.models.application_role import ApplicationRole
 from app.models.employee import Employee
 from app.models.appraisal import Appraisal, AppraisalStatus
 from app.models.goal import Goal, GoalTemplate, Category, AppraisalGoal
 from app.models.appraisal_type import AppraisalType
-from app.models.role import Role
 from app.models.password_reset_token import PasswordResetToken
 
 __all__ = [
+    "Role",
+    "ApplicationRole",
     "Employee",
     "Appraisal",
     "AppraisalStatus",
@@ -21,6 +24,5 @@ __all__ = [
     "Category",
     "AppraisalGoal",
     "AppraisalType",
-    "Role",
     "PasswordResetToken",
 ]

@@ -17,9 +17,28 @@ class GoalTemplateTypeEnum(str, Enum):
 class GoalTemplateHeaderBase(BaseModel):
     """Base schema for GoalTemplateHeader."""
 
-    role_id: int
+    # role_id is now optional (deprecated, kept for backward compatibility)
+    role_id: Optional[int] = Field(None, description="DEPRECATED: System role ID. Use application_role_id instead.")
+    
+    # NEW: application_role_id for job-specific templates
+    application_role_id: Optional[int] = Field(None, description="Application role (job position) ID")
+    
     title: str
     description: Optional[str] = None
+
+    @field_validator('application_role_id', mode='before')
+    @classmethod
+    def validate_has_role(cls, v, info):
+        """Ensure at least one of role_id or application_role_id is provided."""
+        data = info.data
+        role_id = data.get('role_id')
+        
+        # During migration period, allow either role_id or application_role_id
+        # After migration, we'll enforce application_role_id is required
+        if not role_id and not v:
+            raise ValueError('Either role_id or application_role_id must be provided')
+        
+        return v
 
 
 class GoalTemplateHeaderCreate(GoalTemplateHeaderBase):
@@ -46,7 +65,8 @@ class GoalTemplateHeaderUpdate(BaseModel):
 
     title: Optional[str] = None
     description: Optional[str] = None
-    role_id: Optional[int] = None
+    role_id: Optional[int] = Field(None, description="DEPRECATED: System role ID")
+    application_role_id: Optional[int] = Field(None, description="Application role ID")
     goal_template_type: Optional[GoalTemplateTypeEnum] = None
     is_shared: Optional[bool] = None
     shared_users_id: Optional[List[int]] = None

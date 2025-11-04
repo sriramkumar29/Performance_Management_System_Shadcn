@@ -56,7 +56,7 @@ const AppRouter = () => (
           />
           <Route path="/appraisal/:id" element={<AppraisalView />} />
 
-          {/* Manager-only routes */}
+          {/* Lead and above routes (Lead, Manager, CEO) */}
           <Route element={<ManagerRoute />}>
             <Route path="/team-appraisal" element={<TeamAppraisal />} />
             <Route path="/appraisal/create" element={<CreateAppraisal />} />

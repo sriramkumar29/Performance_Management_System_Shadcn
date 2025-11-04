@@ -41,28 +41,38 @@ class GoalTemplateType(str, enum.Enum):
 
 
 class GoalTemplateHeader(Base):
-    """Goal template header model - groups templates by role."""
+    """Goal template header model - groups templates by application role (job position)."""
 
     __tablename__ = "goal_template_header"
     __table_args__ = (
+        # NOTE: During migration, we keep uq_role_title for backward compatibility
+        # After migration, this will be replaced with uq_app_role_title
         UniqueConstraint('role_id', 'title', name='uq_role_title'),
     )
 
     header_id = Column(Integer, primary_key=True, index=True)
-    role_id = Column(Integer, ForeignKey("roles.id", ondelete=ON_DELETE_CASCADE), nullable=False)
+    
+    # DEPRECATED: role_id kept for backward compatibility during migration
+    # Will be removed in future version after migration is complete
+    role_id = Column(Integer, ForeignKey("roles.id", ondelete=ON_DELETE_CASCADE), nullable=True)
+    
+    # NEW: application_role_id for job-specific templates
+    application_role_id = Column(
+        Integer,
+        ForeignKey("application_roles.app_role_id", ondelete=ON_DELETE_CASCADE),
+        nullable=True,  # Nullable during migration, will become NOT NULL later
+        index=True
+    )
+    
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
 
-    # New fields for access control and sharing
+    # Access control and sharing fields
     creator_id = Column(Integer, ForeignKey("employees.emp_id", ondelete=ON_DELETE_SET_NULL), nullable=True, index=True)
-    # Use PostgreSQL ENUM type so the DB enum name is respected and asyncpg
-    # receives a parameter compatible with the DB enum (avoid varchar -> enum mismatch)
-    # Ensure SQLAlchemy knows the enum's textual values (not member names)
     goal_template_type = Column(
         PGEnum(
             GoalTemplateType,
             name="goaltemplatetype",
-            create_type=False,
             native_enum=False,
             values_callable=lambda enum_cls: [e.value for e in enum_cls]
         ),
@@ -77,7 +87,8 @@ class GoalTemplateHeader(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationships
-    role = relationship("Role", back_populates="template_headers")
+    role = relationship("Role", back_populates="template_headers")  # DEPRECATED
+    application_role = relationship("ApplicationRole", back_populates="template_headers")  # NEW
     goal_templates = relationship("GoalTemplate", back_populates="header", cascade="all, delete-orphan")
     creator = relationship("Employee", foreign_keys=[creator_id])
 

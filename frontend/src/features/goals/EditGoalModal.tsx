@@ -17,6 +17,7 @@ import {
   SelectContent,
   SelectItem,
 } from "../../components/ui/select";
+import { CategorySelector } from "../../components/ui/category-selector";
 import { Edit3, Target, Weight, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { BUTTON_STYLES, ICON_SIZES } from "../../constants/buttonStyles";
@@ -336,106 +337,65 @@ const EditGoalModal = ({
 
                 <div className="space-y-2">
                   <Label
-                    htmlFor="category_ids"
-                    className="text-sm font-medium text-foreground"
+                    htmlFor="goal_weightage"
+                    className="text-sm font-medium text-foreground flex items-center gap-2"
                   >
-                    Categories
+                    <Weight className="h-4 w-4 text-amber-500" />
+                    Weightage (%)
                   </Label>
-                  <UiSelect value={""} onValueChange={() => {}}>
-                    <SelectTrigger className="h-11 focus:ring-2 focus:ring-primary/20 border-border/50">
-                      <SelectValue
-                        placeholder={
-                          loadingCategories ? "Loading..." : "Select categories"
-                        }
-                      />
-                      <div className="ml-2 text-sm text-muted-foreground truncate">
-                        {(formValues.category_ids || [])
-                          .map(
-                            (id) => categories.find((c) => c.id === id)?.name
-                          )
-                          .filter(Boolean)
-                          .join(", ")}
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <div className="p-2">
-                        {categories.map((cat) => (
-                          <label
-                            key={cat.id}
-                            className="flex items-center gap-2 p-2 rounded hover:bg-muted"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={formValues.category_ids.includes(cat.id)}
-                              onChange={(e) => {
-                                const checked = e.target.checked;
-                                setFormValues((v) => {
-                                  const ids = new Set(v.category_ids || []);
-                                  if (checked) ids.add(cat.id);
-                                  else ids.delete(cat.id);
-                                  return {
-                                    ...v,
-                                    category_ids: Array.from(ids),
-                                  };
-                                });
-                              }}
-                            />
-                            <span>{cat.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </SelectContent>
-                  </UiSelect>
+                  <Input
+                    id="goal_weightage"
+                    type="number"
+                    min="1"
+                    max={100}
+                    placeholder="Enter weightage percentage (1-100)"
+                    value={formValues.goal_weightage || ""}
+                    onChange={(e) =>
+                      setFormValues((v) => ({
+                        ...v,
+                        goal_weightage: Number.parseInt(e.target.value) || 0,
+                      }))
+                    }
+                    className="h-11 focus:ring-2 focus:ring-primary/20 border-border/50"
+                    required
+                  />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label
-                  htmlFor="goal_weightage"
-                  className="text-sm font-medium text-foreground flex items-center gap-2"
-                >
-                  <Weight className="h-4 w-4 text-amber-500" />
-                  Weightage (%)
-                </Label>
-                <Input
-                  id="goal_weightage"
-                  type="number"
-                  min="1"
-                  max={100}
-                  placeholder="Enter weightage percentage (1-100)"
-                  value={formValues.goal_weightage || ""}
-                  onChange={(e) =>
-                    setFormValues((v) => ({
-                      ...v,
-                      goal_weightage: Number.parseInt(e.target.value) || 0,
-                    }))
-                  }
-                  className="h-11 focus:ring-2 focus:ring-primary/20 border-border/50"
-                  required
-                />
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">
-                    Remaining weightage after this change:{" "}
-                    <span
-                      className={`font-medium ${
-                        maxWeightage - (formValues.goal_weightage || 0) < 0
-                          ? "text-amber-600"
-                          : "text-foreground"
-                      }`}
-                    >
-                      {Math.max(
-                        0,
-                        maxWeightage - (formValues.goal_weightage || 0)
-                      )}
-                      %
-                    </span>
+              <CategorySelector
+                categories={categories}
+                selectedCategoryIds={formValues.category_ids}
+                onCategoryChange={(ids) =>
+                  setFormValues((v) => ({ ...v, category_ids: ids }))
+                }
+                disabled={loading || loadingCategories}
+                label="Categories"
+                placeholder="Search categories..."
+                required
+              />
+
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">
+                  Remaining weightage after this change:{" "}
+                  <span
+                    className={`font-medium ${
+                      maxWeightage - (formValues.goal_weightage || 0) < 0
+                        ? "text-amber-600"
+                        : "text-foreground"
+                    }`}
+                  >
+                    {Math.max(
+                      0,
+                      maxWeightage - (formValues.goal_weightage || 0)
+                    )}
+                    %
                   </span>
-                  {maxWeightage - (formValues.goal_weightage || 0) < 0 && (
-                    <span className="text-amber-600 font-medium">
-                      Total will exceed 100%
-                    </span>
-                  )}
-                </div>
+                </span>
+                {maxWeightage - (formValues.goal_weightage || 0) < 0 && (
+                  <span className="text-amber-600 font-medium">
+                    Total will exceed 100%
+                  </span>
+                )}
               </div>
             </div>
           </div>

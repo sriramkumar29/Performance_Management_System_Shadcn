@@ -37,10 +37,11 @@ import {
 } from "../../components/ui/select";
 import type {
   GoalTemplateHeaderWithTemplates,
-  Role,
   HeaderSelection,
 } from "../../types/goalTemplateHeader";
+import type { ApplicationRole } from "../../types/applicationRole";
 import { getAllHeaders } from "../../api/goalTemplateHeaders";
+import { getAllApplicationRoles } from "../../api/applicationRoles";
 
 interface ImportFromTemplateModalProps {
   open: boolean;
@@ -49,7 +50,7 @@ interface ImportFromTemplateModalProps {
   onGoalsAdded?: (goals: AppraisalGoal[]) => void;
   appraisalId?: number;
   remainingWeightage?: number;
-  defaultRoleId?: number;
+  defaultApplicationRoleId?: number;
 }
 
 interface Category {
@@ -81,11 +82,15 @@ const ImportFromTemplateModal = ({
   onGoalsAdded,
   appraisalId: _appraisalId,
   remainingWeightage = 100,
-  defaultRoleId,
+  defaultApplicationRoleId,
 }: ImportFromTemplateModalProps) => {
   const [loading, setLoading] = useState(false);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
+  const [applicationRoles, setApplicationRoles] = useState<ApplicationRole[]>(
+    []
+  );
+  const [selectedAppRoleId, setSelectedAppRoleId] = useState<number | null>(
+    null
+  );
   const [headers, setHeaders] = useState<GoalTemplateHeaderWithTemplates[]>([]);
   const [selectedHeaders, setSelectedHeaders] = useState<
     Record<number, HeaderSelection>
@@ -100,11 +105,11 @@ const ImportFromTemplateModal = ({
     if (open) {
       setSelectedHeaders({});
       setExpandedHeaders({});
-      void loadRoles();
+      void loadApplicationRoles();
 
-      // Auto-select default role if provided
-      if (defaultRoleId) {
-        setSelectedRoleId(defaultRoleId);
+      // Auto-select default application role if provided
+      if (defaultApplicationRoleId) {
+        setSelectedAppRoleId(defaultApplicationRoleId);
       }
     } else {
       setSelectedHeaders({});
@@ -112,77 +117,66 @@ const ImportFromTemplateModal = ({
       setFilter("");
       setGoalTypeFilter("All");
     }
-  }, [open, defaultRoleId]);
+  }, [open, defaultApplicationRoleId]);
 
   useEffect(() => {
-    if (selectedRoleId) {
-      void loadHeadersForRole(selectedRoleId);
+    if (selectedAppRoleId) {
+      void loadHeadersForApplicationRole(selectedAppRoleId);
     } else {
       setHeaders([]);
     }
-  }, [selectedRoleId]);
+  }, [selectedAppRoleId]);
 
-  const loadRoles = async () => {
+  const loadApplicationRoles = async () => {
     try {
-      const res = await apiFetch<Role[]>("/api/roles/");
+      const res = await getAllApplicationRoles();
       if (res.ok && res.data) {
-        // Filter out Admin and CEO roles so they don't appear in the role selector
-        const filtered = (res.data as Role[]).filter((r) => {
-          const name = (r.role_name || "").toLowerCase();
-          return !name.includes("admin") && !name.includes("ceo");
-        });
-        setRoles(filtered);
+        setApplicationRoles(res.data);
       }
     } catch (e: unknown) {
       const errorMessage =
-        e instanceof Error ? e.message : "Failed to load roles";
-      console.error("Failed to load roles:", errorMessage);
+        e instanceof Error ? e.message : "Failed to load application roles";
+      console.error("Failed to load application roles:", errorMessage);
     }
   };
 
-  const loadHeadersForRole = async (roleId: number) => {
+  const loadHeadersForApplicationRole = async (appRoleId: number) => {
     setLoading(true);
     try {
       // Load all three types: organization, self, and shared
+      // Pass application_role_id parameter to backend for filtering
       const [orgResult, selfResult, sharedResult] = await Promise.all([
-        getAllHeaders(0, 100, "organization"),
-        getAllHeaders(0, 100, "self"),
-        getAllHeaders(0, 100, "shared"),
+        getAllHeaders(0, 100, "organization", undefined, appRoleId),
+        getAllHeaders(0, 100, "self", undefined, appRoleId),
+        getAllHeaders(0, 100, "shared", undefined, appRoleId),
       ]);
 
       const combinedHeaders: GoalTemplateHeaderWithTemplates[] = [];
 
-      // Collect organization headers for this role
+      // Collect organization headers for this application role
       if (orgResult.ok && orgResult.data) {
-        const orgFiltered = orgResult.data.filter((h) => h.role_id === roleId);
         console.log(
-          `Organization: ${orgResult.data.length} total, ${orgFiltered.length} for role ${roleId}`
+          `Organization: ${orgResult.data.length} total for application role ${appRoleId}`
         );
-        combinedHeaders.push(...orgFiltered);
+        combinedHeaders.push(...orgResult.data);
       }
 
-      // Collect self headers for this role
+      // Collect self headers for this application role
       if (selfResult.ok && selfResult.data) {
-        const selfFiltered = selfResult.data.filter(
-          (h) => h.role_id === roleId
-        );
         console.log(
-          `Self: ${selfResult.data.length} total, ${selfFiltered.length} for role ${roleId}`
+          `Self: ${selfResult.data.length} total for application role ${appRoleId}`
         );
-        combinedHeaders.push(...selfFiltered);
+        combinedHeaders.push(...selfResult.data);
       }
 
-      // Collect shared headers - these are already filtered by shared_users_id on backend
-      // Just filter by role_id to match the selected role
+      // Collect shared headers - backend already filters by application_role_id
       if (sharedResult.ok && sharedResult.data) {
-        const sharedForRole = sharedResult.data
-          .filter((h) => h.role_id === roleId)
-          .map((h) => ({
-            ...h,
-            _isSharedWithMe: true, // Internal flag to identify shared headers
-          }));
+        const sharedForRole = sharedResult.data.map((h) => ({
+          ...h,
+          _isSharedWithMe: true, // Internal flag to identify shared headers
+        }));
         console.log(
-          `Shared: ${sharedResult.data.length} total, ${sharedForRole.length} for role ${roleId}`
+          `Shared: ${sharedResult.data.length} total, ${sharedForRole.length} for application role ${appRoleId}`
         );
         combinedHeaders.push(...(sharedForRole as any));
       }
@@ -193,7 +187,7 @@ const ImportFromTemplateModal = ({
       );
 
       console.log(
-        `Total combined headers for role ${roleId}: ${uniqueHeaders.length}`
+        `Total combined headers for application role ${appRoleId}: ${uniqueHeaders.length}`
       );
       console.log(
         "Headers:",
@@ -201,7 +195,7 @@ const ImportFromTemplateModal = ({
           id: h.header_id,
           title: h.title,
           type: h.goal_template_type,
-          role_id: h.role_id,
+          application_role_id: h.application_role_id,
           isShared: (h as any)._isSharedWithMe,
         }))
       );
@@ -234,7 +228,7 @@ const ImportFromTemplateModal = ({
   const closeAndReset = () => {
     setSelectedHeaders({});
     setExpandedHeaders({});
-    setSelectedRoleId(null);
+    setSelectedAppRoleId(null);
     setFilter("");
     onClose();
   };
@@ -461,7 +455,7 @@ const ImportFromTemplateModal = ({
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
                 className="h-10"
-                disabled={!selectedRoleId}
+                disabled={!selectedAppRoleId}
               />
             </div>
 
@@ -471,21 +465,24 @@ const ImportFromTemplateModal = ({
                 className="text-xs sm:text-sm font-medium flex items-center gap-1 h-4"
               >
                 <Filter className="h-3 w-3" />
-                Filter by Role
+                Filter by Application Role
               </Label>
               <Select
-                value={selectedRoleId?.toString() || ""}
+                value={selectedAppRoleId?.toString() || ""}
                 onValueChange={(val) =>
-                  setSelectedRoleId(val ? Number(val) : null)
+                  setSelectedAppRoleId(val ? Number(val) : null)
                 }
               >
                 <SelectTrigger id="role-filter" className="h-10">
-                  <SelectValue placeholder="Select a role..." />
+                  <SelectValue placeholder="Select an application role..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {roles.map((role) => (
-                    <SelectItem key={role.id} value={role.id.toString()}>
-                      {role.role_name}
+                  {applicationRoles.map((appRole) => (
+                    <SelectItem
+                      key={appRole.app_role_id}
+                      value={appRole.app_role_id.toString()}
+                    >
+                      {appRole.app_role_name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -507,10 +504,10 @@ const ImportFromTemplateModal = ({
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="All">All</SelectItem>
-                  <SelectItem value="Organization">Organization</SelectItem>
-                  <SelectItem value="Self">Self</SelectItem>
-                  <SelectItem value="Shared">Shared</SelectItem>
+                  <SelectItem value="All">All Templates</SelectItem>
+                  <SelectItem value="Organization">Organization Templates</SelectItem>
+                  <SelectItem value="Self">Self Templates</SelectItem>
+                  <SelectItem value="Shared">Shared Templates</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -543,11 +540,11 @@ const ImportFromTemplateModal = ({
 
           {/* Headers List */}
           <div className="space-y-3">
-            {!selectedRoleId ? (
+            {!selectedAppRoleId ? (
               <div className="p-8 text-center border border-dashed border-border/50 rounded-lg">
                 <Filter className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
                 <p className="text-sm text-muted-foreground">
-                  Please select a role to view template headers
+                  Please select an application role to view template headers
                 </p>
               </div>
             ) : loading ? (
@@ -561,7 +558,7 @@ const ImportFromTemplateModal = ({
                 <p className="text-sm text-muted-foreground">
                   {filter
                     ? "No templates match your search"
-                    : "No template headers found for this role"}
+                    : "No template headers found for this application role"}
                 </p>
               </div>
             ) : (

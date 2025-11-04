@@ -36,8 +36,7 @@ class AppraisalBase(BaseModel):
                 raise ValueError('Appraiser cannot be the same as appraisee')
             if reviewer_id and appraisee_id and reviewer_id == appraisee_id:
                 raise ValueError('Reviewer cannot be the same as appraisee')
-            if reviewer_id and appraiser_id and reviewer_id == appraiser_id:
-                raise ValueError('Reviewer cannot be the same as appraiser')
+            # Allow reviewer to be the same as appraiser (e.g., Manager+ can be both)
         return values
 
 

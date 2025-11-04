@@ -3,7 +3,6 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
 import { Button } from "../../components/ui/button";
-import { Badge } from "../../components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
+import { CategorySelector } from "../../components/ui/category-selector";
 import { apiFetch } from "../../utils/api";
 import { toast } from "sonner";
 import { useAuth } from "../../contexts/AuthContext";
@@ -70,14 +70,10 @@ const CreateTemplateModal = ({
   const [tempPerformanceFactor, setTempPerformanceFactor] = useState("");
   const [tempImportance, setTempImportance] = useState("");
   const [tempWeightage, setTempWeightage] = useState<number | "">("");
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categoryIds, setCategoryIds] = useState<number[]>([]);
   const [allCategories, setAllCategories] = useState<CategoryDto[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
   const [selectedHeaderId, setSelectedHeaderId] = useState<number | null>(null);
-
-  // const [newCategory, setNewCategory] = useState("");
-
-  // Use centralized role helper for manager-or-above checks (excludes Admin)
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -97,11 +93,11 @@ const CreateTemplateModal = ({
         setTempWeightage(
           editTemplate.temp_weightage ?? editTemplate.weightage ?? ""
         );
-        setCategories(
-          (editTemplate.categories || []).map((c: any) =>
-            typeof c === "string" ? c : c.name
-          )
-        );
+        // Convert categories to IDs
+        const existingCategoryIds = (editTemplate.categories || [])
+          .map((c: any) => (typeof c === "object" && c.id ? c.id : 0))
+          .filter((id: number) => id > 0);
+        setCategoryIds(existingCategoryIds);
         // try to preselect header/role if present
         if (editTemplate.role_id) setSelectedRoleId(editTemplate.role_id);
         if (editTemplate.header_id) setSelectedHeaderId(editTemplate.header_id);
@@ -125,24 +121,12 @@ const CreateTemplateModal = ({
       setTempPerformanceFactor("");
       setTempImportance("");
       setTempWeightage("");
-      setCategories([]);
+      setCategoryIds([]);
       setSelectedRoleId(null);
       setSelectedHeaderId(null);
       setSaving(false);
     }
   }, [open]);
-
-  // const handleAddCategory = () => {
-  //   const trimmed = newCategory.trim();
-  //   if (trimmed && !categories.includes(trimmed)) {
-  //     setCategories([...categories, trimmed]);
-  //     setNewCategory("");
-  //   }
-  // };
-
-  const handleRemoveCategory = (cat: string) => {
-    setCategories(categories.filter((c) => c !== cat));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,10 +165,15 @@ const CreateTemplateModal = ({
         return;
       }
     }
-    if (!categories || categories.length === 0) {
+    if (!categoryIds || categoryIds.length === 0) {
       toast.error("Select at least one category");
       return;
     }
+
+    // Convert category IDs to names for the API
+    const categoryNames = categoryIds
+      .map((id) => allCategories.find((c) => c.id === id)?.name)
+      .filter(Boolean) as string[];
 
     const payload = {
       temp_title: tempTitle.trim(),
@@ -192,7 +181,7 @@ const CreateTemplateModal = ({
       temp_performance_factor: tempPerformanceFactor.trim(),
       temp_importance: tempImportance.trim(),
       temp_weightage: weight,
-      categories: categories,
+      categories: categoryNames,
     };
 
     try {
@@ -209,7 +198,7 @@ const CreateTemplateModal = ({
             temp_performance_factor: tempPerformanceFactor.trim(),
             temp_importance: tempImportance.trim(),
             temp_weightage: weight,
-            categories: categories,
+            categories: categoryNames,
             header_id: selectedHeaderId ?? editTemplate.header_id ?? null,
             role_id: selectedRoleId ?? editTemplate.role_id ?? null,
           };
@@ -443,60 +432,15 @@ const CreateTemplateModal = ({
               </div>
             </div>
 
-            <div className="space-y-3">
-              <Label className="text-sm font-medium text-foreground">
-                Categories
-              </Label>
-
-              {categories.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {categories.map((cat) => (
-                    <Badge
-                      key={cat}
-                      variant="secondary"
-                      className="flex items-center gap-1 px-3 py-1"
-                    >
-                      {cat}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCategory(cat)}
-                        disabled={saving}
-                        className="ml-1 hover:text-destructive transition-colors"
-                        aria-label={`Remove ${cat}`}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-
-              {allCategories.length > 0 && (
-                <div className="space-y-2">
-                  {/* <p className="text-sm text-muted-foreground">
-                    Or select from existing categories:
-                  </p> */}
-                  <div className="flex flex-wrap gap-2">
-                    {allCategories
-                      .filter((cat) => !categories.includes(cat.name))
-                      .map((cat) => (
-                        <Badge
-                          key={cat.id}
-                          variant="outline"
-                          className="cursor-pointer hover:bg-accent transition-colors px-3 py-1"
-                          onClick={() => {
-                            if (!categories.includes(cat.name)) {
-                              setCategories([...categories, cat.name]);
-                            }
-                          }}
-                        >
-                          + {cat.name}
-                        </Badge>
-                      ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <CategorySelector
+              categories={allCategories}
+              selectedCategoryIds={categoryIds}
+              onCategoryChange={setCategoryIds}
+              disabled={saving}
+              label="Categories"
+              placeholder="Search categories..."
+              required
+            />
           </div>
 
           <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">

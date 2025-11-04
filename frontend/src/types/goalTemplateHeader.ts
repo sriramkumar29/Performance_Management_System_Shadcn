@@ -12,7 +12,8 @@ export type GoalTemplateType = 'Organization' | 'Self';
 
 export interface GoalTemplateHeader {
   header_id: number;
-  role_id: number;
+  role_id?: number;  // DEPRECATED: Kept for backward compatibility
+  application_role_id?: number;  // NEW: Job position for this template
   title: string;
   description?: string;
   creator_id?: number;
@@ -24,7 +25,8 @@ export interface GoalTemplateHeader {
 }
 
 export interface GoalTemplateHeaderCreate {
-  role_id: number;
+  role_id?: number;  // DEPRECATED
+  application_role_id?: number;  // NEW: Required for new templates
   title: string;
   description?: string;
   goal_template_type?: GoalTemplateType;
@@ -35,7 +37,8 @@ export interface GoalTemplateHeaderCreate {
 export interface GoalTemplateHeaderUpdate {
   title?: string;
   description?: string;
-  role_id?: number;
+  role_id?: number;  // DEPRECATED
+  application_role_id?: number;  // NEW
   goal_template_type?: GoalTemplateType;
   is_shared?: boolean;
   shared_users_id?: number[];
